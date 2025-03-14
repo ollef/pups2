@@ -358,6 +358,7 @@ pub fn disassemble(data: u32) -> Instruction {
             0b000001 => Instruction::Unknown,
             0b000010 => Instruction::Srl(rd, rt, shamt),
             0b000011 => Instruction::Sra(rd, rt, shamt),
+            0b000101 => Instruction::Unknown,
             0b000111 => Instruction::Srav(rd, rt, rs),
             0b001000 => Instruction::Jr(rs),
             0b001001 => Instruction::Jalr(rd, rs),
