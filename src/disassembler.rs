@@ -96,6 +96,7 @@ impl Register {
 #[derive(Debug)]
 pub enum Instruction {
     Sll(Register, Register, u8),
+    Srl(Register, Register, u8),
     Sync,
     Mult(Register, Register, Register),
     Addu(Register, Register, Register),
@@ -126,6 +127,7 @@ impl Instruction {
     fn definitions(&self) -> impl Iterator<Item = Register> {
         (match self {
             Instruction::Sll(a, _, _) => Some(*a),
+            Instruction::Srl(a, _, _) => Some(*a),
             Instruction::Sync => None,
             Instruction::Mult(a, _, _) => Some(*a),
             Instruction::Addu(a, _, _) => Some(*a),
@@ -158,6 +160,7 @@ impl Instruction {
     fn uses(&self) -> impl Iterator<Item = Register> {
         (match self {
             Instruction::Sll(_, b, _) => [Some(*b), None],
+            Instruction::Srl(_, b, _) => [Some(*b), None],
             Instruction::Sync => [None, None],
             Instruction::Mult(_, a, b) => [Some(*a), Some(*b)],
             Instruction::Addu(_, a, b) => [Some(*a), Some(*b)],
@@ -201,6 +204,7 @@ impl Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Instruction::Sll(a, b, c) => write!(f, "sll {a}, {b}, {c}"),
+            Instruction::Srl(a, b, c) => write!(f, "srl {a}, {b}, {c}"),
             Instruction::Sync => write!(f, "sync"),
             Instruction::Mult(a, b, c) => write!(f, "mult {a}, {b}, {c}"),
             Instruction::Addu(a, b, c) => write!(f, "addu {a}, {b}, {c}"),
@@ -254,6 +258,7 @@ pub fn disassemble(data: u32) -> Instruction {
     match opcode {
         0b000000 => match data & 0b111111 {
             0b000000 => Instruction::Sll(rd, rt, shamt),
+            0b000010 => Instruction::Srl(rd, rt, shamt),
             0b001111 => Instruction::Sync,
             0b011000 => Instruction::Mult(rs, rt, rd),
             0b100001 => Instruction::Addu(rd, rs, rt),
