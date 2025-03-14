@@ -97,6 +97,7 @@ impl Register {
 pub enum Instruction {
     Sll(Register, Register, u8),
     Mult(Register, Register, Register),
+    Addu(Register, Register, Register),
     Daddu(Register, Register, Register),
     Bgez(Register, u16),
     J(u32),
@@ -125,6 +126,7 @@ impl Instruction {
         (match self {
             Instruction::Sll(a, _, _) => Some(*a),
             Instruction::Mult(a, _, _) => Some(*a),
+            Instruction::Addu(a, _, _) => Some(*a),
             Instruction::Daddu(a, _, _) => Some(*a),
             Instruction::Bgez(_, _) => None,
             Instruction::J(_) => None,
@@ -155,6 +157,7 @@ impl Instruction {
         (match self {
             Instruction::Sll(_, b, _) => [Some(*b), None],
             Instruction::Mult(_, a, b) => [Some(*a), Some(*b)],
+            Instruction::Addu(_, a, b) => [Some(*a), Some(*b)],
             Instruction::Daddu(_, a, b) => [Some(*a), Some(*b)],
             Instruction::Bgez(a, _) => [Some(*a), None],
             Instruction::J(_) => [None, None],
@@ -196,6 +199,7 @@ impl Display for Instruction {
         match self {
             Instruction::Sll(a, b, c) => write!(f, "sll {a}, {b}, {c}"),
             Instruction::Mult(a, b, c) => write!(f, "mult {a}, {b}, {c}"),
+            Instruction::Addu(a, b, c) => write!(f, "addu {a}, {b}, {c}"),
             Instruction::Daddu(a, b, c) => write!(f, "daddu {a}, {b}, {c}"),
             Instruction::Bgez(a, b) => write!(f, "bgez {a}, {b:#x}"),
             Instruction::J(a) => write!(f, "j {a:#x}"),
@@ -247,6 +251,7 @@ pub fn disassemble(data: u32) -> Instruction {
         0b000000 => match data & 0b111111 {
             0b000000 => Instruction::Sll(rd, rt, shamt),
             0b011000 => Instruction::Mult(rs, rt, rd),
+            0b100001 => Instruction::Addu(rd, rs, rt),
             0b101101 => Instruction::Daddu(rd, rs, rt),
             _ => panic!("Special not implemented {:#034b}", data),
         },
