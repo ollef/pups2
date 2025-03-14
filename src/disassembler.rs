@@ -96,6 +96,7 @@ impl Register {
 #[derive(Debug)]
 pub enum Instruction {
     Sll(Register, Register, u8),
+    Daddu(Register, Register, Register),
     Bgez(Register, u16),
     J(u32),
     Jal(u32),
@@ -122,6 +123,7 @@ impl Instruction {
     fn definitions(&self) -> impl Iterator<Item = Register> {
         (match self {
             Instruction::Sll(a, _, _) => Some(*a),
+            Instruction::Daddu(a, _, _) => Some(*a),
             Instruction::Bgez(_, _) => None,
             Instruction::J(_) => None,
             Instruction::Jal(_) => Some(Register::Ra),
@@ -150,6 +152,7 @@ impl Instruction {
     fn uses(&self) -> impl Iterator<Item = Register> {
         (match self {
             Instruction::Sll(_, b, _) => [Some(*b), None],
+            Instruction::Daddu(_, a, b) => [Some(*a), Some(*b)],
             Instruction::Bgez(a, _) => [Some(*a), None],
             Instruction::J(_) => [None, None],
             Instruction::Jal(_) => [None, None],
@@ -189,6 +192,7 @@ impl Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Instruction::Sll(a, b, c) => write!(f, "sll {a}, {b}, {c}"),
+            Instruction::Daddu(a, b, c) => write!(f, "daddu {a}, {b}, {c}"),
             Instruction::Bgez(a, b) => write!(f, "bgez {a}, {b:#x}"),
             Instruction::J(a) => write!(f, "j {a:#x}"),
             Instruction::Jal(a) => write!(f, "jal {a:#x}"),
@@ -236,7 +240,11 @@ pub fn disassemble(data: u32) -> Instruction {
     let imm16 = (data & 0b11111111_11111111) as u16;
     let imm26 = data & 0b00000011_11111111_11111111_11111111;
     match opcode {
-        0b000000 => Instruction::Sll(rd, rt, shamt),
+        0b000000 => match data & 0b111111 {
+            0b000000 => Instruction::Sll(rd, rt, shamt),
+            0b101101 => Instruction::Daddu(rd, rs, rt),
+            _ => panic!("Special not implemented {:#034b}", data),
+        },
         0b000001 => match t {
             0b00001 => Instruction::Bgez(rs, imm16),
             _ => panic!("Branch not implemented {:#034b}", data),
