@@ -424,6 +424,7 @@ pub fn disassemble(data: u32) -> Instruction {
             0b011000 => Instruction::Mult(rs, rt),
             0b011001 => Instruction::Multu(rs, rt),
             0b011101 => Instruction::Unknown,
+            0b011111 => Instruction::Unknown,
             0b100000 => Instruction::Add(rd, rs, rt),
             0b100001 => Instruction::Addu(rd, rs, rt),
             0b100010 => Instruction::Sub(rd, rs, rt),
