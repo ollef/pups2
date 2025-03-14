@@ -121,7 +121,7 @@ pub enum Instruction {
 impl Instruction {
     fn definitions(&self) -> impl Iterator<Item = Register> {
         (match self {
-            Instruction::Sll(a, _, _) => Some(*a),
+            Instruction::Sll(a, _, _) => a.non_zero(),
             Instruction::Bgez(_, _) => None,
             Instruction::J(_) => None,
             Instruction::Jal(_) => Some(Register::Ra),
