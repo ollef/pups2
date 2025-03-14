@@ -29,22 +29,25 @@ fn main() -> Result<(), std::io::Error> {
         memory.rd[physical_memory_address as usize..physical_memory_address as usize + data.len()]
             .copy_from_slice(data);
     }
-    let mut pc = entry_point;
-    loop {
-        let instruction_data = u32::from_le_bytes([
-            memory.rd[pc as usize],
-            memory.rd[pc as usize + 1],
-            memory.rd[pc as usize + 2],
-            memory.rd[pc as usize + 3],
-        ]);
-        let instruction = disassembler::disassemble(instruction_data);
-        print!("{:x?}: {}", pc, instruction);
-        if instruction.is_nop() {
-            println!(" (nop)");
-        } else {
-            println!();
+    for program_header in elf.segments().expect("Failed to get program headers") {
+        println!("Disassembling segment at {:x?}", program_header.p_paddr);
+        for pc in
+            (program_header.p_paddr..program_header.p_paddr + program_header.p_filesz).step_by(4)
+        {
+            let instruction_data = u32::from_le_bytes([
+                memory.rd[pc as usize],
+                memory.rd[pc as usize + 1],
+                memory.rd[pc as usize + 2],
+                memory.rd[pc as usize + 3],
+            ]);
+            let instruction = disassembler::disassemble(instruction_data);
+            print!("{:x?}: {}", pc, instruction);
+            if instruction.is_nop() {
+                println!(" (nop)");
+            } else {
+                println!();
+            }
         }
-        pc += 4;
     }
     Ok(())
 }
