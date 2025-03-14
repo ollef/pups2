@@ -3,12 +3,14 @@ use enum_map::{enum_map, EnumMap};
 use super::register::Register;
 
 pub struct State {
-    registers: EnumMap<Register, RegisterState>,
+    pub program_counter: u32,
+    pub registers: EnumMap<Register, RegisterState>,
 }
 
 impl State {
-    pub fn new() -> Self {
+    pub fn new(program_counter: u32) -> Self {
         State {
+            program_counter,
             registers: enum_map! { _ => RegisterState::new() },
         }
     }
