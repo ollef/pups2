@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+use enum_map::Enum;
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
 #[repr(u8)]
 #[allow(dead_code)]
 pub enum Register {
