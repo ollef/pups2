@@ -481,6 +481,7 @@ pub fn disassemble(data: u32) -> Instruction {
             0b110110 => Instruction::Tne(rs, rt),
             0b110111 => Instruction::Unknown,
             0b111000 => Instruction::Dsll(rd, rs, shamt),
+            0b111001 => Instruction::Unknown,
             0b111010 => Instruction::Dsrl(rd, rs, shamt),
             0b111011 => Instruction::Dsra(rd, rs, shamt),
             0b111100 => Instruction::Dsll32(rd, rs, shamt),
