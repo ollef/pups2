@@ -127,23 +127,26 @@ impl Instruction {
             Instruction::Jal(_) => Some(Register::Ra),
             Instruction::Beq(_, _, _) => None,
             Instruction::Bne(_, _, _) => None,
-            Instruction::Addiu(a, _, _) => a.non_zero(),
-            Instruction::Andi(a, _, _) => a.non_zero(),
-            Instruction::Ori(a, _, _) => a.non_zero(),
-            Instruction::Lui(a, _) => a.non_zero(),
+            Instruction::Addiu(a, _, _) => Some(*a),
+            Instruction::Andi(a, _, _) => Some(*a),
+            Instruction::Ori(a, _, _) => Some(*a),
+            Instruction::Lui(a, _) => Some(*a),
             Instruction::Ei => None,
             Instruction::Sq(_, _, _) => None,
-            Instruction::Lh(a, _, _) => a.non_zero(),
-            Instruction::Lw(a, _, _) => a.non_zero(),
-            Instruction::Lbu(a, _, _) => a.non_zero(),
-            Instruction::Lwr(a, _, _) => a.non_zero(),
+            Instruction::Lh(a, _, _) => Some(*a),
+            Instruction::Lw(a, _, _) => Some(*a),
+            Instruction::Lbu(a, _, _) => Some(*a),
+            Instruction::Lwr(a, _, _) => Some(*a),
             Instruction::Sb(_, _, _) => None,
             Instruction::Sh(_, _, _) => None,
             Instruction::Sw(_, _, _) => None,
-            Instruction::Ld(a, _, _) => a.non_zero(),
+            Instruction::Ld(a, _, _) => Some(*a),
             Instruction::Sd(_, _, _) => None,
         })
         .into_iter()
+        .filter_map(|x| x.non_zero())
+    }
+
     fn uses(&self) -> impl Iterator<Item = Register> {
         (match self {
             Instruction::Sll(_, b, _) => [Some(*b), None],
