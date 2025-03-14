@@ -176,6 +176,12 @@ impl Instruction {
         .filter_map(|x| x.and_then(|x| x.non_zero()))
     }
 
+    fn depends_on(&self, register: Register) -> bool {
+        self.uses().any(|x| x == register)
+    }
+
+    fn depends_on_instruction(&self, other: &Instruction) -> bool {
+        other.definitions().any(|x| self.depends_on(x))
     }
 }
 
