@@ -144,6 +144,35 @@ impl Instruction {
             Instruction::Sd(_, _, _) => None,
         })
         .into_iter()
+    fn uses(&self) -> impl Iterator<Item = Register> {
+        (match self {
+            Instruction::Sll(_, b, _) => [Some(*b), None],
+            Instruction::Bgez(a, _) => [Some(*a), None],
+            Instruction::J(_) => [None, None],
+            Instruction::Jal(_) => [None, None],
+            Instruction::Beq(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Bne(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Addiu(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Andi(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Ori(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Lui(_, _) => [None, None],
+            Instruction::Ei => [None, None],
+            Instruction::Sq(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Lh(_, b, _) => [Some(*b), None],
+            Instruction::Lw(_, b, _) => [Some(*b), None],
+            Instruction::Lbu(_, b, _) => [Some(*b), None],
+            Instruction::Lwr(_, b, _) => [Some(*b), None],
+            Instruction::Sb(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Sh(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Sw(a, b, _) => [Some(*a), Some(*b)],
+            Instruction::Ld(_, b, _) => [Some(*b), None],
+            Instruction::Sd(a, b, _) => [Some(*a), Some(*b)],
+        })
+        .into_iter()
+        .take_while(|x| x.is_some())
+        .filter_map(|x| x.and_then(|x| x.non_zero()))
+    }
+
     }
 }
 
