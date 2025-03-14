@@ -95,6 +95,7 @@ impl Register {
 
 #[derive(Debug)]
 pub enum Instruction {
+    Unknown,
     Sll(Register, Register, u8),
     Srl(Register, Register, u8),
     Sra(Register, Register, u8),
@@ -138,6 +139,7 @@ pub enum Instruction {
 impl Instruction {
     fn definitions(&self) -> impl Iterator<Item = Register> {
         (match self {
+            Instruction::Unknown => None,
             Instruction::Sll(a, _, _) => Some(*a),
             Instruction::Srl(a, _, _) => Some(*a),
             Instruction::Sra(a, _, _) => Some(*a),
@@ -183,6 +185,7 @@ impl Instruction {
 
     fn uses(&self) -> impl Iterator<Item = Register> {
         (match self {
+            Instruction::Unknown => [None, None],
             Instruction::Sll(_, b, _) => [Some(*b), None],
             Instruction::Srl(_, b, _) => [Some(*b), None],
             Instruction::Sra(_, b, _) => [Some(*b), None],
@@ -239,6 +242,7 @@ impl Instruction {
 impl Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Instruction::Unknown => write!(f, "[unknown]"),
             Instruction::Sll(a, b, c) => write!(f, "sll {a}, {b}, {c}"),
             Instruction::Srl(a, b, c) => write!(f, "srl {a}, {b}, {c}"),
             Instruction::Sra(a, b, c) => write!(f, "sra {a}, {b}, {c}"),
@@ -284,6 +288,7 @@ impl Display for Instruction {
 impl Instruction {
     pub fn is_nop(&self) -> bool {
         match self {
+            Instruction::Unknown => true,
             Instruction::Sll(reg1, reg2, 0) => reg1 == reg2,
             Instruction::Addiu(reg1, reg2, 0) => reg1 == reg2,
             Instruction::Ori(reg1, reg2, 0) => reg1 == reg2,
@@ -306,6 +311,7 @@ pub fn disassemble(data: u32) -> Instruction {
     match opcode {
         0b000000 => match data & 0b111111 {
             0b000000 => Instruction::Sll(rd, rt, shamt),
+            0b000001 => Instruction::Unknown,
             0b000010 => Instruction::Srl(rd, rt, shamt),
             0b000011 => Instruction::Sra(rd, rt, shamt),
             0b001000 => Instruction::Jr(rs),
