@@ -176,7 +176,7 @@ impl Instruction {
             Instruction::Addu(a, _, _) => Some(*a),
             Instruction::And(a, _, _) => Some(*a),
             Instruction::Or(a, _, _) => Some(*a),
-            Instruction::Mtsa(_) => None, // TODO: check
+            Instruction::Mtsa(_) => None,
             Instruction::Slt(a, _, _) => Some(*a),
             Instruction::Sltu(a, _, _) => Some(*a),
             Instruction::Daddu(a, _, _) => Some(*a),
@@ -239,7 +239,7 @@ impl Instruction {
             Instruction::Addu(_, a, b) => [Some(*a), Some(*b)],
             Instruction::And(_, a, b) => [Some(*a), Some(*b)],
             Instruction::Or(_, a, b) => [Some(*a), Some(*b)],
-            Instruction::Mtsa(a) => [Some(*a), None], // TODO: check
+            Instruction::Mtsa(a) => [Some(*a), None],
             Instruction::Slt(_, a, b) => [Some(*a), Some(*b)],
             Instruction::Sltu(_, a, b) => [Some(*a), Some(*b)],
             Instruction::Daddu(_, a, b) => [Some(*a), Some(*b)],
