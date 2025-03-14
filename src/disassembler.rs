@@ -451,6 +451,7 @@ pub fn disassemble(data: u32) -> Instruction {
             0b001010 => Instruction::Movz(rd, rs, rt),
             0b001011 => Instruction::Movn(rd, rs, rt),
             0b001100 => Instruction::Syscall,
+            0b001110 => Instruction::Unknown,
             0b001111 => Instruction::Sync,
             0b010000 => Instruction::Mfhi(rd),
             0b010001 => Instruction::Mthi(rs),
