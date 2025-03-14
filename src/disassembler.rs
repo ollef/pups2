@@ -336,6 +336,7 @@ pub fn disassemble(data: u32) -> Instruction {
             0b101101 => Instruction::Daddu(rd, rs, rt),
             0b101110 => Instruction::Dsub(rd, rs, rt),
             0b101111 => Instruction::Dsubu(rd, rs, rt),
+            0b110111 => Instruction::Unknown,
             0b111000 => Instruction::Dsll(rd, rs, shamt),
             0b111010 => Instruction::Dsrl(rd, rs, shamt),
             0b111100 => Instruction::Dsll32(rd, rs, shamt),
