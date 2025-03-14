@@ -1,4 +1,4 @@
-mod disassembler;
+mod emotion_engine;
 use elf::{endian::LittleEndian, ElfBytes};
 
 struct Memory {
@@ -40,7 +40,7 @@ fn main() -> Result<(), std::io::Error> {
                 memory.rd[pc as usize + 2],
                 memory.rd[pc as usize + 3],
             ]);
-            let instruction = disassembler::disassemble(instruction_data);
+            let instruction = emotion_engine::disassembler::disassemble(instruction_data);
             print!("{:x?}: {}", pc, instruction);
             if instruction.is_nop() {
                 println!(" (nop)");
