@@ -321,6 +321,7 @@ pub fn disassemble(data: u32) -> Instruction {
             0b001000 => Instruction::Jr(rs),
             0b001100 => Instruction::Jalr(rd, rs),
             0b001111 => Instruction::Sync,
+            0b010101 => Instruction::Unknown,
             0b011000 => Instruction::Mult(rs, rt, rd),
             0b100000 => Instruction::Add(rd, rs, rt),
             0b100001 => Instruction::Addu(rd, rs, rt),
