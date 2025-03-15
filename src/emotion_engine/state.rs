@@ -1,6 +1,6 @@
 use enum_map::{enum_map, EnumMap};
 
-use super::register::Register;
+use super::{memory::Memory, register::Register};
 
 pub struct State {
     pub program_counter: u32,
