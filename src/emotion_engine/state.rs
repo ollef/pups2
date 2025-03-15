@@ -6,6 +6,7 @@ pub struct State {
     pub program_counter: u32,
     pub registers: EnumMap<Register, RegisterState>,
     pub delayed_branch_target: Option<u32>,
+    pub memory: Memory,
 }
 
 impl State {
@@ -14,6 +15,7 @@ impl State {
             program_counter,
             registers: enum_map! { _ => RegisterState::new() },
             delayed_branch_target: None,
+            memory: Memory::new(),
         }
     }
 }
