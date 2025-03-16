@@ -4,3 +4,4 @@ pub mod interpreter;
 pub mod memory;
 pub mod register;
 pub mod state;
+pub mod tlb;
