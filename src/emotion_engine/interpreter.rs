@@ -25,7 +25,14 @@ impl State {
     }
 
     pub fn step_interpreter(&mut self) {
-        let instruction = disassemble(self.memory.read32(self.program_counter));
+        let physical_program_counter = self
+            .tlb
+            .virtual_to_physical(self.program_counter, self.mode);
+        let raw_instruction = self
+            .memory
+            .read32(physical_program_counter)
+            .expect("Failed to read instruction");
+        let instruction = disassemble(raw_instruction);
         let delayed_branch_target = self.delayed_branch_target.take();
         println!("Interpreting {instruction}");
         match instruction {
