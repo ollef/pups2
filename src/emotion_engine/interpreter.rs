@@ -58,7 +58,10 @@ impl State {
             .expect("Failed to read instruction");
         let instruction = disassemble(raw_instruction);
         let delayed_branch_target = self.delayed_branch_target.take();
-        println!("Interpreting {instruction}");
+        println!(
+            "vpc={:#010} ppc={physical_program_counter:#010}: {instruction}",
+            self.program_counter
+        );
         match instruction {
             Instruction::Unknown => {
                 println!("Unknown instruction at {:#010x}", self.program_counter)
