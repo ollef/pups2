@@ -63,6 +63,10 @@ impl RegisterState {
         ])
     }
 
+    pub fn read128(&self) -> u128 {
+        u128::from_le_bytes(self.bytes)
+    }
+
     pub fn write32(&mut self, value: u32) {
         for (i, byte) in value.to_le_bytes().iter().enumerate() {
             self.bytes[i] = *byte;
@@ -70,6 +74,12 @@ impl RegisterState {
     }
 
     pub fn write64(&mut self, value: u64) {
+        for (i, byte) in value.to_le_bytes().iter().enumerate() {
+            self.bytes[i] = *byte;
+        }
+    }
+
+    pub fn write128(&mut self, value: u128) {
         for (i, byte) in value.to_le_bytes().iter().enumerate() {
             self.bytes[i] = *byte;
         }
