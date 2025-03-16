@@ -16,20 +16,20 @@ impl Memory {
 
     pub fn read32(&self, address: u32) -> Option<u32> {
         if address < 0x1000_0000 {
-            let address = address & (MAIN_MEMORY_SIZE as u32 - 1);
+            let address = address as usize & (MAIN_MEMORY_SIZE - 1);
             Some(u32::from_le_bytes([
-                self.main[(address & 0x1fffff) as usize],
-                self.main[((address + 1) & 0x1fffff) as usize],
-                self.main[((address + 2) & 0x1fffff) as usize],
-                self.main[((address + 3) & 0x1fffff) as usize],
+                self.main[address],
+                self.main[address + 1],
+                self.main[address + 2],
+                self.main[address + 3],
             ]))
         } else if (0x1FC0_0000..0x2000_0000).contains(&address) {
-            let address = address & (BOOT_MEMORY_SIZE as u32 - 1);
+            let address = address as usize & (BOOT_MEMORY_SIZE - 1);
             Some(u32::from_le_bytes([
-                self.boot[(address & 0x3ffff) as usize],
-                self.boot[((address + 1) & 0x3ffff) as usize],
-                self.boot[((address + 2) & 0x3ffff) as usize],
-                self.boot[((address + 3) & 0x3ffff) as usize],
+                self.boot[address],
+                self.boot[address + 1],
+                self.boot[address + 2],
+                self.boot[address + 3],
             ]))
         } else {
             None
