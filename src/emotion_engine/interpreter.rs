@@ -27,6 +27,7 @@ impl State {
     pub fn step_interpreter(&mut self) {
         let instruction = disassemble(self.memory.read32(self.program_counter));
         let delayed_branch_target = self.delayed_branch_target.take();
+        println!("Interpreting {instruction}");
         match instruction {
             Instruction::Unknown => {
                 println!("Unknown instruction at {:#010x}", self.program_counter)
