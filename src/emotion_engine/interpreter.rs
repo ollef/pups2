@@ -149,7 +149,9 @@ impl State {
             }
             Instruction::Andi(_, _, _) => todo!(),
             Instruction::Ori(_, _, _) => todo!(),
-            Instruction::Lui(_, _) => todo!(),
+            Instruction::Lui(rt, imm) => {
+                self.registers[rt].write64(((imm as u32) << 16).sign_extend());
+            }
             Instruction::Ei => todo!(),
             Instruction::Sq(_, _, _) => todo!(),
             Instruction::Lh(_, _, _) => todo!(),
