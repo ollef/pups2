@@ -98,3 +98,55 @@ impl Register {
         }
     }
 }
+
+pub enum Cop0Register {
+    Index = 0,
+    Random = 1,
+    EntryLo0 = 2,
+    EntryLo1 = 3,
+    Context = 4,
+    PageMask = 5,
+    Wired = 6,
+    BadVAddr = 8,
+    Count = 9,
+    EntryHi = 10,
+    Compare = 11,
+    Status = 12,
+    Cause = 13,
+    Epc = 14,
+    PrId = 15,
+    Config = 16,
+    BadPAddr = 23,
+    TagLo = 28,
+    TagHi = 29,
+    ErrorEpc = 30,
+    Undefined = 31,
+}
+
+impl From<u32> for Cop0Register {
+    fn from(value: u32) -> Self {
+        match value & 0b11111 {
+            0 => Cop0Register::Index,
+            1 => Cop0Register::Random,
+            2 => Cop0Register::EntryLo0,
+            3 => Cop0Register::EntryLo1,
+            4 => Cop0Register::Context,
+            5 => Cop0Register::PageMask,
+            6 => Cop0Register::Wired,
+            8 => Cop0Register::BadVAddr,
+            9 => Cop0Register::Count,
+            10 => Cop0Register::EntryHi,
+            11 => Cop0Register::Compare,
+            12 => Cop0Register::Status,
+            13 => Cop0Register::Cause,
+            14 => Cop0Register::Epc,
+            15 => Cop0Register::PrId,
+            16 => Cop0Register::Config,
+            23 => Cop0Register::BadPAddr,
+            28 => Cop0Register::TagLo,
+            29 => Cop0Register::TagHi,
+            30 => Cop0Register::ErrorEpc,
+            _ => Cop0Register::Undefined,
+        }
+    }
+}
