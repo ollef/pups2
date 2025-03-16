@@ -38,6 +38,8 @@ pub enum Register {
     Sp,
     Fp,
     Ra,
+    Lo,
+    Hi,
 }
 
 impl From<u32> for Register {
@@ -82,6 +84,8 @@ impl Display for Register {
             Register::Sp => write!(f, "sp"),
             Register::Fp => write!(f, "fp"),
             Register::Ra => write!(f, "ra"),
+            Register::Lo => write!(f, "lo"),
+            Register::Hi => write!(f, "hi"),
         }
     }
 }
