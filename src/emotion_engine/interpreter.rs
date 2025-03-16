@@ -145,7 +145,12 @@ impl State {
                 self.registers[rd].write64(value);
             }
             Instruction::Dadd(_, _, _) => todo!(),
-            Instruction::Daddu(_, _, _) => todo!(),
+            Instruction::Daddu(rd, rs, rt) => {
+                let value = self.registers[rs]
+                    .read64()
+                    .wrapping_add(self.registers[rt].read64());
+                self.registers[rd].write64(value);
+            }
             Instruction::Dsub(_, _, _) => todo!(),
             Instruction::Dsubu(_, _, _) => todo!(),
             Instruction::Tge(_, _) => todo!(),
