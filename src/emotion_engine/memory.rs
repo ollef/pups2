@@ -2,8 +2,8 @@ const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 
 pub struct Memory {
-    main: Vec<u8>,
-    boot: Vec<u8>,
+    pub main: Vec<u8>,
+    pub boot: Vec<u8>,
 }
 
 impl Memory {
