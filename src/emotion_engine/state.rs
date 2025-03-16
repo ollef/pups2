@@ -1,10 +1,14 @@
 use enum_map::{enum_map, EnumMap};
 
-use super::{memory::Memory, register::Register};
+use super::{
+    memory::Memory,
+    register::{Cop0Register, Register},
+};
 
 pub struct State {
     pub program_counter: u32,
     pub registers: EnumMap<Register, RegisterState>,
+    pub cop0_registers: EnumMap<Cop0Register, u32>,
     pub delayed_branch_target: Option<u32>,
     pub memory: Memory,
 }
@@ -14,6 +18,7 @@ impl State {
         State {
             program_counter,
             registers: enum_map! { _ => RegisterState::new() },
+            cop0_registers: enum_map! { _ => 0 },
             delayed_branch_target: None,
             memory: Memory::new(),
         }

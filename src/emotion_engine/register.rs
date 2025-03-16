@@ -99,6 +99,7 @@ impl Register {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
 pub enum Cop0Register {
     Index = 0,
     Random = 1,
