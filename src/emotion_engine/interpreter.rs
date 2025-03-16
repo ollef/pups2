@@ -4,9 +4,21 @@ trait SignExtend<T> {
     fn sign_extend(self) -> T;
 }
 
+impl SignExtend<u64> for u16 {
+    fn sign_extend(self) -> u64 {
+        (self as i16).sign_extend()
+    }
+}
+
 impl SignExtend<u64> for u32 {
     fn sign_extend(self) -> u64 {
         (self as i32).sign_extend()
+    }
+}
+
+impl SignExtend<u64> for i16 {
+    fn sign_extend(self) -> u64 {
+        self as i64 as u64
     }
 }
 
