@@ -164,7 +164,12 @@ impl State {
             Instruction::J(_) => todo!(),
             Instruction::Jal(_) => todo!(),
             Instruction::Beq(_, _, _) => todo!(),
-            Instruction::Bne(_, _, _) => todo!(),
+            Instruction::Bne(rs, rt, offset) => {
+                let offset: u32 = offset.sign_extend();
+                if self.registers[rs].read64() != self.registers[rt].read64() {
+                    self.set_delayed_branch_target(self.program_counter.wrapping_add(offset << 2));
+                }
+            }
             Instruction::Addiu(rt, rs, imm) => {
                 let temp = self.registers[rs].read64().wrapping_add(imm.sign_extend());
                 self.registers[rt].write64((temp as u32).sign_extend());
