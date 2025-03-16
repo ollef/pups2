@@ -143,7 +143,10 @@ impl State {
             Instruction::Jal(_) => todo!(),
             Instruction::Beq(_, _, _) => todo!(),
             Instruction::Bne(_, _, _) => todo!(),
-            Instruction::Addiu(_, _, _) => todo!(),
+            Instruction::Addiu(rt, rs, imm) => {
+                let temp = self.registers[rs].read64().wrapping_add(imm.sign_extend());
+                self.registers[rt].write64((temp as u32).sign_extend());
+            }
             Instruction::Andi(_, _, _) => todo!(),
             Instruction::Ori(_, _, _) => todo!(),
             Instruction::Lui(_, _) => todo!(),
