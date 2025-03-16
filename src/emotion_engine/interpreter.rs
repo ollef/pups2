@@ -165,7 +165,15 @@ impl State {
                 self.registers[rt].write64(((imm as u32) << 16).sign_extend());
             }
             Instruction::Ei => todo!(),
-            Instruction::Sq(_, _, _) => todo!(),
+            Instruction::Sq(rt, base, offset) => {
+                let mut address = self.registers[base]
+                    .read32()
+                    .wrapping_add(offset.sign_extend());
+                address &= !0b1111;
+                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                self.memory
+                    .write128(physical_address, self.registers[rt].read128());
+            }
             Instruction::Lh(_, _, _) => todo!(),
             Instruction::Lw(_, _, _) => todo!(),
             Instruction::Lbu(_, _, _) => todo!(),
