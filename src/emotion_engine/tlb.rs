@@ -3,6 +3,7 @@ use enum_map::{Enum, EnumMap};
 
 const PAGE_BITS: u32 = 12;
 const PAGE_SIZE: u32 = 1 << PAGE_BITS;
+const PAGE_MASK: u32 = PAGE_SIZE - 1;
 
 #[derive(Enum, Copy, Clone, Debug)]
 pub enum Mode {
@@ -32,6 +33,12 @@ impl Tlb {
             entries: std::array::from_fn(|_| Entry::new()),
             pages,
         }
+    }
+
+    pub fn virtual_to_physical(&self, virtual_address: u32, mode: Mode) -> u32 {
+        let page = virtual_address >> PAGE_BITS;
+        let physical_frame_start = self.pages[mode][page as usize];
+        physical_frame_start + (virtual_address & PAGE_MASK)
     }
 }
 
