@@ -113,7 +113,13 @@ impl State {
                     self.write_register64(rd, value);
                 }
             }
-            Instruction::Syscall => todo!(),
+            Instruction::Syscall => {
+                println!(
+                    "v1 register state: {:x}",
+                    self.read_register64(Register::V1)
+                );
+                todo!()
+            }
             Instruction::Break => todo!(),
             Instruction::Sync => todo!(),
             Instruction::Mfhi(_) => todo!(),
