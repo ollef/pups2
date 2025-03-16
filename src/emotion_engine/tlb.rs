@@ -13,16 +13,17 @@ pub enum Mode {
 }
 
 pub struct Tlb {
-    entries: [Entry; 48],
-    pages: EnumMap<Mode, [u32; 1 << (32 - PAGE_BITS)]>,
+    entries: Vec<Entry>,
+    pages: EnumMap<Mode, Vec<u32>>,
 }
+
 pub struct Entry {
     raw: [u32; 4],
 }
 
 impl Tlb {
     pub fn new() -> Tlb {
-        let mut pages = EnumMap::from_fn(|_| [0; 1 << (32 - PAGE_BITS)]);
+        let mut pages = EnumMap::from_fn(|_| vec![0; 1 << (32 - PAGE_BITS)]);
         let kernel_pages = &mut pages[Mode::Kernel];
         // kseg0 and kseg1 are mapped directly to physical memory.
         for address in (0x8000_0000..0xC000_0000).step_by(PAGE_SIZE as usize) {
@@ -30,7 +31,7 @@ impl Tlb {
             kernel_pages[page as usize] = address & 0x1FFF_FFFF;
         }
         Tlb {
-            entries: std::array::from_fn(|_| Entry::new()),
+            entries: (0..48).map(|_| Entry::new()).collect(),
             pages,
         }
     }
