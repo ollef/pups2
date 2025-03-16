@@ -35,6 +35,40 @@ impl State {
             tlb: Tlb::new(),
         }
     }
+
+    pub fn read_register32(&self, register: Register) -> u32 {
+        let bytes = &self.registers[register].bytes;
+        u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+    }
+
+    pub fn read_register64(&self, register: Register) -> u64 {
+        let bytes = &self.registers[register].bytes;
+        u64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ])
+    }
+
+    pub fn read_register128(&self, register: Register) -> u128 {
+        u128::from_le_bytes(self.registers[register].bytes)
+    }
+
+    pub fn write_register64(&mut self, register: Register, value: u64) {
+        if register == Register::Zero {
+            return;
+        }
+        let bytes = &mut self.registers[register].bytes;
+        for (i, byte) in value.to_le_bytes().iter().enumerate() {
+            bytes[i] = *byte;
+        }
+    }
+
+    pub fn write_register128(&mut self, register: Register, value: u128) {
+        if register == Register::Zero {
+            return;
+        }
+        let bytes = &mut self.registers[register].bytes;
+        *bytes = value.to_le_bytes();
+    }
 }
 
 pub struct RegisterState {
@@ -44,44 +78,5 @@ pub struct RegisterState {
 impl RegisterState {
     pub fn new() -> Self {
         RegisterState { bytes: [0; 16] }
-    }
-
-    pub fn read32(&self) -> u32 {
-        u32::from_le_bytes([self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]])
-    }
-
-    pub fn read64(&self) -> u64 {
-        u64::from_le_bytes([
-            self.bytes[0],
-            self.bytes[1],
-            self.bytes[2],
-            self.bytes[3],
-            self.bytes[4],
-            self.bytes[5],
-            self.bytes[6],
-            self.bytes[7],
-        ])
-    }
-
-    pub fn read128(&self) -> u128 {
-        u128::from_le_bytes(self.bytes)
-    }
-
-    pub fn write32(&mut self, value: u32) {
-        for (i, byte) in value.to_le_bytes().iter().enumerate() {
-            self.bytes[i] = *byte;
-        }
-    }
-
-    pub fn write64(&mut self, value: u64) {
-        for (i, byte) in value.to_le_bytes().iter().enumerate() {
-            self.bytes[i] = *byte;
-        }
-    }
-
-    pub fn write128(&mut self, value: u128) {
-        for (i, byte) in value.to_le_bytes().iter().enumerate() {
-            self.bytes[i] = *byte;
-        }
     }
 }
