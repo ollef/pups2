@@ -1,16 +1,11 @@
 use bitvec::{order::Lsb0, slice::BitSlice, view::BitView};
-use enum_map::{Enum, EnumMap};
+use enum_map::EnumMap;
+
+use super::state::Mode;
 
 const PAGE_BITS: u32 = 12;
 const PAGE_SIZE: u32 = 1 << PAGE_BITS;
 const PAGE_MASK: u32 = PAGE_SIZE - 1;
-
-#[derive(Enum, Copy, Clone, Debug)]
-pub enum Mode {
-    Kernel,
-    Supervisor,
-    User,
-}
 
 pub struct Tlb {
     entries: Vec<Entry>,

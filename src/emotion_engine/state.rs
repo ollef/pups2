@@ -1,11 +1,19 @@
-use enum_map::{enum_map, EnumMap};
+use enum_map::{enum_map, Enum, EnumMap};
 
 use super::{
     memory::Memory,
     register::{Cop0Register, Register},
 };
 
+#[derive(Enum, Copy, Clone, Debug)]
+pub enum Mode {
+    Kernel,
+    Supervisor,
+    User,
+}
+
 pub struct State {
+    pub mode: Mode,
     pub program_counter: u32,
     pub registers: EnumMap<Register, RegisterState>,
     pub cop0_registers: EnumMap<Cop0Register, u32>,
@@ -16,6 +24,7 @@ pub struct State {
 impl State {
     pub fn new(program_counter: u32) -> Self {
         State {
+            mode: Mode::Kernel,
             program_counter,
             registers: enum_map! { _ => RegisterState::new() },
             cop0_registers: enum_map! { _ => 0 },
