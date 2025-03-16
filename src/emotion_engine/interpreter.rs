@@ -133,7 +133,14 @@ impl State {
             Instruction::Mfsa(_) => todo!(),
             Instruction::Mtsa(_) => todo!(),
             Instruction::Slt(_, _, _) => todo!(),
-            Instruction::Sltu(_, _, _) => todo!(),
+            Instruction::Sltu(rd, rs, rt) => {
+                let value = if self.registers[rs].read64() < self.registers[rt].read64() {
+                    1
+                } else {
+                    0
+                };
+                self.registers[rd].write64(value);
+            }
             Instruction::Dadd(_, _, _) => todo!(),
             Instruction::Daddu(_, _, _) => todo!(),
             Instruction::Dsub(_, _, _) => todo!(),
