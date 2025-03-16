@@ -9,15 +9,20 @@ fn main() -> Result<(), std::io::Error> {
     println!("Entry point: {:x?}", entry_point);
     println!("Program header start: {:x?}", entry_point as u32);
     for program_header in elf.segments().expect("Failed to get program headers") {
-        let physical_memory_address = program_header.p_paddr;
-        let virtual_memory_address = program_header.p_vaddr;
-        println!("Physical memory address: {:x?}", physical_memory_address);
-        println!("Virtual memory address: {:x?}", virtual_memory_address);
+        let physical_address = program_header.p_paddr;
+        let virtual_address = program_header.p_vaddr;
+        println!("Physical memory address: {:x?}", physical_address);
+        println!("Virtual memory address: {:x?}", virtual_address);
         let data = elf
             .segment_data(&program_header)
             .expect("Failed to get segment data");
-        // memory.rd[physical_memory_address as usize..physical_memory_address as usize + data.len()]
-        //     .copy_from_slice(data);
+        state.tlb.mmap(
+            virtual_address as u32,
+            data.len() as u32,
+            physical_address as u32,
+        );
+        state.memory.main[physical_address as usize..physical_address as usize + data.len()]
+            .copy_from_slice(data);
     }
     loop {
         state.step_interpreter();

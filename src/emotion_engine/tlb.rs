@@ -38,6 +38,20 @@ impl Tlb {
         let physical_frame_start = self.pages[mode][page as usize];
         physical_frame_start + (virtual_address & OFFSET_MASK)
     }
+
+    // TODO: This is for testing
+    pub fn mmap(&mut self, virtual_address: u32, size: u32, physical_address: u32) {
+        assert!(virtual_address & OFFSET_MASK == 0);
+        assert!(physical_address & OFFSET_MASK == 0);
+        let start_page = virtual_address >> OFFSET_BITS;
+        let end_page = (virtual_address + size - 1) >> OFFSET_BITS;
+        for page in start_page..=end_page {
+            let physical_frame = physical_address + ((page - start_page) << OFFSET_BITS);
+            self.pages[Mode::Kernel][page as usize] = physical_frame;
+            self.pages[Mode::Supervisor][page as usize] = physical_frame;
+            self.pages[Mode::User][page as usize] = physical_frame;
+        }
+    }
 }
 
 impl Entry {
