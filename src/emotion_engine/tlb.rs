@@ -3,9 +3,11 @@ use enum_map::EnumMap;
 
 use super::state::Mode;
 
-const PAGE_BITS: u32 = 12;
-const PAGE_SIZE: u32 = 1 << PAGE_BITS;
-const PAGE_MASK: u32 = PAGE_SIZE - 1;
+const PAGE_BITS: u32 = 20;
+const OFFSET_BITS: u32 = 32 - PAGE_BITS;
+const PAGE_SIZE: u32 = 1 << OFFSET_BITS;
+const OFFSET_MASK: u32 = PAGE_SIZE - 1;
+const PAGES: u32 = 1 << PAGE_BITS;
 
 pub struct Tlb {
     entries: Vec<Entry>,
@@ -18,11 +20,11 @@ pub struct Entry {
 
 impl Tlb {
     pub fn new() -> Tlb {
-        let mut pages = EnumMap::from_fn(|_| vec![0; 1 << (32 - PAGE_BITS)]);
+        let mut pages = EnumMap::from_fn(|_| vec![0; PAGES as usize]);
         let kernel_pages = &mut pages[Mode::Kernel];
         // kseg0 and kseg1 are mapped directly to physical memory.
         for address in (0x8000_0000..0xC000_0000).step_by(PAGE_SIZE as usize) {
-            let page = address >> PAGE_BITS;
+            let page = address >> OFFSET_BITS;
             kernel_pages[page as usize] = address & 0x1FFF_FFFF;
         }
         Tlb {
@@ -32,9 +34,9 @@ impl Tlb {
     }
 
     pub fn virtual_to_physical(&self, virtual_address: u32, mode: Mode) -> u32 {
-        let page = virtual_address >> PAGE_BITS;
+        let page = virtual_address >> OFFSET_BITS;
         let physical_frame_start = self.pages[mode][page as usize];
-        physical_frame_start + (virtual_address & PAGE_MASK)
+        physical_frame_start + (virtual_address & OFFSET_MASK)
     }
 }
 
