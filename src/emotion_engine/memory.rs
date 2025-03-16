@@ -35,4 +35,32 @@ impl Memory {
             None
         }
     }
+
+    pub fn write64(&mut self, address: u32, value: u64) {
+        if address < 0x1000_0000 {
+            let address = address as usize & (MAIN_MEMORY_SIZE - 1);
+            for (i, byte) in value.to_le_bytes().iter().enumerate() {
+                self.main[address + i] = *byte;
+            }
+        } else if (0x1FC0_0000..0x2000_0000).contains(&address) {
+            let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+            for (i, byte) in value.to_le_bytes().iter().enumerate() {
+                self.boot[address + i] = *byte;
+            }
+        }
+    }
+
+    pub fn write128(&mut self, address: u32, value: u128) {
+        if address < 0x1000_0000 {
+            let address = address as usize & (MAIN_MEMORY_SIZE - 1);
+            for (i, byte) in value.to_le_bytes().iter().enumerate() {
+                self.main[address + i] = *byte;
+            }
+        } else if (0x1FC0_0000..0x2000_0000).contains(&address) {
+            let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+            for (i, byte) in value.to_le_bytes().iter().enumerate() {
+                self.boot[address + i] = *byte;
+            }
+        }
+    }
 }
