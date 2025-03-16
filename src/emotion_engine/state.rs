@@ -3,6 +3,7 @@ use enum_map::{enum_map, Enum, EnumMap};
 use super::{
     memory::Memory,
     register::{Cop0Register, Register},
+    tlb::Tlb,
 };
 
 #[derive(Enum, Copy, Clone, Debug)]
@@ -19,6 +20,7 @@ pub struct State {
     pub cop0_registers: EnumMap<Cop0Register, u32>,
     pub delayed_branch_target: Option<u32>,
     pub memory: Memory,
+    pub tlb: Tlb,
 }
 
 impl State {
@@ -30,6 +32,7 @@ impl State {
             cop0_registers: enum_map! { _ => 0 },
             delayed_branch_target: None,
             memory: Memory::new(),
+            tlb: Tlb::new(),
         }
     }
 }
