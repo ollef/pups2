@@ -80,7 +80,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    fn definitions(&self) -> impl Iterator<Item = Register> {
+    pub fn definitions(&self) -> impl Iterator<Item = Register> {
         (match self {
             Instruction::Unknown => [None, None],
             Instruction::Sll(a, _, _) => [Some(*a), None],
@@ -161,7 +161,7 @@ impl Instruction {
         .filter_map(|x| x.and_then(|x| x.non_zero()))
     }
 
-    fn uses(&self) -> impl Iterator<Item = Register> {
+    pub fn uses(&self) -> impl Iterator<Item = Register> {
         (match self {
             Instruction::Unknown => [None, None],
             Instruction::Sll(_, b, _) => [Some(*b), None],
