@@ -242,7 +242,9 @@ impl State {
                 self.write_register64(rd, self.read_register64(rt) >> shamt);
             }
             Instruction::Dsra(_, _, _) => todo!(),
-            Instruction::Dsll32(_, _, _) => todo!(),
+            Instruction::Dsll32(rd, rt, shamt) => {
+                self.write_register64(rd, self.read_register64(rt) << (shamt + 32));
+            }
             Instruction::Dsrl32(_, _, _) => todo!(),
             Instruction::Dsra32(_, _, _) => todo!(),
             Instruction::Bgez(_, _) => todo!(),
