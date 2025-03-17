@@ -38,6 +38,11 @@ impl State {
         }
     }
 
+    pub fn read_register16(&self, register: Register) -> u16 {
+        let bytes = &self.registers[register].bytes;
+        u16::from_le_bytes([bytes[0], bytes[1]])
+    }
+
     pub fn read_register32(&self, register: Register) -> u32 {
         let bytes = &self.registers[register].bytes;
         u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
