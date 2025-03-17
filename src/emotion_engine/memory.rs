@@ -14,6 +14,18 @@ impl Memory {
         }
     }
 
+    pub fn read8(&self, address: u32) -> Option<u8> {
+        if address < 0x1000_0000 {
+            let address = address as usize & (MAIN_MEMORY_SIZE - 1);
+            Some(self.main[address])
+        } else if (0x1FC0_0000..0x2000_0000).contains(&address) {
+            let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+            Some(self.boot[address])
+        } else {
+            None
+        }
+    }
+
     pub fn read32(&self, address: u32) -> Option<u32> {
         if address < 0x1000_0000 {
             let address = address as usize & (MAIN_MEMORY_SIZE - 1);
@@ -33,6 +45,68 @@ impl Memory {
             ]))
         } else {
             None
+        }
+    }
+
+    pub fn read64(&self, address: u32) -> Option<u64> {
+        if address < 0x1000_0000 {
+            let address = address as usize & (MAIN_MEMORY_SIZE - 1);
+            Some(u64::from_le_bytes([
+                self.main[address],
+                self.main[address + 1],
+                self.main[address + 2],
+                self.main[address + 3],
+                self.main[address + 4],
+                self.main[address + 5],
+                self.main[address + 6],
+                self.main[address + 7],
+            ]))
+        } else if (0x1FC0_0000..0x2000_0000).contains(&address) {
+            let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+            Some(u64::from_le_bytes([
+                self.boot[address],
+                self.boot[address + 1],
+                self.boot[address + 2],
+                self.boot[address + 3],
+                self.boot[address + 4],
+                self.boot[address + 5],
+                self.boot[address + 6],
+                self.boot[address + 7],
+            ]))
+        } else {
+            None
+        }
+    }
+
+    pub fn write16(&mut self, address: u32, value: u16) {
+        if address < 0x1000_0000 {
+            let address = address as usize & (MAIN_MEMORY_SIZE - 1);
+            for (i, byte) in value.to_le_bytes().iter().enumerate() {
+                self.main[address + i] = *byte;
+            }
+        } else if (0x1FC0_0000..0x2000_0000).contains(&address) {
+            let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+            for (i, byte) in value.to_le_bytes().iter().enumerate() {
+                self.boot[address + i] = *byte;
+            }
+        } else {
+            panic!("Invalid address: 0x{:08X}", address);
+        }
+    }
+
+    pub fn write32(&mut self, address: u32, value: u32) {
+        if address < 0x1000_0000 {
+            let address = address as usize & (MAIN_MEMORY_SIZE - 1);
+            for (i, byte) in value.to_le_bytes().iter().enumerate() {
+                self.main[address + i] = *byte;
+            }
+        } else if (0x1FC0_0000..0x2000_0000).contains(&address) {
+            let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+            for (i, byte) in value.to_le_bytes().iter().enumerate() {
+                self.boot[address + i] = *byte;
+            }
+        } else {
+            panic!("Invalid address: 0x{:08X}", address);
         }
     }
 
