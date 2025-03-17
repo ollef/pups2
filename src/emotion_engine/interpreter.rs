@@ -270,7 +270,9 @@ impl State {
             Instruction::Lui(rt, imm) => {
                 self.write_register64(rt, ((imm as u32) << 16).sign_extend());
             }
-            Instruction::Ei => todo!(),
+            Instruction::Ei => {
+                // TODO: Set status register
+            }
             Instruction::Sq(rt, base, offset) => {
                 let mut address = self
                     .read_register32(base)
