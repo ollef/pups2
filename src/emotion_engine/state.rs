@@ -21,6 +21,7 @@ pub struct State {
     pub delayed_branch_target: Option<u32>,
     pub memory: Memory,
     pub tlb: Tlb,
+    pub main_thread_stack_base: u32, // TODO: This should be in the thread state
 }
 
 impl State {
@@ -33,6 +34,7 @@ impl State {
             delayed_branch_target: None,
             memory: Memory::new(),
             tlb: Tlb::new(),
+            main_thread_stack_base: 0,
         }
     }
 
