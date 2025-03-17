@@ -47,6 +47,8 @@ impl Memory {
             for (i, byte) in value.to_le_bytes().iter().enumerate() {
                 self.boot[address + i] = *byte;
             }
+        } else {
+            panic!("Invalid address: 0x{:08X}", address);
         }
     }
 
@@ -61,6 +63,8 @@ impl Memory {
             for (i, byte) in value.to_le_bytes().iter().enumerate() {
                 self.boot[address + i] = *byte;
             }
+        } else {
+            panic!("Invalid address: 0x{:08X}", address);
         }
     }
 }
