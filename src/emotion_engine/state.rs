@@ -39,51 +39,44 @@ impl State {
     }
 
     pub fn get_register16(&self, register: Register) -> u16 {
-        let bytes = &self.registers[register].bytes;
-        u16::from_le_bytes([bytes[0], bytes[1]])
+        self.registers[register].value as u16
     }
 
     pub fn get_register32(&self, register: Register) -> u32 {
-        let bytes = &self.registers[register].bytes;
-        u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+        self.registers[register].value as u32
     }
 
     pub fn get_register64(&self, register: Register) -> u64 {
-        let bytes = &self.registers[register].bytes;
-        u64::from_le_bytes([
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-        ])
+        self.registers[register].value as u64
     }
 
     pub fn get_register128(&self, register: Register) -> u128 {
-        u128::from_le_bytes(self.registers[register].bytes)
+        self.registers[register].value
     }
 
     pub fn set_register64(&mut self, register: Register, value: u64) {
         if register == Register::Zero {
             return;
         }
-        let bytes = &mut self.registers[register].bytes;
-        for (i, byte) in value.to_le_bytes().iter().enumerate() {
-            bytes[i] = *byte;
-        }
+        let value_ref = &mut self.registers[register].value;
+        *value_ref &= !(u64::MAX as u128);
+        *value_ref |= value as u128;
     }
 
     pub fn set_register128(&mut self, register: Register, value: u128) {
         if register == Register::Zero {
             return;
         }
-        let bytes = &mut self.registers[register].bytes;
-        *bytes = value.to_le_bytes();
+        self.registers[register].value = value;
     }
 }
 
 pub struct RegisterState {
-    pub bytes: [u8; 16],
+    pub value: u128,
 }
 
 impl RegisterState {
     pub fn new() -> Self {
-        RegisterState { bytes: [0; 16] }
+        RegisterState { value: 0 }
     }
 }
