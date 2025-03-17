@@ -201,8 +201,12 @@ impl State {
             }
             Instruction::Sub(_, _, _) => todo!(),
             Instruction::Subu(_, _, _) => todo!(),
-            Instruction::And(_, _, _) => todo!(),
-            Instruction::Or(_, _, _) => todo!(),
+            Instruction::And(rd, rs, rt) => {
+                self.write_register64(rd, self.read_register64(rs) & self.read_register64(rt));
+            }
+            Instruction::Or(rd, rs, rt) => {
+                self.write_register64(rd, self.read_register64(rs) | self.read_register64(rt));
+            }
             Instruction::Xor(_, _, _) => todo!(),
             Instruction::Nor(_, _, _) => todo!(),
             Instruction::Mfsa(_) => todo!(),
