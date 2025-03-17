@@ -160,7 +160,9 @@ impl State {
                 }
             }
             Instruction::Break => todo!(),
-            Instruction::Sync => todo!(),
+            Instruction::Sync => {
+                // TODO: maybe do something here
+            }
             Instruction::Mfhi(_) => todo!(),
             Instruction::Mthi(_) => todo!(),
             Instruction::Mflo(_) => todo!(),
