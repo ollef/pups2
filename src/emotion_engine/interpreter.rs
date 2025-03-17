@@ -170,8 +170,26 @@ impl State {
             Instruction::Dsllv(_, _, _) => todo!(),
             Instruction::Dsrav(_, _, _) => todo!(),
             Instruction::Dsrlv(_, _, _) => todo!(),
-            Instruction::Mult(_, _) => todo!(),
-            Instruction::Multu(_, _) => todo!(),
+            Instruction::Mult(rd, rs, rt) => {
+                let a: u64 = self.read_register32(rs).sign_extend();
+                let b: u64 = self.read_register32(rt).sign_extend();
+                let prod = a * b;
+                let lo = (prod as u32).sign_extend();
+                let hi = ((prod >> 32) as u32).sign_extend();
+                self.write_register64(rd, lo);
+                self.write_register64(Register::Lo, lo);
+                self.write_register64(Register::Hi, hi);
+            }
+            Instruction::Multu(rd, rs, rt) => {
+                let a = self.read_register32(rs) as u64;
+                let b = self.read_register32(rt) as u64;
+                let prod = a * b;
+                let lo = (prod as u32).sign_extend();
+                let hi = ((prod >> 32) as u32).sign_extend();
+                self.write_register64(rd, lo);
+                self.write_register64(Register::Lo, lo);
+                self.write_register64(Register::Hi, hi);
+            }
             Instruction::Div(_, _) => todo!(),
             Instruction::Divu(_, _) => todo!(),
             Instruction::Add(_, _, _) => todo!(),
