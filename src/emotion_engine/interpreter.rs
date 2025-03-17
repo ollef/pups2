@@ -261,8 +261,12 @@ impl State {
                 let temp = self.read_register64(rs).wrapping_add(imm.sign_extend());
                 self.write_register64(rt, (temp as u32).sign_extend());
             }
-            Instruction::Andi(_, _, _) => todo!(),
-            Instruction::Ori(_, _, _) => todo!(),
+            Instruction::Andi(rt, rs, imm) => {
+                self.write_register64(rt, self.read_register64(rs) & (imm as u64));
+            }
+            Instruction::Ori(rt, rs, imm) => {
+                self.write_register64(rt, self.read_register64(rs) | (imm as u64));
+            }
             Instruction::Lui(rt, imm) => {
                 self.write_register64(rt, ((imm as u32) << 16).sign_extend());
             }
