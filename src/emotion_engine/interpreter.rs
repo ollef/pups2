@@ -255,7 +255,12 @@ impl State {
                     ((self.program_counter + 4) & 0xF000_0000) + (target << 2),
                 );
             }
-            Instruction::Beq(_, _, _) => todo!(),
+            Instruction::Beq(rs, rt, offset) => {
+                let offset: u32 = offset.sign_extend();
+                if self.read_register64(rs) == self.read_register64(rt) {
+                    self.set_delayed_branch_target(self.program_counter.wrapping_add(offset << 2));
+                }
+            }
             Instruction::Bne(rs, rt, offset) => {
                 let offset: u32 = offset.sign_extend();
                 if self.read_register64(rs) != self.read_register64(rt) {
