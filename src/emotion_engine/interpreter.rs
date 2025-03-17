@@ -193,7 +193,12 @@ impl State {
             Instruction::Div(_, _) => todo!(),
             Instruction::Divu(_, _) => todo!(),
             Instruction::Add(_, _, _) => todo!(),
-            Instruction::Addu(_, _, _) => todo!(),
+            Instruction::Addu(rd, rs, rt) => {
+                let value = self
+                    .read_register32(rs)
+                    .wrapping_add(self.read_register32(rt));
+                self.write_register64(rd, value.sign_extend());
+            }
             Instruction::Sub(_, _, _) => todo!(),
             Instruction::Subu(_, _, _) => todo!(),
             Instruction::And(_, _, _) => todo!(),
