@@ -235,8 +235,12 @@ impl State {
             Instruction::Tltu(_, _) => todo!(),
             Instruction::Teq(_, _) => todo!(),
             Instruction::Tne(_, _) => todo!(),
-            Instruction::Dsll(_, _, _) => todo!(),
-            Instruction::Dsrl(_, _, _) => todo!(),
+            Instruction::Dsll(rd, rt, shamt) => {
+                self.write_register64(rd, self.read_register64(rt) << shamt);
+            }
+            Instruction::Dsrl(rd, rt, shamt) => {
+                self.write_register64(rd, self.read_register64(rt) >> shamt);
+            }
             Instruction::Dsra(_, _, _) => todo!(),
             Instruction::Dsll32(_, _, _) => todo!(),
             Instruction::Dsrl32(_, _, _) => todo!(),
