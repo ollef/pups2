@@ -283,9 +283,49 @@ impl State {
                     .write128(physical_address, self.read_register128(rt));
             }
             Instruction::Lh(_, _, _) => todo!(),
-            Instruction::Lw(_, _, _) => todo!(),
-            Instruction::Lbu(_, _, _) => todo!(),
-            Instruction::Lwr(_, _, _) => todo!(),
+            Instruction::Lw(rt, base, offset) => {
+                let address = self
+                    .read_register32(base)
+                    .wrapping_add(offset.sign_extend());
+                if address & 0b11 != 0 {
+                    panic!("Unaligned load at {:#010x}", address);
+                }
+                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let value = self
+                    .memory
+                    .read32(physical_address)
+                    .expect("Failed to read word");
+                self.write_register64(rt, value.sign_extend());
+            }
+            Instruction::Lbu(rt, base, offset) => {
+                let address = self
+                    .read_register32(base)
+                    .wrapping_add(offset.sign_extend());
+                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let value = self
+                    .memory
+                    .read8(physical_address)
+                    .expect("Failed to read byte");
+                self.write_register64(rt, value as u64);
+            }
+            Instruction::Lwr(rt, base, offset) => {
+                let address = self
+                    .read_register32(base)
+                    .wrapping_add(offset.sign_extend());
+                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let byte = address & 0b11;
+                let memory_word = self
+                    .memory
+                    .read32(physical_address & !0b11)
+                    .expect("Failed to read word");
+                let value = if byte == 0 {
+                    memory_word.sign_extend()
+                } else {
+                    let existing = self.read_register64(rt);
+                    (existing & (!0 << ((4 - byte) * 8))) | (memory_word >> (byte * 8)) as u64
+                };
+                self.write_register64(rt, value);
+            }
             Instruction::Sb(_, _, _) => todo!(),
             Instruction::Sh(_, _, _) => todo!(),
             Instruction::Sw(_, _, _) => todo!(),
