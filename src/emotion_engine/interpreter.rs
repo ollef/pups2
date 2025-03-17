@@ -59,11 +59,12 @@ impl State {
             .read32(physical_program_counter)
             .expect("Failed to read instruction");
         let instruction = disassemble(raw_instruction);
+        for reg in instruction.uses() {
+            let value = self.read_register64(reg);
+            println!("{}={:#x}", reg, value);
+        }
         let delayed_branch_target = self.delayed_branch_target.take();
-        println!(
-            "vpc={:#010} ppc={physical_program_counter:#010}: {instruction}",
-            self.program_counter
-        );
+        println!("pc={:#010}: {instruction}", self.program_counter);
         match instruction {
             Instruction::Unknown => {
                 println!("Unknown instruction at {:#010x}", self.program_counter)
@@ -211,6 +212,10 @@ impl State {
             Instruction::Sw(_, _, _) => todo!(),
             Instruction::Ld(_, _, _) => todo!(),
             Instruction::Sd(_, _, _) => todo!(),
+        }
+        for reg in instruction.definitions() {
+            let value = self.read_register64(reg);
+            println!("{}:={:#x}", reg, value);
         }
         if let Some(branch_target) = delayed_branch_target {
             self.program_counter = branch_target;
