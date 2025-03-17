@@ -327,10 +327,53 @@ impl State {
                 self.write_register64(rt, value);
             }
             Instruction::Sb(_, _, _) => todo!(),
-            Instruction::Sh(_, _, _) => todo!(),
-            Instruction::Sw(_, _, _) => todo!(),
-            Instruction::Ld(_, _, _) => todo!(),
-            Instruction::Sd(_, _, _) => todo!(),
+            Instruction::Sh(rt, base, offset) => {
+                let address = self
+                    .read_register32(base)
+                    .wrapping_add(offset.sign_extend());
+                if address & 0b1 != 0 {
+                    panic!("Unaligned store at {:#010x}", address);
+                }
+                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                self.memory
+                    .write16(physical_address, self.read_register16(rt));
+            }
+            Instruction::Sw(rt, base, offset) => {
+                let address = self
+                    .read_register32(base)
+                    .wrapping_add(offset.sign_extend());
+                if address & 0b11 != 0 {
+                    panic!("Unaligned store at {:#010x}", address);
+                }
+                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                self.memory
+                    .write32(physical_address, self.read_register32(rt));
+            }
+            Instruction::Ld(rt, base, offset) => {
+                let address = self
+                    .read_register32(base)
+                    .wrapping_add(offset.sign_extend());
+                if address & 0b111 != 0 {
+                    panic!("Unaligned load at {:#010x}", address);
+                }
+                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let value = self
+                    .memory
+                    .read64(physical_address)
+                    .expect("Failed to read double word");
+                self.write_register64(rt, value);
+            }
+            Instruction::Sd(rt, base, offset) => {
+                let address = self
+                    .read_register32(base)
+                    .wrapping_add(offset.sign_extend());
+                if address & 0b111 != 0 {
+                    panic!("Unaligned store at {:#010x}", address);
+                }
+                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                self.memory
+                    .write64(physical_address, self.read_register64(rt));
+            }
         }
         for reg in instruction.definitions() {
             let value = self.read_register64(reg);
