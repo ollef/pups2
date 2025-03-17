@@ -249,7 +249,12 @@ impl State {
             Instruction::Dsra32(_, _, _) => todo!(),
             Instruction::Bgez(_, _) => todo!(),
             Instruction::J(_) => todo!(),
-            Instruction::Jal(_) => todo!(),
+            Instruction::Jal(target) => {
+                self.write_register64(Register::Ra, (self.program_counter + 8) as u64);
+                self.set_delayed_branch_target(
+                    ((self.program_counter + 4) & 0xF000_0000) + (target << 2),
+                );
+            }
             Instruction::Beq(_, _, _) => todo!(),
             Instruction::Bne(rs, rt, offset) => {
                 let offset: u32 = offset.sign_extend();
