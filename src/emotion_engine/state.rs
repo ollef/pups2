@@ -38,28 +38,28 @@ impl State {
         }
     }
 
-    pub fn read_register16(&self, register: Register) -> u16 {
+    pub fn get_register16(&self, register: Register) -> u16 {
         let bytes = &self.registers[register].bytes;
         u16::from_le_bytes([bytes[0], bytes[1]])
     }
 
-    pub fn read_register32(&self, register: Register) -> u32 {
+    pub fn get_register32(&self, register: Register) -> u32 {
         let bytes = &self.registers[register].bytes;
         u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
     }
 
-    pub fn read_register64(&self, register: Register) -> u64 {
+    pub fn get_register64(&self, register: Register) -> u64 {
         let bytes = &self.registers[register].bytes;
         u64::from_le_bytes([
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
         ])
     }
 
-    pub fn read_register128(&self, register: Register) -> u128 {
+    pub fn get_register128(&self, register: Register) -> u128 {
         u128::from_le_bytes(self.registers[register].bytes)
     }
 
-    pub fn write_register64(&mut self, register: Register, value: u64) {
+    pub fn set_register64(&mut self, register: Register, value: u64) {
         if register == Register::Zero {
             return;
         }
@@ -69,7 +69,7 @@ impl State {
         }
     }
 
-    pub fn write_register128(&mut self, register: Register, value: u128) {
+    pub fn set_register128(&mut self, register: Register, value: u128) {
         if register == Register::Zero {
             return;
         }
