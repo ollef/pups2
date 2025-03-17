@@ -119,7 +119,45 @@ impl State {
                     "v1 register state: {:x}",
                     self.read_register64(Register::V1)
                 );
-                todo!()
+                println!(
+                    "a1 register state: {:x}",
+                    self.read_register64(Register::A1)
+                );
+                let syscall_number = self.read_register32(Register::V1);
+                match syscall_number {
+                    // SetGsCrt
+                    0x02 => {
+                        // TODO
+                    }
+                    // RFU060/initialize main thread
+                    0x3c => {
+                        let base = self.read_register32(Register::A1);
+                        let size = self.read_register32(Register::A2);
+                        let stack_address = if base == 0xFFFF_FFFF {
+                            0x0200_0000
+                        } else {
+                            base + size
+                        } - 0x2A0;
+                        self.main_thread_stack_base = stack_address;
+                        self.write_register64(Register::V0, stack_address.sign_extend());
+                    }
+                    // RFU061/initialize heap
+                    0x3d => {
+                        let base = self.read_register32(Register::A0);
+                        let size = self.read_register32(Register::A1);
+                        let heap_address = if size == 0xFFFF_FFFF {
+                            self.main_thread_stack_base
+                        } else {
+                            base + size
+                        };
+                        self.write_register64(Register::V0, heap_address.sign_extend());
+                    }
+                    // Flush cache
+                    0x64 => {}
+                    // GsPutIMR
+                    0x71 => {}
+                    _ => todo!("Syscall number: {syscall_number}"),
+                }
             }
             Instruction::Break => todo!(),
             Instruction::Sync => todo!(),
