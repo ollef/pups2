@@ -47,7 +47,7 @@ impl Bus {
                     .copy_from_slice(value.to_bytes().as_ref());
             }
             _ => {
-                panic!("Invalid address: 0x{:08X}", address);
+                panic!("Invalid write at address: 0x{:08X}", address);
             }
         }
     }
