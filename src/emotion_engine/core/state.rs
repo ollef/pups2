@@ -20,7 +20,6 @@ pub struct State {
     pub registers: EnumMap<Register, RegisterState>,
     pub cop0_registers: EnumMap<Cop0Register, u32>,
     pub delayed_branch_target: Option<u32>,
-    pub bus: Bus,
     pub mmu: Mmu,
     pub main_thread_stack_base: u32, // TODO: This should be in the thread state
 }
@@ -33,7 +32,6 @@ impl State {
             registers: enum_map! { _ => RegisterState::new() },
             cop0_registers: enum_map! { _ => 0 },
             delayed_branch_target: None,
-            bus: Bus::new(),
             mmu: Mmu::new(),
             main_thread_stack_base: 0,
         }
