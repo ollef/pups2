@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 
@@ -33,13 +35,16 @@ impl Bus {
         }
     }
 
-    pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
+    pub fn write<T: Bytes + Display>(&mut self, address: u32, value: T) {
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         match address {
             0x0000_0000..0x1000_0000 => {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
                 self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
+            }
+            0x1000_8000..0x1000_F000 => {
+                println!("Write to DMAC: 0x{:08X} {}", address, value);
             }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
