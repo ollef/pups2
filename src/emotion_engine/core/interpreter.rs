@@ -1,4 +1,4 @@
-use crate::emotion_engine::register::Register;
+use crate::emotion_engine::core::register::Register;
 
 use super::{disassembler::disassemble, instruction::Instruction, state::State};
 

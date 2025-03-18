@@ -1,7 +1,8 @@
 use enum_map::{enum_map, Enum, EnumMap};
 
+use crate::emotion_engine::memory::Memory;
+
 use super::{
-    memory::Memory,
     mmu::Mmu,
     register::{Cop0Register, Register},
 };
