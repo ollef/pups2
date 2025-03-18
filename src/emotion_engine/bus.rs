@@ -16,22 +16,20 @@ impl Bus {
         }
     }
 
-    pub fn read<T: Bytes>(&self, address: u32) -> Option<T> {
+    pub fn read<T: Bytes>(&self, address: u32) -> T {
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         match address {
             0x0000_0000..0x1000_0000 => {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
-                Some(T::from_bytes(
-                    &self.main_memory[address..address + std::mem::size_of::<T>()],
-                ))
+                T::from_bytes(&self.main_memory[address..address + std::mem::size_of::<T>()])
             }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
-                Some(T::from_bytes(
-                    &self.boot_memory[address..address + std::mem::size_of::<T>()],
-                ))
+                T::from_bytes(&self.boot_memory[address..address + std::mem::size_of::<T>()])
             }
-            _ => None,
+            _ => {
+                panic!("Invalid read at address: 0x{:08X}", address);
+            }
         }
     }
 
