@@ -38,36 +38,21 @@ impl State {
         }
     }
 
-    pub fn get_register16(&self, register: Register) -> u16 {
-        self.registers[register].value as u16
+    pub fn get_register<T>(&self, register: Register) -> T
+    where
+        RegisterState: GetRegister<T>,
+    {
+        self.registers[register].get_register()
     }
 
-    pub fn get_register32(&self, register: Register) -> u32 {
-        self.registers[register].value as u32
-    }
-
-    pub fn get_register64(&self, register: Register) -> u64 {
-        self.registers[register].value as u64
-    }
-
-    pub fn get_register128(&self, register: Register) -> u128 {
-        self.registers[register].value
-    }
-
-    pub fn set_register64(&mut self, register: Register, value: u64) {
+    pub fn set_register<T>(&mut self, register: Register, value: T)
+    where
+        RegisterState: SetRegister<T>,
+    {
         if register == Register::Zero {
             return;
         }
-        let value_ref = &mut self.registers[register].value;
-        *value_ref &= !(u64::MAX as u128);
-        *value_ref |= value as u128;
-    }
-
-    pub fn set_register128(&mut self, register: Register, value: u128) {
-        if register == Register::Zero {
-            return;
-        }
-        self.registers[register].value = value;
+        self.registers[register].set_register(value);
     }
 }
 
@@ -78,5 +63,49 @@ pub struct RegisterState {
 impl RegisterState {
     pub fn new() -> Self {
         RegisterState { value: 0 }
+    }
+}
+
+pub trait SetRegister<T> {
+    fn set_register(&mut self, value: T);
+}
+
+pub trait GetRegister<T> {
+    fn get_register(&self) -> T;
+}
+
+impl SetRegister<u64> for RegisterState {
+    fn set_register(&mut self, value: u64) {
+        self.value = value as u128 | (self.value & 0xFFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000);
+    }
+}
+
+impl SetRegister<u128> for RegisterState {
+    fn set_register(&mut self, value: u128) {
+        self.value = value;
+    }
+}
+
+impl GetRegister<u16> for RegisterState {
+    fn get_register(&self) -> u16 {
+        self.value as u16
+    }
+}
+
+impl GetRegister<u32> for RegisterState {
+    fn get_register(&self) -> u32 {
+        self.value as u32
+    }
+}
+
+impl GetRegister<u64> for RegisterState {
+    fn get_register(&self) -> u64 {
+        self.value as u64
+    }
+}
+
+impl GetRegister<u128> for RegisterState {
+    fn get_register(&self) -> u128 {
+        self.value
     }
 }
