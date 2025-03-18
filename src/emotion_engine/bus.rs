@@ -1,16 +1,16 @@
 const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 
-pub struct Memory {
-    pub main: Vec<u8>,
-    pub boot: Vec<u8>,
+pub struct Bus {
+    pub main_memory: Vec<u8>,
+    pub boot_memory: Vec<u8>,
 }
 
-impl Memory {
-    pub fn new() -> Memory {
-        Memory {
-            main: vec![0; MAIN_MEMORY_SIZE],
-            boot: vec![0; BOOT_MEMORY_SIZE],
+impl Bus {
+    pub fn new() -> Bus {
+        Bus {
+            main_memory: vec![0; MAIN_MEMORY_SIZE],
+            boot_memory: vec![0; BOOT_MEMORY_SIZE],
         }
     }
 
@@ -20,13 +20,13 @@ impl Memory {
             0x0000_0000..0x1000_0000 => {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
                 Some(T::from_bytes(
-                    &self.main[address..address + std::mem::size_of::<T>()],
+                    &self.main_memory[address..address + std::mem::size_of::<T>()],
                 ))
             }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
                 Some(T::from_bytes(
-                    &self.boot[address..address + std::mem::size_of::<T>()],
+                    &self.boot_memory[address..address + std::mem::size_of::<T>()],
                 ))
             }
             _ => None,
@@ -38,12 +38,12 @@ impl Memory {
         match address {
             0x0000_0000..0x1000_0000 => {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
-                self.main[address..address + std::mem::size_of::<T>()]
+                self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
             }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
-                self.main[address..address + std::mem::size_of::<T>()]
+                self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
             }
             _ => {

@@ -55,7 +55,7 @@ impl State {
             .mmu
             .virtual_to_physical(self.program_counter, self.mode);
         let raw_instruction = self
-            .memory
+            .bus
             .read(physical_program_counter)
             .expect("Failed to read instruction");
         let instruction = disassemble(raw_instruction);
@@ -297,7 +297,7 @@ impl State {
                     .wrapping_add(offset.sign_extend());
                 address &= !0b1111;
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                self.memory
+                self.bus
                     .write(physical_address, self.get_register::<u128>(rt));
             }
             Instruction::Lh(_, _, _) => todo!(),
@@ -310,7 +310,7 @@ impl State {
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let value = self
-                    .memory
+                    .bus
                     .read::<u32>(physical_address)
                     .expect("Failed to read word");
                 self.set_register::<u64>(rt, value.sign_extend());
@@ -321,7 +321,7 @@ impl State {
                     .wrapping_add(offset.sign_extend());
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let value = self
-                    .memory
+                    .bus
                     .read::<u8>(physical_address)
                     .expect("Failed to read byte");
                 self.set_register(rt, value as u64);
@@ -333,7 +333,7 @@ impl State {
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let byte = address & 0b11;
                 let memory_word = self
-                    .memory
+                    .bus
                     .read::<u32>(physical_address & !0b11)
                     .expect("Failed to read word");
                 let value = if byte == 0 {
@@ -353,7 +353,7 @@ impl State {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                self.memory
+                self.bus
                     .write(physical_address, self.get_register::<u16>(rt));
             }
             Instruction::Sw(rt, base, offset) => {
@@ -364,7 +364,7 @@ impl State {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                self.memory
+                self.bus
                     .write(physical_address, self.get_register::<u32>(rt));
             }
             Instruction::Ld(rt, base, offset) => {
@@ -376,7 +376,7 @@ impl State {
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let value = self
-                    .memory
+                    .bus
                     .read(physical_address)
                     .expect("Failed to read double word");
                 self.set_register::<u64>(rt, value);
@@ -389,7 +389,7 @@ impl State {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                self.memory
+                self.bus
                     .write(physical_address, self.get_register::<u64>(rt));
             }
         }

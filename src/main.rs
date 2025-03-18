@@ -21,7 +21,7 @@ fn main() -> Result<(), std::io::Error> {
         //     data.len() as u32,
         //     physical_address as u32,
         // );
-        state.memory.main[physical_address as usize..physical_address as usize + data.len()]
+        state.bus.main_memory[physical_address as usize..physical_address as usize + data.len()]
             .copy_from_slice(data);
     }
     state.mmu.mmap(0, 0x2000_0000, 0);
