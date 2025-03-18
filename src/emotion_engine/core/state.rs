@@ -1,7 +1,5 @@
 use enum_map::{enum_map, Enum, EnumMap};
 
-use crate::emotion_engine::bus::Bus;
-
 use super::{
     mmu::Mmu,
     register::{Cop0Register, Register},
