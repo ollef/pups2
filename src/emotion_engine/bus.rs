@@ -2,15 +2,15 @@ const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 
 pub struct Bus {
-    pub main_memory: Vec<u8>,
-    pub boot_memory: Vec<u8>,
+    pub main_memory: Box<[u8]>,
+    pub boot_memory: Box<[u8]>,
 }
 
 impl Bus {
     pub fn new() -> Bus {
         Bus {
-            main_memory: vec![0; MAIN_MEMORY_SIZE],
-            boot_memory: vec![0; BOOT_MEMORY_SIZE],
+            main_memory: vec![0; MAIN_MEMORY_SIZE].into_boxed_slice(),
+            boot_memory: vec![0; BOOT_MEMORY_SIZE].into_boxed_slice(),
         }
     }
 
