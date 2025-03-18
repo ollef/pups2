@@ -52,7 +52,7 @@ impl State {
 
     pub fn step_interpreter(&mut self) {
         let physical_program_counter = self
-            .tlb
+            .mmu
             .virtual_to_physical(self.program_counter, self.mode);
         let raw_instruction = self
             .memory
@@ -296,7 +296,7 @@ impl State {
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 address &= !0b1111;
-                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 self.memory
                     .write(physical_address, self.get_register::<u128>(rt));
             }
@@ -308,7 +308,7 @@ impl State {
                 if address & 0b11 != 0 {
                     panic!("Unaligned load at {:#010x}", address);
                 }
-                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let value = self
                     .memory
                     .read::<u32>(physical_address)
@@ -319,7 +319,7 @@ impl State {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let value = self
                     .memory
                     .read::<u8>(physical_address)
@@ -330,7 +330,7 @@ impl State {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let byte = address & 0b11;
                 let memory_word = self
                     .memory
@@ -352,7 +352,7 @@ impl State {
                 if address & 0b1 != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
-                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 self.memory
                     .write(physical_address, self.get_register::<u16>(rt));
             }
@@ -363,7 +363,7 @@ impl State {
                 if address & 0b11 != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
-                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 self.memory
                     .write(physical_address, self.get_register::<u32>(rt));
             }
@@ -374,7 +374,7 @@ impl State {
                 if address & 0b111 != 0 {
                     panic!("Unaligned load at {:#010x}", address);
                 }
-                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let value = self
                     .memory
                     .read(physical_address)
@@ -388,7 +388,7 @@ impl State {
                 if address & 0b111 != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
-                let physical_address = self.tlb.virtual_to_physical(address, self.mode);
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 self.memory
                     .write(physical_address, self.get_register::<u64>(rt));
             }

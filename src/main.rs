@@ -24,7 +24,7 @@ fn main() -> Result<(), std::io::Error> {
         state.memory.main[physical_address as usize..physical_address as usize + data.len()]
             .copy_from_slice(data);
     }
-    state.tlb.mmap(0, 0x2000_0000, 0);
+    state.mmu.mmap(0, 0x2000_0000, 0);
     loop {
         state.step_interpreter();
     }

@@ -9,17 +9,17 @@ const PAGE_SIZE: u32 = 1 << OFFSET_BITS;
 const OFFSET_MASK: u32 = PAGE_SIZE - 1;
 const PAGES: u32 = 1 << PAGE_BITS;
 
-pub struct Tlb {
-    entries: Vec<Entry>,
+pub struct Mmu {
+    tlb_entries: Vec<TlbEntry>,
     pages: EnumMap<Mode, Vec<u32>>,
 }
 
-pub struct Entry {
+pub struct TlbEntry {
     raw: [u32; 4],
 }
 
-impl Tlb {
-    pub fn new() -> Tlb {
+impl Mmu {
+    pub fn new() -> Mmu {
         let mut pages = EnumMap::from_fn(|_| vec![0; PAGES as usize]);
         let kernel_pages = &mut pages[Mode::Kernel];
         // kseg0 and kseg1 are mapped directly to physical memory.
@@ -27,8 +27,8 @@ impl Tlb {
             let page = address >> OFFSET_BITS;
             kernel_pages[page as usize] = address & 0x1FFF_FFFF;
         }
-        Tlb {
-            entries: (0..48).map(|_| Entry::new()).collect(),
+        Mmu {
+            tlb_entries: (0..48).map(|_| TlbEntry::new()).collect(),
             pages,
         }
     }
@@ -54,9 +54,9 @@ impl Tlb {
     }
 }
 
-impl Entry {
-    pub fn new() -> Entry {
-        Entry { raw: [0; 4] }
+impl TlbEntry {
+    pub fn new() -> TlbEntry {
+        TlbEntry { raw: [0; 4] }
     }
 
     pub fn mask(&self) -> &BitSlice<u32> {
