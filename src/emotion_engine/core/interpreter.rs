@@ -1,6 +1,6 @@
 use crate::emotion_engine::{bus::Bus, core::register::Register};
 
-use super::{disassembler::disassemble, instruction::Instruction, state::State};
+use super::{core::Core, disassembler::disassemble, instruction::Instruction};
 
 trait SignExtend<T> {
     fn sign_extend(self) -> T;
@@ -42,7 +42,7 @@ impl SignExtend<u64> for i32 {
     }
 }
 
-impl State {
+impl Core {
     pub fn set_delayed_branch_target(&mut self, target: u32) {
         if target & 0b11 != 0 {
             panic!("Invalid branch target: {:#010x}", target);

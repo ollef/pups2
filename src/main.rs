@@ -5,7 +5,7 @@ fn main() -> Result<(), std::io::Error> {
     let elf_data = std::fs::read("demos/demo2a.elf")?;
     let elf = ElfBytes::<LittleEndian>::minimal_parse(&elf_data).expect("Failed to parse ELF");
     let entry_point = elf.ehdr.e_entry as u32;
-    let mut state = emotion_engine::core::state::State::new(entry_point);
+    let mut state = emotion_engine::core::core::Core::new(entry_point);
     let mut bus = emotion_engine::bus::Bus::new();
     println!("Entry point: {:x?}", entry_point);
     println!("Program header start: {:x?}", entry_point as u32);

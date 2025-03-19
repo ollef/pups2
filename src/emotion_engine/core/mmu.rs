@@ -1,7 +1,7 @@
 use bitvec::{order::Lsb0, slice::BitSlice, view::BitView};
 use enum_map::EnumMap;
 
-use super::state::Mode;
+use super::core::Mode;
 
 const PAGE_BITS: u32 = 20;
 const OFFSET_BITS: u32 = 32 - PAGE_BITS;

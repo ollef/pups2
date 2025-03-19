@@ -12,7 +12,7 @@ pub enum Mode {
     User,
 }
 
-pub struct State {
+pub struct Core {
     pub mode: Mode,
     pub program_counter: u32,
     pub registers: EnumMap<Register, RegisterState>,
@@ -22,9 +22,9 @@ pub struct State {
     pub main_thread_stack_base: u32, // TODO: This should be in the thread state
 }
 
-impl State {
+impl Core {
     pub fn new(program_counter: u32) -> Self {
-        State {
+        Core {
             mode: Mode::Kernel,
             program_counter,
             registers: enum_map! { _ => RegisterState::new() },
