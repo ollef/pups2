@@ -1,6 +1,6 @@
 use crate::emotion_engine::{bus::Bus, core::register::Register};
 
-use super::{core::Core, disassembler::disassemble, instruction::Instruction};
+use super::{disassembler::disassemble, instruction::Instruction, Core};
 
 trait SignExtend<T> {
     fn sign_extend(self) -> T;
