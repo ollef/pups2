@@ -47,7 +47,7 @@ impl Dmac {
             panic!("Invalid DMAC write size: {}", std::mem::size_of::<T>());
         }
         let value = u32::from_bytes(value.to_bytes().as_ref());
-        // TODO: check which values can actually be written
+        // TODO: check which addresses can actually be written
         let channel = match address {
             0x1000_8000..0x1000_9000 => Channel::Vif0,
             0x1000_9000..0x1000_A000 => Channel::Vif1,
@@ -105,7 +105,7 @@ impl Dmac {
         if std::mem::size_of::<T>() != 4 {
             panic!("Invalid DMAC read size: {}", std::mem::size_of::<T>());
         }
-        // TODO: check which values can actually be read
+        // TODO: check which addresses can actually be read
         let channel = match address {
             0x1000_8000..0x1000_9000 => Channel::Vif0,
             0x1000_9000..0x1000_A000 => Channel::Vif1,
