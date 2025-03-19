@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::dmac::Dmac;
+use super::{dmac::Dmac, gs::Gs};
 
 const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
@@ -9,6 +9,7 @@ pub struct Bus {
     pub main_memory: Box<[u8]>,
     pub boot_memory: Box<[u8]>,
     pub dmac: Dmac,
+    pub gs: Gs,
 }
 
 impl Bus {
@@ -17,6 +18,7 @@ impl Bus {
             main_memory: vec![0; MAIN_MEMORY_SIZE].into_boxed_slice(),
             boot_memory: vec![0; BOOT_MEMORY_SIZE].into_boxed_slice(),
             dmac: Dmac::default(),
+            gs: Gs::new(),
         }
     }
 
@@ -28,6 +30,7 @@ impl Bus {
                 T::from_bytes(&self.main_memory[address..address + std::mem::size_of::<T>()])
             }
             0x1000_8000..0x1000_F000 => self.dmac.read(address),
+            0x1200_0000..0x1300_0000 => self.gs.read(address),
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
                 T::from_bytes(&self.boot_memory[address..address + std::mem::size_of::<T>()])
@@ -47,6 +50,7 @@ impl Bus {
                     .copy_from_slice(value.to_bytes().as_ref());
             }
             0x1000_8000..0x1000_F000 => self.dmac.write(address, value),
+            0x1200_0000..0x1300_0000 => self.gs.write(address, value),
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
                 self.main_memory[address..address + std::mem::size_of::<T>()]
