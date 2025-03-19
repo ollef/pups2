@@ -141,3 +141,57 @@ impl From<u32> for Cop0Register {
         unsafe { std::mem::transmute(value as u8) }
     }
 }
+
+pub struct RegisterState {
+    pub value: u128,
+}
+
+impl RegisterState {
+    pub fn new() -> Self {
+        RegisterState { value: 0 }
+    }
+}
+
+pub trait SetRegister<T> {
+    fn set_register(&mut self, value: T);
+}
+
+pub trait GetRegister<T> {
+    fn get_register(&self) -> T;
+}
+
+impl SetRegister<u64> for RegisterState {
+    fn set_register(&mut self, value: u64) {
+        self.value = value as u128 | (self.value & 0xFFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000);
+    }
+}
+
+impl SetRegister<u128> for RegisterState {
+    fn set_register(&mut self, value: u128) {
+        self.value = value;
+    }
+}
+
+impl GetRegister<u16> for RegisterState {
+    fn get_register(&self) -> u16 {
+        self.value as u16
+    }
+}
+
+impl GetRegister<u32> for RegisterState {
+    fn get_register(&self) -> u32 {
+        self.value as u32
+    }
+}
+
+impl GetRegister<u64> for RegisterState {
+    fn get_register(&self) -> u64 {
+        self.value as u64
+    }
+}
+
+impl GetRegister<u128> for RegisterState {
+    fn get_register(&self) -> u128 {
+        self.value
+    }
+}
