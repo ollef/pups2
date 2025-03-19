@@ -1,4 +1,5 @@
 mod emotion_engine;
+mod fifo;
 use elf::{endian::LittleEndian, ElfBytes};
 
 fn main() -> Result<(), std::io::Error> {
