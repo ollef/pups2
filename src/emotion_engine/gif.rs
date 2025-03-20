@@ -29,7 +29,6 @@ impl Gif {
 
     pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
         assert!(std::mem::size_of::<T>() == 4);
-        assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         let value = u32::from_bytes(value.to_bytes().as_ref());
         match address {
             0x1000_3000 => self.control = value,
@@ -51,7 +50,6 @@ impl Gif {
 
     pub fn read<T: Bytes>(&self, address: u32) -> T {
         assert!(std::mem::size_of::<T>() == 4);
-        assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         match address {
             0x1000_3000 => T::from_bytes(&self.control.to_bytes()),
             0x1000_3010 => T::from_bytes(&self.mode.to_bytes()),

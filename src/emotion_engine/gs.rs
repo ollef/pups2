@@ -52,7 +52,6 @@ impl Gs {
     }
 
     pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
-        assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         assert!(std::mem::size_of::<T>() == 8);
         let value = u64::from_bytes(value.to_bytes().as_ref());
         match address {
@@ -80,7 +79,6 @@ impl Gs {
     }
 
     pub fn read<T: Bytes>(&self, address: u32) -> T {
-        assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         assert!(std::mem::size_of::<T>() == 8);
         match address {
             0x1200_0000 => T::from_bytes(&self.pcrtc_mode.to_bytes()),
