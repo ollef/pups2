@@ -1,5 +1,6 @@
-use bitvec::{order::Lsb0, slice::BitSlice, view::BitView};
 use enum_map::EnumMap;
+
+use crate::bits::Bits;
 
 use super::Mode;
 
@@ -15,7 +16,7 @@ pub struct Mmu {
 }
 
 pub struct TlbEntry {
-    raw: [u32; 4],
+    raw: u128,
 }
 
 impl Mmu {
@@ -56,58 +57,58 @@ impl Mmu {
 
 impl TlbEntry {
     pub fn new() -> TlbEntry {
-        TlbEntry { raw: [0; 4] }
+        TlbEntry { raw: 0 }
     }
 
-    pub fn mask(&self) -> &BitSlice<u32> {
-        &self.raw.view_bits()[109..=120]
+    pub fn mask(&self) -> u16 {
+        self.raw.bits(109..=120) as u16
     }
 
-    pub fn virtual_page_number_div_2(&self) -> &BitSlice<u32> {
-        &self.raw.view_bits()[77..=95]
+    pub fn virtual_page_number_div_2(&self) -> u32 {
+        self.raw.bits(77..=95) as u32
     }
 
     pub fn global(&self) -> bool {
-        self.raw.view_bits::<Lsb0>()[76]
+        self.raw.bit(76)
     }
 
-    pub fn address_space_id(&self) -> &BitSlice<u32> {
-        &self.raw.view_bits()[64..=71]
+    pub fn address_space_id(&self) -> u8 {
+        self.raw.bits(64..=71) as u8
     }
 
     pub fn scratchpad(&self) -> bool {
-        self.raw.view_bits::<Lsb0>()[63]
+        self.raw.bit(63)
     }
 
-    pub fn page_frame_number_even(&self) -> &BitSlice<u32> {
-        &self.raw.view_bits()[38..=57]
+    pub fn page_frame_number_even(&self) -> u32 {
+        self.raw.bits(38..=57) as u32
     }
 
-    pub fn cache_mode_even(&self) -> &BitSlice<u32> {
-        &self.raw.view_bits()[35..=37]
+    pub fn cache_mode_even(&self) -> u8 {
+        self.raw.bits(35..=37) as u8
     }
 
     pub fn dirty_even(&self) -> bool {
-        self.raw.view_bits::<Lsb0>()[34]
+        self.raw.bit(34)
     }
 
     pub fn valid_even(&self) -> bool {
-        self.raw.view_bits::<Lsb0>()[33]
+        self.raw.bit(33)
     }
 
-    pub fn page_frame_number_odd(&self) -> &BitSlice<u32> {
-        &self.raw.view_bits()[6..=25]
+    pub fn page_frame_number_odd(&self) -> u32 {
+        self.raw.bits(6..=25) as u32
     }
 
-    pub fn cache_mode_odd(&self) -> &BitSlice<u32> {
-        &self.raw.view_bits()[3..=5]
+    pub fn cache_mode_odd(&self) -> u8 {
+        self.raw.bits(3..=5) as u8
     }
 
     pub fn dirty_odd(&self) -> bool {
-        self.raw.view_bits::<Lsb0>()[2]
+        self.raw.bit(2)
     }
 
     pub fn valid_odd(&self) -> bool {
-        self.raw.view_bits::<Lsb0>()[1]
+        self.raw.bit(1)
     }
 }
