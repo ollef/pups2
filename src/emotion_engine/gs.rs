@@ -1,5 +1,3 @@
-use std::fmt::{Display, UpperHex};
-
 use super::bus::Bytes;
 
 const LOCAL_MEMORY_SIZE: usize = 4 * 1024 * 1024;
@@ -53,11 +51,10 @@ impl Gs {
         }
     }
 
-    pub fn write<T: Bytes + UpperHex>(&mut self, address: u32, value: T) {
+    pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         assert!(std::mem::size_of::<T>() == 8);
         let value = u64::from_bytes(value.to_bytes().as_ref());
-        println!("GS write address: 0x{:08X}=0x{:08X}", address, value);
         match address {
             0x1200_0000 => self.pcrtc_mode = value,
             0x1200_0010 => self.sync_mode1 = value,
@@ -85,7 +82,6 @@ impl Gs {
     pub fn read<T: Bytes>(&self, address: u32) -> T {
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         assert!(std::mem::size_of::<T>() == 8);
-        println!("GS read address: 0x{:08X}", address);
         match address {
             0x1200_0000 => T::from_bytes(&self.pcrtc_mode.to_bytes()),
             0x1200_0010 => T::from_bytes(&self.sync_mode1.to_bytes()),

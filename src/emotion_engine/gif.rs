@@ -1,5 +1,3 @@
-use std::fmt::{Display, UpperHex};
-
 use crate::fifo::Fifo;
 
 use super::bus::Bytes;
@@ -29,11 +27,10 @@ impl Gif {
         }
     }
 
-    pub fn write<T: Bytes + UpperHex>(&mut self, address: u32, value: T) {
+    pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
         assert!(std::mem::size_of::<T>() == 4);
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         let value = u32::from_bytes(value.to_bytes().as_ref());
-        println!("GIF write address: 0x{:08X}=0x{:08X}", address, value);
         match address {
             0x1000_3000 => self.control = value,
             0x1000_3010 => self.mode = value,
@@ -55,7 +52,6 @@ impl Gif {
     pub fn read<T: Bytes>(&self, address: u32) -> T {
         assert!(std::mem::size_of::<T>() == 4);
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
-        println!("GIF read address: 0x{:08X}", address);
         match address {
             0x1000_3000 => T::from_bytes(&self.control.to_bytes()),
             0x1000_3010 => T::from_bytes(&self.mode.to_bytes()),

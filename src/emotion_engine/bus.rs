@@ -24,16 +24,28 @@ impl Bus {
         }
     }
 
-    pub fn read<T: Bytes>(&self, address: u32) -> T {
+    pub fn read<T: Bytes + UpperHex>(&self, address: u32) -> T {
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         match address {
             0x0000_0000..0x1000_0000 => {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
                 T::from_bytes(&self.main_memory[address..address + std::mem::size_of::<T>()])
             }
-            0x1000_3000..0x1000_3800 => self.gif.read(address),
-            0x1000_8000..0x1000_F000 => self.dmac.read(address),
-            0x1200_0000..0x1201_0000 => self.gs.read(address),
+            0x1000_3000..0x1000_3800 => {
+                let result = self.gif.read(address);
+                println!("Read from GIF: 0x{:08X}==0x{:08X}", address, result);
+                result
+            }
+            0x1000_8000..0x1000_F000 => {
+                let result = self.dmac.read(address);
+                println!("Read from DMAC: 0x{:08X}==0x{:08X}", address, result);
+                result
+            }
+            0x1200_0000..0x1201_0000 => {
+                let result = self.gs.read(address);
+                println!("Read from GS: 0x{:08X}==0x{:08X}", address, result);
+                result
+            }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
                 T::from_bytes(&self.boot_memory[address..address + std::mem::size_of::<T>()])
@@ -52,9 +64,18 @@ impl Bus {
                 self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
             }
-            0x1000_3000..0x1000_3800 => self.gif.write(address, value),
-            0x1000_8000..0x1000_F000 => self.dmac.write(address, value),
-            0x1200_0000..0x1201_0000 => self.gs.write(address, value),
+            0x1000_3000..0x1000_3800 => {
+                println!("Write to GIF: 0x{:08X}:=0x{:08X}", address, value);
+                self.gif.write(address, value)
+            }
+            0x1000_8000..0x1000_F000 => {
+                println!("Write to DMAC: 0x{:08X}:=0x{:08X}", address, value);
+                self.dmac.write(address, value)
+            }
+            0x1200_0000..0x1201_0000 => {
+                println!("Write to GS: 0x{:08X}:=0x{:08X}", address, value);
+                self.gs.write(address, value)
+            }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
                 self.main_memory[address..address + std::mem::size_of::<T>()]

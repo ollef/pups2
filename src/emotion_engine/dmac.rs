@@ -1,5 +1,3 @@
-use std::fmt::UpperHex;
-
 use enum_map::{Enum, EnumMap};
 
 use crate::bits::Bits;
@@ -171,11 +169,10 @@ pub struct ChannelRegisters {
 }
 
 impl Dmac {
-    pub fn write<T: Bytes + UpperHex>(&mut self, address: u32, value: T) {
+    pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
         if std::mem::size_of::<T>() != 4 {
             panic!("Invalid DMAC write size: {}", std::mem::size_of::<T>());
         }
-        println!("DMAC write address: 0x{:08X}=0x{:08X}", address, value);
         let value = u32::from_bytes(value.to_bytes().as_ref());
         // TODO: check which addresses can actually be written
         let channel = match address {
@@ -265,7 +262,6 @@ impl Dmac {
         if std::mem::size_of::<T>() != 4 {
             panic!("Invalid DMAC read size: {}", std::mem::size_of::<T>());
         }
-        println!("DMAC read address: 0x{:08X}", address);
         // TODO: check which addresses can actually be read
         let channel = match address {
             0x1000_8000..0x1000_9000 => Channel::Vif0,
