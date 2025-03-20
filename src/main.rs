@@ -2,6 +2,7 @@ mod bits;
 mod emotion_engine;
 mod fifo;
 use elf::{endian::LittleEndian, ElfBytes};
+use emotion_engine::dmac::Dmac;
 
 fn main() -> Result<(), std::io::Error> {
     let elf_data = std::fs::read("demos/demo2a.elf")?;
@@ -30,6 +31,7 @@ fn main() -> Result<(), std::io::Error> {
     core.mmu.mmap(0, 0x2000_0000, 0);
     loop {
         core.step_interpreter(&mut bus);
+        Dmac::step(&mut bus);
     }
     // for program_header in elf.segments().expect("Failed to get program headers") {
     //     println!("Disassembling segment at {:x?}", program_header.p_paddr);
