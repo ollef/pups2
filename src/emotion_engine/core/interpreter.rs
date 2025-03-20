@@ -1,50 +1,13 @@
-use crate::emotion_engine::{bus::Bus, core::register::Register};
+use crate::{
+    bits::{Bits, SignExtend},
+    emotion_engine::{bus::Bus, core::register::Register},
+};
 
 use super::{disassembler::disassemble, instruction::Instruction, Core};
 
-trait SignExtend<T> {
-    fn sign_extend(self) -> T;
-}
-
-impl<T> SignExtend<T> for u16
-where
-    i16: SignExtend<T>,
-{
-    fn sign_extend(self) -> T {
-        (self as i16).sign_extend()
-    }
-}
-
-impl<T> SignExtend<T> for u32
-where
-    i32: SignExtend<T>,
-{
-    fn sign_extend(self) -> T {
-        (self as i32).sign_extend()
-    }
-}
-
-impl SignExtend<u32> for i16 {
-    fn sign_extend(self) -> u32 {
-        self as i32 as u32
-    }
-}
-
-impl SignExtend<u64> for i16 {
-    fn sign_extend(self) -> u64 {
-        self as i64 as u64
-    }
-}
-
-impl SignExtend<u64> for i32 {
-    fn sign_extend(self) -> u64 {
-        self as i64 as u64
-    }
-}
-
 impl Core {
     pub fn set_delayed_branch_target(&mut self, target: u32) {
-        if target & 0b11 != 0 {
+        if target.bits(0..2) != 0 {
             panic!("Invalid branch target: {:#010x}", target);
         }
         self.delayed_branch_target = Some(target);
@@ -79,18 +42,16 @@ impl Core {
                 self.set_register::<u64>(rd, value.sign_extend());
             }
             Instruction::Sllv(rd, rt, rs) => {
-                let value =
-                    self.get_register::<u32>(rt) << (self.get_register::<u32>(rs) & 0b11111);
+                let value = self.get_register::<u32>(rt) << self.get_register::<u32>(rs).bits(0..5);
                 self.set_register::<u64>(rd, value.sign_extend());
             }
             Instruction::Srlv(rd, rt, rs) => {
-                let value =
-                    self.get_register::<u32>(rt) >> (self.get_register::<u32>(rs) & 0b11111);
+                let value = self.get_register::<u32>(rt) >> self.get_register::<u32>(rs).bits(0..5);
                 self.set_register::<u64>(rd, value.sign_extend());
             }
             Instruction::Srav(rd, rt, rs) => {
                 let value = (self.get_register::<u32>(rt) as i32)
-                    >> (self.get_register::<u32>(rs) & 0b11111);
+                    >> self.get_register::<u32>(rs).bits(0..5);
                 self.set_register::<u64>(rd, value.sign_extend());
             }
             Instruction::Jr(rs) => {
@@ -122,6 +83,7 @@ impl Core {
                     "a1 register state: {:x}",
                     self.get_register::<u64>(Register::A1)
                 );
+                println!("Syscall");
                 let syscall_number = self.get_register::<u32>(Register::V1);
                 match syscall_number {
                     // SetGsCrt
@@ -301,7 +263,7 @@ impl Core {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                if address & 0b11 != 0 {
+                if address.bits(0..2) != 0 {
                     panic!("Unaligned load at {:#010x}", address);
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
@@ -336,7 +298,7 @@ impl Core {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                if address & 0b1 != 0 {
+                if address.bits(0..1) != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
@@ -346,7 +308,7 @@ impl Core {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                if address & 0b11 != 0 {
+                if address.bits(0..2) != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
@@ -356,7 +318,7 @@ impl Core {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                if address & 0b111 != 0 {
+                if address.bits(0..3) != 0 {
                     panic!("Unaligned load at {:#010x}", address);
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
@@ -367,7 +329,7 @@ impl Core {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                if address & 0b111 != 0 {
+                if address.bits(0..3) != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);

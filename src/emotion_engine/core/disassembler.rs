@@ -1,18 +1,20 @@
+use crate::bits::Bits;
+
 use super::{instruction::Instruction, register::Register};
 
 pub fn disassemble(data: u32) -> Instruction {
-    let opcode = data >> 26;
-    let s = (data >> 21) & 0b11111;
-    let t = (data >> 16) & 0b11111;
-    let d = (data >> 11) & 0b11111;
+    let opcode = data.bits(26..32);
+    let s = data.bits(21..26);
+    let t = data.bits(16..21);
+    let d = data.bits(11..16);
     let rs = Register::from(s);
     let rt = Register::from(t);
     let rd = Register::from(d);
-    let shamt = ((data >> 6) & 0b1111) as u8;
-    let imm16 = (data & 0b11111111_11111111) as u16;
-    let imm26 = data & 0b00000011_11111111_11111111_11111111;
+    let shamt = data.bits(6..10) as u8;
+    let imm16 = data.bits(0..16) as u16;
+    let imm26 = data.bits(0..26);
     match opcode {
-        0b000000 => match data & 0b111111 {
+        0b000000 => match data.bits(0..6) {
             0b000000 => Instruction::Sll(rd, rt, shamt),
             0b000001 => Instruction::Unknown,
             0b000010 => Instruction::Srl(rd, rt, shamt),
@@ -92,7 +94,7 @@ pub fn disassemble(data: u32) -> Instruction {
         0b001101 => Instruction::Ori(rt, rs, imm16),
         0b001111 => Instruction::Lui(rt, imm16),
         0b010000 => match s {
-            0b10000 => match data & 0b111111 {
+            0b10000 => match data.bits(0..6) {
                 0b111000 => Instruction::Ei,
                 _ => panic!("TLB/Exception not implemented {:#034b}", data),
             },
