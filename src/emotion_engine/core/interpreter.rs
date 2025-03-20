@@ -19,12 +19,12 @@ impl Core {
             .virtual_to_physical(self.program_counter, self.mode);
         let raw_instruction = bus.read(physical_program_counter);
         let instruction = disassemble(raw_instruction);
-        for reg in instruction.uses() {
-            let value = self.get_register::<u64>(reg);
-            println!("{}={:#x}", reg, value);
-        }
+        // for reg in instruction.uses() {
+        //     let value = self.get_register::<u64>(reg);
+        //     println!("{}={:#x}", reg, value);
+        // }
         let delayed_branch_target = self.delayed_branch_target.take();
-        println!("pc={:#010}: {instruction}", self.program_counter);
+        // println!("pc={:#010}: {instruction}", self.program_counter);
         match instruction {
             Instruction::Unknown => {
                 println!("Unknown instruction at {:#010x}", self.program_counter)
@@ -336,10 +336,10 @@ impl Core {
                 bus.write(physical_address, self.get_register::<u64>(rt));
             }
         }
-        for reg in instruction.definitions() {
-            let value = self.get_register::<u64>(reg);
-            println!("{}:={:#x}", reg, value);
-        }
+        // for reg in instruction.definitions() {
+        //     let value = self.get_register::<u64>(reg);
+        //     println!("{}:={:#x}", reg, value);
+        // }
         if let Some(branch_target) = delayed_branch_target {
             self.program_counter = branch_target;
         } else {
