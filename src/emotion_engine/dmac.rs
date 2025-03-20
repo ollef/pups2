@@ -135,6 +135,32 @@ impl StatusRegister {
     pub fn set_mfifo_empty_interrupt_mask(&mut self, value: bool) {
         self.raw.set_bit(30, value);
     }
+
+    pub fn write(&mut self, value: Self) {
+        for channel in Channel::all() {
+            if value.interrupt_status(channel) {
+                self.set_interrupt_status(channel, false)
+            }
+            if value.interrupt_mask(channel) {
+                self.set_interrupt_mask(channel, !self.interrupt_mask(channel))
+            }
+        }
+        if value.dma_stall_interrupt_status() {
+            self.set_dma_stall_interrupt_status(false)
+        }
+        if value.dma_stall_interrupt_mask() {
+            self.set_dma_stall_interrupt_mask(!self.dma_stall_interrupt_mask())
+        }
+        if value.mfifo_empty_interrupt_status() {
+            self.set_mfifo_empty_interrupt_status(false)
+        }
+        if value.mfifo_empty_interrupt_mask() {
+            self.set_mfifo_empty_interrupt_mask(!self.mfifo_empty_interrupt_mask())
+        }
+        if value.buserr_interrupt_status() {
+            self.set_buserr_interrupt_status(false)
+        }
+    }
 }
 
 #[derive(Debug, Enum, Copy, Clone)]
@@ -191,33 +217,7 @@ impl Dmac {
                 return;
             }
             0x1000_E010 => {
-                let value = StatusRegister { raw: value };
-                for channel in Channel::all() {
-                    if value.interrupt_status(channel) {
-                        self.status.set_interrupt_status(channel, false)
-                    }
-                    if value.interrupt_mask(channel) {
-                        self.status
-                            .set_interrupt_mask(channel, !self.status.interrupt_mask(channel))
-                    }
-                }
-                if value.dma_stall_interrupt_status() {
-                    self.status.set_dma_stall_interrupt_status(false)
-                }
-                if value.dma_stall_interrupt_mask() {
-                    self.status
-                        .set_dma_stall_interrupt_mask(!self.status.dma_stall_interrupt_mask())
-                }
-                if value.mfifo_empty_interrupt_status() {
-                    self.status.set_mfifo_empty_interrupt_status(false)
-                }
-                if value.mfifo_empty_interrupt_mask() {
-                    self.status
-                        .set_mfifo_empty_interrupt_mask(!self.status.mfifo_empty_interrupt_mask())
-                }
-                if value.buserr_interrupt_status() {
-                    self.status.set_buserr_interrupt_status(false)
-                }
+                self.status.write(StatusRegister { raw: value });
                 return;
             }
             0x1000_E020 => {
