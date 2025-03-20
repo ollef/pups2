@@ -1,4 +1,4 @@
-use std::fmt::{Display, UpperHex};
+use std::fmt::UpperHex;
 
 use enum_map::{Enum, EnumMap};
 
@@ -8,24 +8,24 @@ use super::bus::{Bus, Bytes};
 
 #[derive(Debug, Default)]
 pub struct Dmac {
-    control: ControlRegisterState, // CTRL
-    status: u32,                   // STAT
-    priority_control: u32,         // PCR
-    skip_quad_word: u32,           // SQWC
-    ring_buffer_size: u32,         // RBSR
-    ring_buffer_offset: u32,       // RBOR
-    stall_address: u32,            // STADR
-    hold_status: u32,              // D_ENABLER (read-only)
-    hold_control: u32,             // D_ENABLEW (write-only)
+    control: ControlRegister, // CTRL
+    status: StatusRegister,   // STAT
+    priority_control: u32,    // PCR
+    skip_quad_word: u32,      // SQWC
+    ring_buffer_size: u32,    // RBSR
+    ring_buffer_offset: u32,  // RBOR
+    stall_address: u32,       // STADR
+    hold_status: u32,         // D_ENABLER (read-only)
+    hold_control: u32,        // D_ENABLEW (write-only)
     channels: EnumMap<Channel, ChannelRegisters>,
 }
 
 #[derive(Debug, Default)]
-struct ControlRegisterState {
+struct ControlRegister {
     raw: u32,
 }
 
-impl ControlRegisterState {
+impl ControlRegister {
     pub fn enabled(&self) -> bool {
         self.raw.bit(0)
     }
@@ -76,6 +76,69 @@ impl ControlRegisterState {
     }
 }
 
+#[derive(Debug, Default, Copy, Clone)]
+struct StatusRegister {
+    raw: u32,
+}
+
+impl StatusRegister {
+    pub fn interrupt_status(self, channel: Channel) -> bool {
+        self.raw.bit(channel.into_usize())
+    }
+
+    pub fn set_interrupt_status(&mut self, channel: Channel, value: bool) {
+        self.raw.set_bit(channel.into_usize(), value);
+    }
+
+    pub fn dma_stall_interrupt_status(self) -> bool {
+        self.raw.bit(13)
+    }
+
+    pub fn set_dma_stall_interrupt_status(&mut self, value: bool) {
+        self.raw.set_bit(13, value);
+    }
+
+    pub fn mfifo_empty_interrupt_status(self) -> bool {
+        self.raw.bit(14)
+    }
+
+    pub fn set_mfifo_empty_interrupt_status(&mut self, value: bool) {
+        self.raw.set_bit(14, value);
+    }
+
+    pub fn buserr_interrupt_status(self) -> bool {
+        self.raw.bit(15)
+    }
+
+    pub fn set_buserr_interrupt_status(&mut self, value: bool) {
+        self.raw.set_bit(15, value);
+    }
+
+    pub fn interrupt_mask(self, channel: Channel) -> bool {
+        self.raw.bit(channel.into_usize() + 16)
+    }
+
+    pub fn set_interrupt_mask(&mut self, channel: Channel, value: bool) {
+        self.raw.set_bit(channel.into_usize() + 16, value);
+    }
+
+    pub fn dma_stall_interrupt_mask(self) -> bool {
+        self.raw.bit(29)
+    }
+
+    pub fn set_dma_stall_interrupt_mask(&mut self, value: bool) {
+        self.raw.set_bit(29, value);
+    }
+
+    pub fn mfifo_empty_interrupt_mask(self) -> bool {
+        self.raw.bit(30)
+    }
+
+    pub fn set_mfifo_empty_interrupt_mask(&mut self, value: bool) {
+        self.raw.set_bit(30, value);
+    }
+}
+
 #[derive(Debug, Enum, Copy, Clone)]
 pub enum Channel {
     Vif0,
@@ -88,6 +151,12 @@ pub enum Channel {
     Sif2,
     FromSpr,
     ToSpr,
+}
+
+impl Channel {
+    pub fn all() -> impl ExactSizeIterator<Item = Channel> {
+        (0..Channel::LENGTH).map(Channel::from_usize)
+    }
 }
 
 #[derive(Debug, Default)]
@@ -125,7 +194,33 @@ impl Dmac {
                 return;
             }
             0x1000_E010 => {
-                self.status = value;
+                let value = StatusRegister { raw: value };
+                for channel in Channel::all() {
+                    if value.interrupt_status(channel) {
+                        self.status.set_interrupt_status(channel, false)
+                    }
+                    if value.interrupt_mask(channel) {
+                        self.status
+                            .set_interrupt_mask(channel, !self.status.interrupt_mask(channel))
+                    }
+                }
+                if value.dma_stall_interrupt_status() {
+                    self.status.set_dma_stall_interrupt_status(false)
+                }
+                if value.dma_stall_interrupt_mask() {
+                    self.status
+                        .set_dma_stall_interrupt_mask(!self.status.dma_stall_interrupt_mask())
+                }
+                if value.mfifo_empty_interrupt_status() {
+                    self.status.set_mfifo_empty_interrupt_status(false)
+                }
+                if value.mfifo_empty_interrupt_mask() {
+                    self.status
+                        .set_mfifo_empty_interrupt_mask(!self.status.mfifo_empty_interrupt_mask())
+                }
+                if value.buserr_interrupt_status() {
+                    self.status.set_buserr_interrupt_status(false)
+                }
                 return;
             }
             0x1000_E020 => {
@@ -184,7 +279,7 @@ impl Dmac {
             0x1000_D000..0x1000_D400 => Channel::FromSpr,
             0x1000_D400..0x1000_E000 => Channel::ToSpr,
             0x1000_E000 => return T::from_bytes(&self.control.raw.to_bytes()),
-            0x1000_E010 => return T::from_bytes(&self.status.to_bytes()),
+            0x1000_E010 => return T::from_bytes(&self.status.raw.to_bytes()),
             0x1000_E020 => return T::from_bytes(&self.priority_control.to_bytes()),
             0x1000_E030 => return T::from_bytes(&self.skip_quad_word.to_bytes()),
             0x1000_E040 => return T::from_bytes(&self.ring_buffer_size.to_bytes()),
