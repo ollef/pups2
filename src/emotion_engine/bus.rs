@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::fmt::{Display, UpperHex};
 
-use super::{dmac::Dmac, gs::Gs};
+use super::{dmac::Dmac, gif::Gif, gs::Gs};
 
 const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
@@ -9,6 +9,7 @@ pub struct Bus {
     pub main_memory: Box<[u8]>,
     pub boot_memory: Box<[u8]>,
     pub dmac: Dmac,
+    pub gif: Gif,
     pub gs: Gs,
 }
 
@@ -18,6 +19,7 @@ impl Bus {
             main_memory: vec![0; MAIN_MEMORY_SIZE].into_boxed_slice(),
             boot_memory: vec![0; BOOT_MEMORY_SIZE].into_boxed_slice(),
             dmac: Dmac::default(),
+            gif: Gif::new(),
             gs: Gs::new(),
         }
     }
@@ -29,8 +31,9 @@ impl Bus {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
                 T::from_bytes(&self.main_memory[address..address + std::mem::size_of::<T>()])
             }
+            0x1000_3000..0x1000_3800 => self.gif.read(address),
             0x1000_8000..0x1000_F000 => self.dmac.read(address),
-            0x1200_0000..0x1300_0000 => self.gs.read(address),
+            0x1200_0000..0x1201_0000 => self.gs.read(address),
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
                 T::from_bytes(&self.boot_memory[address..address + std::mem::size_of::<T>()])
@@ -41,7 +44,7 @@ impl Bus {
         }
     }
 
-    pub fn write<T: Bytes + Display>(&mut self, address: u32, value: T) {
+    pub fn write<T: Bytes + UpperHex>(&mut self, address: u32, value: T) {
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         match address {
             0x0000_0000..0x1000_0000 => {
@@ -49,8 +52,9 @@ impl Bus {
                 self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
             }
+            0x1000_3000..0x1000_3800 => self.gif.write(address, value),
             0x1000_8000..0x1000_F000 => self.dmac.write(address, value),
-            0x1200_0000..0x1300_0000 => self.gs.write(address, value),
+            0x1200_0000..0x1201_0000 => self.gs.write(address, value),
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
                 self.main_memory[address..address + std::mem::size_of::<T>()]
