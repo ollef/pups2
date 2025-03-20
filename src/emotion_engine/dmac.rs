@@ -40,13 +40,13 @@ impl Channel {
 
 #[derive(Debug, Default)]
 pub struct ChannelRegisters {
-    control: u32,                   // CHCR
-    memory_address: u32,            // MADR
-    quad_word_count: u32,           // QWC
-    tag_address: u32,               // TADR
-    tag_address_save_0: u32,        // ASR0
-    tag_address_save_1: u32,        // ASR1
-    scratchpad_memory_address: u32, // SADR
+    control: ChannelControlRegister, // CHCR
+    memory_address: u32,             // MADR
+    quad_word_count: u32,            // QWC
+    tag_address: u32,                // TADR
+    tag_address_save_0: u32,         // ASR0
+    tag_address_save_1: u32,         // ASR1
+    scratchpad_memory_address: u32,  // SADR
 }
 
 impl Dmac {
@@ -102,7 +102,7 @@ impl Dmac {
             _ => panic!("Invalid DMAC write address: 0x{:08X}", address),
         };
         match address & 0xFF {
-            0x00 => self.channels[channel].control = value,
+            0x00 => self.channels[channel].control.raw = value,
             0x10 => self.channels[channel].memory_address = value,
             0x20 => self.channels[channel].quad_word_count = value,
             0x30 => self.channels[channel].tag_address = value,
@@ -140,7 +140,7 @@ impl Dmac {
             _ => panic!("Invalid DMAC read address: 0x{:08X}", address),
         };
         match address & 0xFF {
-            0x00 => T::from_bytes(&self.channels[channel].control.to_bytes()),
+            0x00 => T::from_bytes(&self.channels[channel].control.raw.to_bytes()),
             0x10 => T::from_bytes(&self.channels[channel].memory_address.to_bytes()),
             0x20 => T::from_bytes(&self.channels[channel].quad_word_count.to_bytes()),
             0x30 => T::from_bytes(&self.channels[channel].tag_address.to_bytes()),
@@ -299,4 +299,59 @@ impl StatusRegister {
             self.set_buserr_interrupt_status(false)
         }
     }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct ChannelControlRegister {
+    raw: u32,
+}
+
+impl ChannelControlRegister {
+    pub fn direction(self) -> ChannelDirection {
+        match self.raw.bits(0..=0) {
+            0b0 => ChannelDirection::ToMemory,
+            0b1 => ChannelDirection::FromMemory,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn mode(self) -> ChannelMode {
+        match self.raw.bits(2..=3) {
+            0b00 => ChannelMode::Normal,
+            0b01 => ChannelMode::Chain,
+            0b10 => ChannelMode::Interleave,
+            _ => panic!("Invalid DMAC channel mode: {}", self.raw.bits(1..=2)),
+        }
+    }
+
+    pub fn address_stack_pointer(self) -> u32 {
+        self.raw.bits(4..=5)
+    }
+
+    pub fn tag_transfer_enable(self) -> bool {
+        self.raw.bit(6)
+    }
+
+    pub fn tag_interrupt_enable(self) -> bool {
+        self.raw.bit(7)
+    }
+
+    pub fn start(self) -> bool {
+        self.raw.bit(8)
+    }
+
+    pub fn dma_tag(self) -> u16 {
+        self.raw.bits(16..) as u16
+    }
+}
+
+enum ChannelDirection {
+    ToMemory,
+    FromMemory,
+}
+
+enum ChannelMode {
+    Normal,
+    Chain,
+    Interleave,
 }
