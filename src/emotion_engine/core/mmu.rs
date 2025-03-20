@@ -10,8 +10,8 @@ const OFFSET_MASK: u32 = PAGE_SIZE - 1;
 const PAGES: u32 = 1 << PAGE_BITS;
 
 pub struct Mmu {
-    tlb_entries: Vec<TlbEntry>,
-    pages: EnumMap<Mode, Vec<u32>>,
+    tlb_entries: Box<[TlbEntry]>,
+    pages: EnumMap<Mode, Box<[u32]>>,
 }
 
 pub struct TlbEntry {
@@ -20,7 +20,7 @@ pub struct TlbEntry {
 
 impl Mmu {
     pub fn new() -> Mmu {
-        let mut pages = EnumMap::from_fn(|_| vec![0; PAGES as usize]);
+        let mut pages = EnumMap::from_fn(|_| vec![0; PAGES as usize].into_boxed_slice());
         let kernel_pages = &mut pages[Mode::Kernel];
         // kseg0 and kseg1 are mapped directly to physical memory.
         for address in (0x8000_0000..0xC000_0000).step_by(PAGE_SIZE as usize) {
