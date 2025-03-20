@@ -152,7 +152,48 @@ impl Dmac {
     }
 
     pub fn step(bus: &mut Bus) {
-        for (channel, registers) in &mut bus.dmac.channels {}
+        // TODO arbitration
+        let mut channels = std::mem::take(&mut bus.dmac.channels);
+        for (channel, registers) in &mut channels {
+            if registers.control.start() {
+                match channel {
+                    Channel::Vif0 => todo!(),
+                    Channel::Vif1 => todo!(),
+                    Channel::Gif => match registers.control.mode() {
+                        ChannelMode::Normal => {
+                            let memory_address = registers.memory_address;
+                            let mut quad_word_count = registers.quad_word_count;
+                            let mut memory_address = memory_address;
+                            while quad_word_count > 0 && !bus.gif.fifo.is_full() {
+                                let data = bus.read::<u128>(memory_address);
+                                bus.gif.fifo.push_back(data);
+                                println!(
+                                    "Transferred quad word from 0x{:08X} to GIF FIFO",
+                                    memory_address
+                                );
+                                memory_address += 16;
+                                quad_word_count -= 1;
+                            }
+                            if quad_word_count == 0 {
+                                registers.control.set_start(false);
+                                registers.memory_address = memory_address;
+                            }
+                            registers.memory_address = memory_address;
+                        }
+                        ChannelMode::Chain => todo!(),
+                        ChannelMode::Interleave => todo!(),
+                    },
+                    Channel::FromIpu => todo!(),
+                    Channel::ToIpu => todo!(),
+                    Channel::Sif0 => todo!(),
+                    Channel::Sif1 => todo!(),
+                    Channel::Sif2 => todo!(),
+                    Channel::FromSpr => todo!(),
+                    Channel::ToSpr => todo!(),
+                }
+            }
+        }
+        bus.dmac.channels = channels;
     }
 }
 
@@ -338,6 +379,10 @@ impl ChannelControlRegister {
 
     pub fn start(self) -> bool {
         self.raw.bit(8)
+    }
+
+    pub fn set_start(&mut self, value: bool) {
+        self.raw.set_bit(8, value);
     }
 
     pub fn dma_tag(self) -> u16 {

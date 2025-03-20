@@ -3,7 +3,7 @@ use crate::fifo::Fifo;
 use super::bus::Bytes;
 
 pub struct Gif {
-    fifo: Fifo<u128>,
+    pub fifo: Fifo<u128>,
     control: u32,                       // CTRL
     mode: u32,                          // MODE
     status: u32,                        // STAT
