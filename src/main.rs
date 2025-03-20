@@ -7,7 +7,7 @@ fn main() -> Result<(), std::io::Error> {
     let elf_data = std::fs::read("demos/demo2a.elf")?;
     let elf = ElfBytes::<LittleEndian>::minimal_parse(&elf_data).expect("Failed to parse ELF");
     let entry_point = elf.ehdr.e_entry as u32;
-    let mut state = emotion_engine::core::Core::new(entry_point);
+    let mut core = emotion_engine::core::Core::new(entry_point);
     let mut bus = emotion_engine::bus::Bus::new();
     println!("Entry point: {:x?}", entry_point);
     println!("Program header start: {:x?}", entry_point as u32);
@@ -27,9 +27,9 @@ fn main() -> Result<(), std::io::Error> {
         bus.main_memory[physical_address as usize..physical_address as usize + data.len()]
             .copy_from_slice(data);
     }
-    state.mmu.mmap(0, 0x2000_0000, 0);
+    core.mmu.mmap(0, 0x2000_0000, 0);
     loop {
-        state.step_interpreter(&mut bus);
+        core.step_interpreter(&mut bus);
     }
     // for program_header in elf.segments().expect("Failed to get program headers") {
     //     println!("Disassembling segment at {:x?}", program_header.p_paddr);
