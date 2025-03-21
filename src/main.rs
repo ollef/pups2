@@ -28,12 +28,17 @@ fn disassemble(file: &str) -> std::io::Result<()> {
             .expect("Failed to get segment data");
 
         for (word_index, bytes) in data.chunks_exact(4).enumerate() {
-            let pc = virtual_address + (word_index as u64 * 4);
-            let instruction_data = u32::from_bytes(bytes);
-            let instruction = emotion_engine::core::disassembler::disassemble(instruction_data);
-            print!("{:6x?}: {}", pc, instruction);
+            let address = virtual_address + (word_index as u64 * 4);
+            let data = u32::from_bytes(bytes);
+            let instruction = emotion_engine::core::disassembler::disassemble(data);
+            print!(
+                "{:6x?}:    {:02x?} {:02x?} {:02x?} {:02x?}    {}",
+                address, bytes[3], bytes[2], bytes[1], bytes[0], instruction
+            );
             if instruction.is_nop() {
-                println!(" (nop)");
+                println!(" # NOP");
+            } else if let Some(branch_target) = instruction.branch_target(address as u32) {
+                println!(" # 0x{:x?}", branch_target);
             } else {
                 println!();
             }
