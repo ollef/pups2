@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::bits::SignExtend;
+
 use super::register::Register;
 
 #[derive(Debug)]
@@ -339,6 +341,21 @@ impl Instruction {
             Instruction::Addiu(reg1, reg2, 0) => reg1 == reg2,
             Instruction::Ori(reg1, reg2, 0) => reg1 == reg2,
             _ => false,
+        }
+    }
+
+    pub fn branch_target(&self, address: u32) -> Option<u32> {
+        match self {
+            Instruction::Bgez(_, offset)
+            | Instruction::Beq(_, _, offset)
+            | Instruction::Bne(_, _, offset) => Some({
+                let offset: u32 = offset.sign_extend();
+                address.wrapping_add(4).wrapping_add(offset << 2)
+            }),
+            Instruction::Jal(target) => {
+                Some(((address + 4) & 0xF000_0000).wrapping_add(target << 2))
+            }
+            _ => None,
         }
     }
 }
