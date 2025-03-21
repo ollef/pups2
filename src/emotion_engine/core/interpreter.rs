@@ -300,7 +300,13 @@ impl Core {
                 };
                 self.set_register(rt, value);
             }
-            Instruction::Sb(_, _, _) => todo!(),
+            Instruction::Sb(rt, base, offset) => {
+                let address = self
+                    .get_register::<u32>(base)
+                    .wrapping_add(offset.sign_extend());
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
+                bus.write(physical_address, self.get_register::<u8>(rt));
+            }
             Instruction::Sh(rt, base, offset) => {
                 let address = self
                     .get_register::<u32>(base)
