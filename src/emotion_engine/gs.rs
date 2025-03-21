@@ -50,20 +50,21 @@ impl Gs {
             signal_label_id: 0,
         }
     }
-    pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
+
+    pub fn write_privileged<T: Bytes>(&mut self, address: u32, value: T) {
         match std::mem::size_of::<T>() {
-            8 => self.write64(address, u64::from_bytes(value.to_bytes().as_ref())),
+            8 => self.write_privileged64(address, u64::from_bytes(value.to_bytes().as_ref())),
             _ => panic!("Invalid GS write size: {}", std::mem::size_of::<T>()),
         }
     }
-    pub fn read<T: Bytes>(&self, address: u32) -> T {
+    pub fn read_privileged<T: Bytes>(&self, address: u32) -> T {
         match std::mem::size_of::<T>() {
-            8 => T::from_bytes(self.read64(address).to_bytes().as_ref()),
+            8 => T::from_bytes(self.read_privileged64(address).to_bytes().as_ref()),
             _ => panic!("Invalid GS read size: {}", std::mem::size_of::<T>()),
         }
     }
 
-    pub fn write64(&mut self, address: u32, value: u64) {
+    pub fn write_privileged64(&mut self, address: u32, value: u64) {
         match address {
             0x1200_0000 => self.pcrtc_mode = value,
             0x1200_0010 => self.sync_mode1 = value,
@@ -88,7 +89,7 @@ impl Gs {
         }
     }
 
-    pub fn read64(&self, address: u32) -> u64 {
+    pub fn read_privileged64(&self, address: u32) -> u64 {
         match address {
             0x1200_0000 => self.pcrtc_mode,
             0x1200_0010 => self.sync_mode1,

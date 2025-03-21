@@ -51,7 +51,7 @@ impl Bus {
                 result
             }
             0x1200_0000..0x1201_0000 => {
-                let result = self.gs.read(address);
+                let result = self.gs.read_privileged(address);
                 println!("Read from GS: 0x{:08X}==0x{:08X}", address, result);
                 result
             }
@@ -88,7 +88,7 @@ impl Bus {
             }
             0x1200_0000..0x1201_0000 => {
                 println!("Write to GS: 0x{:08X}:=0x{:08X}", address, value);
-                self.gs.write(address, value)
+                self.gs.write_privileged(address, value)
             }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
