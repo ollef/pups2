@@ -223,14 +223,14 @@ impl Core {
                 );
             }
             Instruction::Beq(rs, rt, offset) => {
-                let offset: u32 = offset.sign_extend();
                 if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
+                    let offset: u32 = offset.sign_extend();
                     self.set_delayed_branch_target(self.program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Bne(rs, rt, offset) => {
-                let offset: u32 = offset.sign_extend();
                 if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
+                    let offset: u32 = offset.sign_extend();
                     self.set_delayed_branch_target(self.program_counter.wrapping_add(offset << 2));
                 }
             }
