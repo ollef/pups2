@@ -2,7 +2,7 @@ mod bits;
 mod emotion_engine;
 mod fifo;
 use elf::{endian::LittleEndian, ElfBytes};
-use emotion_engine::dmac::Dmac;
+use emotion_engine::{dmac::Dmac, gif::Gif};
 
 fn main() -> Result<(), std::io::Error> {
     let elf_data = std::fs::read("demos/demo2a.elf")?;
@@ -32,6 +32,7 @@ fn main() -> Result<(), std::io::Error> {
     loop {
         core.step_interpreter(&mut bus);
         Dmac::step(&mut bus);
+        Gif::step(&mut bus);
         bus.timer.step();
     }
     // for program_header in elf.segments().expect("Failed to get program headers") {
