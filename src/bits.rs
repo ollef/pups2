@@ -6,8 +6,10 @@ where
     fn mask(range: impl RangeBounds<Index>) -> Self;
     fn bits(self, range: impl RangeBounds<Index>) -> Self;
     fn bit(self, index: Index) -> bool;
-    fn set_bits(self, range: impl RangeBounds<Index>, value: Self) -> Self;
-    fn set_bit(self, index: Index, value: bool) -> Self;
+    fn set_bits<Value>(&mut self, range: impl RangeBounds<Index>, value: Value)
+    where
+        Self: From<Value>;
+    fn set_bit(&mut self, index: Index, value: bool);
 }
 
 impl<T, Index> Bits<Index> for T
@@ -60,14 +62,22 @@ where
         self & (T::from(1) << index) != T::from(0)
     }
 
-    fn set_bits(self, range: impl RangeBounds<Index>, value: T) -> Self {
-        let mask = Self::mask(range);
-        self & !mask | value & mask
+    fn set_bits<Value>(&mut self, range: impl RangeBounds<Index>, value: Value)
+    where
+        T: From<Value>,
+    {
+        let start = match range.start_bound() {
+            Bound::Included(&start) => start,
+            Bound::Excluded(&start) => start + Index::from(1),
+            Bound::Unbounded => Index::from(0),
+        };
+        let mask = T::mask(range);
+        *self = *self & !mask | (T::from(value) << start) & mask
     }
 
-    fn set_bit(self, index: Index, value: bool) -> Self {
-        let mask = Self::from(1) << index;
-        self & !mask | (if value { mask } else { Self::from(0) })
+    fn set_bit(&mut self, index: Index, value: bool) {
+        let mask = T::from(1) << index;
+        *self = *self & !mask | (if value { mask } else { T::from(0) })
     }
 }
 
