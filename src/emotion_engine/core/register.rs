@@ -172,6 +172,12 @@ impl SetRegister<u128> for RegisterState {
     }
 }
 
+impl GetRegister<u8> for RegisterState {
+    fn get_register(&self) -> u8 {
+        self.value as u8
+    }
+}
+
 impl GetRegister<u16> for RegisterState {
     fn get_register(&self) -> u16 {
         self.value as u16
