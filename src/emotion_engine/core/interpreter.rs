@@ -212,7 +212,9 @@ impl Core {
             Instruction::Dsll32(rd, rt, shamt) => {
                 self.set_register(rd, self.get_register::<u64>(rt) << (shamt + 32));
             }
-            Instruction::Dsrl32(_, _, _) => todo!(),
+            Instruction::Dsrl32(rd, rt, shamt) => {
+                self.set_register(rd, self.get_register::<u64>(rt) >> (shamt + 32));
+            }
             Instruction::Dsra32(_, _, _) => todo!(),
             Instruction::Bgez(_, _) => todo!(),
             Instruction::J(_) => todo!(),
