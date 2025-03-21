@@ -161,24 +161,26 @@ impl Dmac {
                     Channel::Vif1 => todo!(),
                     Channel::Gif => match registers.control.mode() {
                         ChannelMode::Normal => {
-                            let memory_address = registers.memory_address;
-                            let mut quad_word_count = registers.quad_word_count;
-                            let mut memory_address = memory_address;
-                            while quad_word_count > 0 && !bus.gif.fifo.is_full() {
-                                let data = bus.read::<u128>(memory_address);
+                            let memory_address = &mut registers.memory_address;
+                            let quad_word_count = &mut registers.quad_word_count;
+                            while *quad_word_count > 0 && !bus.gif.fifo.is_full() {
+                                let data = bus.read::<u128>(*memory_address);
                                 bus.gif.fifo.push_back(data);
-                                println!(
-                                    "Transferred quad word from 0x{:08X} to GIF FIFO",
-                                    memory_address
-                                );
-                                memory_address += 16;
-                                quad_word_count -= 1;
+                                // println!(
+                                //     "Transferred quad word 0x{:08X} from 0x{:08X} to GIF FIFO (QWC={})",
+                                //     data,
+                                //     memory_address, quad_word_count
+                                // );
+                                *memory_address += 16;
+                                *quad_word_count -= 1;
                             }
-                            if quad_word_count == 0 {
+                            if *quad_word_count == 0 {
                                 registers.control.set_start(false);
-                                registers.memory_address = memory_address;
+                                // println!(
+                                //     "GIF channel finished, control=0x{:08X}",
+                                //     registers.control.raw
+                                // );
                             }
-                            registers.memory_address = memory_address;
                         }
                         ChannelMode::Chain => todo!(),
                         ChannelMode::Interleave => todo!(),
