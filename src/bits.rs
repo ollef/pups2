@@ -41,7 +41,7 @@ where
         mask << start
     }
 
-    fn bits(self, range: impl RangeBounds<Index>) -> Self {
+    fn bits(self, range: impl RangeBounds<Index>) -> T {
         let start = match range.start_bound() {
             Bound::Included(&start) => start,
             Bound::Excluded(&start) => start + Index::from(1),
@@ -52,12 +52,12 @@ where
             Bound::Excluded(&end) => end,
             Bound::Unbounded => Index::from(8 * std::mem::size_of::<T>() as u8),
         };
-        let mask = (Self::from(1) << (end - start)) - Self::from(1);
+        let mask = (T::from(1) << (end - start)) - T::from(1);
         (self >> start) & mask
     }
 
     fn bit(self, index: Index) -> bool {
-        self & (Self::from(1) << index) != Self::from(0)
+        self & (T::from(1) << index) != T::from(0)
     }
 
     fn set_bits(self, range: impl RangeBounds<Index>, value: T) -> Self {
