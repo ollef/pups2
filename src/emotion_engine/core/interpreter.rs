@@ -216,7 +216,12 @@ impl Core {
                 self.set_register(rd, self.get_register::<u64>(rt) >> (shamt + 32));
             }
             Instruction::Dsra32(_, _, _) => todo!(),
-            Instruction::Bgez(_, _) => todo!(),
+            Instruction::Bgez(rs, offset) => {
+                if self.get_register::<u64>(rs) as i64 >= 0 {
+                    let offset: u32 = offset.sign_extend();
+                    self.set_delayed_branch_target(self.program_counter.wrapping_add(offset << 2));
+                }
+            }
             Instruction::J(_) => todo!(),
             Instruction::Jal(target) => {
                 self.set_register(Register::Ra, (self.program_counter + 8) as u64);
