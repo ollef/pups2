@@ -2,11 +2,48 @@ mod bits;
 mod bytes;
 mod emotion_engine;
 mod fifo;
+use argh::FromArgs;
+use bytes::Bytes;
 use elf::{endian::LittleEndian, ElfBytes};
 use emotion_engine::{dmac::Dmac, gif::Gif};
 
-fn main() -> Result<(), std::io::Error> {
-    let elf_data = std::fs::read("demos/demo2a.elf")?;
+#[derive(FromArgs)]
+#[argh(description = "Emotion Engine PS2 emulator")]
+struct Arguments {
+    #[argh(switch, short = 'd', description = "disassemble the ELF file")]
+    disassemble: bool,
+    #[argh(positional, description = "ELF file")]
+    file: String,
+}
+
+fn disassemble(file: &str) -> std::io::Result<()> {
+    let elf_data = std::fs::read(file)?;
+    let elf = ElfBytes::<LittleEndian>::minimal_parse(&elf_data).expect("Failed to parse ELF");
+    let entry_point = elf.ehdr.e_entry as u32;
+    println!("Entry point: {:x?}", entry_point);
+    for program_header in elf.segments().expect("Failed to get program headers") {
+        let virtual_address = program_header.p_vaddr;
+        let data = elf
+            .segment_data(&program_header)
+            .expect("Failed to get segment data");
+
+        for (word_index, bytes) in data.chunks_exact(4).enumerate() {
+            let pc = virtual_address + (word_index as u64 * 4);
+            let instruction_data = u32::from_bytes(bytes);
+            let instruction = emotion_engine::core::disassembler::disassemble(instruction_data);
+            print!("{:6x?}: {}", pc, instruction);
+            if instruction.is_nop() {
+                println!(" (nop)");
+            } else {
+                println!();
+            }
+        }
+    }
+    Ok(())
+}
+
+fn execute(file: &str) -> std::io::Result<()> {
+    let elf_data = std::fs::read(file)?;
     let elf = ElfBytes::<LittleEndian>::minimal_parse(&elf_data).expect("Failed to parse ELF");
     let entry_point = elf.ehdr.e_entry as u32;
     let mut core = emotion_engine::core::Core::new(entry_point);
@@ -57,4 +94,13 @@ fn main() -> Result<(), std::io::Error> {
     //     }
     // }
     // Ok(())
+}
+
+fn main() -> Result<(), std::io::Error> {
+    let args: Arguments = argh::from_env();
+    if args.disassemble {
+        disassemble(&args.file)
+    } else {
+        execute(&args.file)
+    }
 }
