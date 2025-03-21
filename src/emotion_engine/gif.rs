@@ -1,8 +1,8 @@
 use enum_map::Enum;
 
-use crate::{bits::Bits, emotion_engine::core::register, fifo::Fifo};
+use crate::{bits::Bits, bytes::Bytes, fifo::Fifo};
 
-use super::bus::{Bus, Bytes};
+use super::bus::Bus;
 
 pub struct Gif {
     pub fifo: Fifo<u128>,

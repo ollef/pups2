@@ -1,4 +1,4 @@
-use super::bus::Bytes;
+use crate::bytes::Bytes;
 
 pub struct Timer {
     timers: [TimerRegisters; 4],

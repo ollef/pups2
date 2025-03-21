@@ -1,8 +1,8 @@
 use enum_map::{Enum, EnumMap};
 
-use crate::bits::Bits;
+use crate::{bits::Bits, bytes::Bytes};
 
-use super::bus::{Bus, Bytes};
+use super::bus::Bus;
 
 #[derive(Debug, Default)]
 pub struct Dmac {

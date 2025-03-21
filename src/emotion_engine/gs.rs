@@ -1,4 +1,4 @@
-use super::bus::Bytes;
+use crate::bytes::Bytes;
 
 const LOCAL_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 

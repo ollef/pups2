@@ -1,4 +1,5 @@
 mod bits;
+mod bytes;
 mod emotion_engine;
 mod fifo;
 use elf::{endian::LittleEndian, ElfBytes};
