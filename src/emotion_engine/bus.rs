@@ -1,6 +1,6 @@
-use std::fmt::{Display, UpperHex};
+use std::fmt::UpperHex;
 
-use super::{dmac::Dmac, gif::Gif, gs::Gs};
+use super::{dmac::Dmac, gif::Gif, gs::Gs, timer::Timer};
 
 const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
@@ -8,8 +8,9 @@ const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 pub struct Bus {
     pub main_memory: Box<[u8]>,
     pub boot_memory: Box<[u8]>,
-    pub dmac: Dmac,
+    pub timer: Timer,
     pub gif: Gif,
+    pub dmac: Dmac,
     pub gs: Gs,
 }
 
@@ -18,8 +19,9 @@ impl Bus {
         Bus {
             main_memory: vec![0; MAIN_MEMORY_SIZE].into_boxed_slice(),
             boot_memory: vec![0; BOOT_MEMORY_SIZE].into_boxed_slice(),
-            dmac: Dmac::default(),
+            timer: Timer::new(),
             gif: Gif::new(),
+            dmac: Dmac::default(),
             gs: Gs::new(),
         }
     }
@@ -30,6 +32,11 @@ impl Bus {
             0x0000_0000..0x1000_0000 => {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
                 T::from_bytes(&self.main_memory[address..address + std::mem::size_of::<T>()])
+            }
+            0x1000_0000..0x1000_2000 => {
+                let result = self.timer.read(address);
+                println!("Read from TIMER: 0x{:08X}==0x{:08X}", address, result);
+                result
             }
             0x1000_3000..0x1000_3800 => {
                 let result = self.gif.read(address);
@@ -64,6 +71,10 @@ impl Bus {
                 // println!("Write to main memory: 0x{:08X}:=0x{:08X}", address, value);
                 self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
+            }
+            0x1000_0000..0x1000_2000 => {
+                println!("Write to TIMER: 0x{:08X}:=0x{:08X}", address, value);
+                self.timer.write(address, value)
             }
             0x1000_3000..0x1000_3800 => {
                 println!("Write to GIF: 0x{:08X}:=0x{:08X}", address, value);

@@ -32,6 +32,7 @@ fn main() -> Result<(), std::io::Error> {
     loop {
         core.step_interpreter(&mut bus);
         Dmac::step(&mut bus);
+        bus.timer.step();
     }
     // for program_header in elf.segments().expect("Failed to get program headers") {
     //     println!("Disassembling segment at {:x?}", program_header.p_paddr);
