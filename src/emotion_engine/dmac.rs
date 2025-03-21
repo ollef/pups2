@@ -51,10 +51,20 @@ pub struct ChannelRegisters {
 
 impl Dmac {
     pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
-        if std::mem::size_of::<T>() != 4 {
-            panic!("Invalid DMAC write size: {}", std::mem::size_of::<T>());
+        match std::mem::size_of::<T>() {
+            4 => self.write32(address, u32::from_bytes(value.to_bytes().as_ref())),
+            _ => panic!("Invalid write size {}", std::mem::size_of::<T>()),
         }
-        let value = u32::from_bytes(value.to_bytes().as_ref());
+    }
+
+    pub fn read<T: Bytes>(&self, address: u32) -> T {
+        match std::mem::size_of::<T>() {
+            4 => T::from_bytes(self.read32(address).to_bytes().as_ref()),
+            _ => panic!("Invalid read size {}", std::mem::size_of::<T>()),
+        }
+    }
+
+    pub fn write32(&mut self, address: u32, value: u32) {
         // TODO: check which addresses can actually be written
         let channel = match address {
             0x1000_8000..0x1000_9000 => Channel::Vif0,
@@ -113,10 +123,7 @@ impl Dmac {
         }
     }
 
-    pub fn read<T: Bytes>(&self, address: u32) -> T {
-        if std::mem::size_of::<T>() != 4 {
-            panic!("Invalid DMAC read size: {}", std::mem::size_of::<T>());
-        }
+    pub fn read32(&self, address: u32) -> u32 {
         // TODO: check which addresses can actually be read
         let channel = match address {
             0x1000_8000..0x1000_9000 => Channel::Vif0,
@@ -129,24 +136,24 @@ impl Dmac {
             0x1000_C800..0x1000_D000 => Channel::Sif2,
             0x1000_D000..0x1000_D400 => Channel::FromSpr,
             0x1000_D400..0x1000_E000 => Channel::ToSpr,
-            0x1000_E000 => return T::from_bytes(&self.control.raw.to_bytes()),
-            0x1000_E010 => return T::from_bytes(&self.status.raw.to_bytes()),
-            0x1000_E020 => return T::from_bytes(&self.priority_control.to_bytes()),
-            0x1000_E030 => return T::from_bytes(&self.skip_quad_word.to_bytes()),
-            0x1000_E040 => return T::from_bytes(&self.ring_buffer_size.to_bytes()),
-            0x1000_E050 => return T::from_bytes(&self.ring_buffer_offset.to_bytes()),
-            0x1000_E060 => return T::from_bytes(&self.stall_address.to_bytes()),
-            0x1000_F520 => return T::from_bytes(&self.hold_status.to_bytes()),
+            0x1000_E000 => return self.control.raw,
+            0x1000_E010 => return self.status.raw,
+            0x1000_E020 => return self.priority_control,
+            0x1000_E030 => return self.skip_quad_word,
+            0x1000_E040 => return self.ring_buffer_size,
+            0x1000_E050 => return self.ring_buffer_offset,
+            0x1000_E060 => return self.stall_address,
+            0x1000_F520 => return self.hold_status,
             _ => panic!("Invalid DMAC read address: 0x{:08X}", address),
         };
         match address & 0xFF {
-            0x00 => T::from_bytes(&self.channels[channel].control.raw.to_bytes()),
-            0x10 => T::from_bytes(&self.channels[channel].memory_address.to_bytes()),
-            0x20 => T::from_bytes(&self.channels[channel].quad_word_count.to_bytes()),
-            0x30 => T::from_bytes(&self.channels[channel].tag_address.to_bytes()),
-            0x40 => T::from_bytes(&self.channels[channel].tag_address_save_0.to_bytes()),
-            0x50 => T::from_bytes(&self.channels[channel].tag_address_save_1.to_bytes()),
-            0x80 => T::from_bytes(&self.channels[channel].scratchpad_memory_address.to_bytes()),
+            0x00 => self.channels[channel].control.raw,
+            0x10 => self.channels[channel].memory_address,
+            0x20 => self.channels[channel].quad_word_count,
+            0x30 => self.channels[channel].tag_address,
+            0x40 => self.channels[channel].tag_address_save_0,
+            0x50 => self.channels[channel].tag_address_save_1,
+            0x80 => self.channels[channel].scratchpad_memory_address,
             _ => panic!("Invalid read from DMAC: 0x{:08X}", address),
         }
     }
