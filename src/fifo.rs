@@ -47,14 +47,6 @@ impl<T> Fifo<T> {
         }
     }
 
-    fn back_index(&self) -> usize {
-        self.wrap_index(self.front + self.len - 1)
-    }
-
-    fn next_back_index(&self) -> usize {
-        self.wrap_index(self.front + self.len)
-    }
-
     pub fn is_full(&self) -> bool {
         self.len == self.capacity
     }
