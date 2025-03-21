@@ -219,26 +219,32 @@ impl Core {
             Instruction::Bgez(rs, offset) => {
                 if self.get_register::<u64>(rs) as i64 >= 0 {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(self.program_counter.wrapping_add(offset << 2));
+                    self.set_delayed_branch_target(
+                        self.program_counter.wrapping_add((offset << 2) + 4),
+                    );
                 }
             }
             Instruction::J(_) => todo!(),
             Instruction::Jal(target) => {
                 self.set_register(Register::Ra, (self.program_counter + 8) as u64);
                 self.set_delayed_branch_target(
-                    ((self.program_counter + 4) & 0xF000_0000) + (target << 2),
+                    ((self.program_counter + 4) & 0xF000_0000).wrapping_add(target << 2),
                 );
             }
             Instruction::Beq(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(self.program_counter.wrapping_add(offset << 2));
+                    self.set_delayed_branch_target(
+                        self.program_counter.wrapping_add((offset << 2) + 4),
+                    );
                 }
             }
             Instruction::Bne(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(self.program_counter.wrapping_add(offset << 2));
+                    self.set_delayed_branch_target(
+                        self.program_counter.wrapping_add((offset << 2) + 4),
+                    );
                 }
             }
             Instruction::Addiu(rt, rs, imm) => {
