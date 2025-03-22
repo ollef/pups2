@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use enum_map::{Enum, EnumMap};
+use enum_map::Enum;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
