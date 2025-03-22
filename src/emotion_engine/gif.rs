@@ -1,8 +1,9 @@
 use enum_map::Enum;
+use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes, fifo::Fifo};
 
-use super::bus::Bus;
+use super::{bus::Bus, gs};
 
 pub struct Gif {
     pub fifo: Fifo<u128>,
@@ -233,6 +234,11 @@ impl Gif {
                         Register::Xyzf3 => todo!(),
                         Register::Xyz3 => todo!(),
                         Register::AddressData => {
+                            let register = gs::Register::from_u8(data.bits(64..=71) as u8)
+                                .expect("Invalid GS register");
+                            bus.gs
+                                .command_queue
+                                .push_back((register, data.bits(0..64) as u64));
                             // println!(
                             //     "GIF write address data: {:08X}={:08X}",
                             //     data.bits(64..=71),
@@ -253,14 +259,12 @@ impl Gif {
                 }
                 DataFormat::RegisterList => todo!(),
                 DataFormat::Image => {
-                    // println!(
-                    //     "GIF write image data (HWREG): {:08X}",
-                    //     data.bits(0..64) as u64
-                    // );
-                    // println!(
-                    //     "GIF write image data (HWREG): {:08X}",
-                    //     data.bits(64..128) as u64
-                    // );
+                    bus.gs
+                        .command_queue
+                        .push_back((gs::Register::TransmissionData, data.bits(0..64) as u64));
+                    bus.gs
+                        .command_queue
+                        .push_back((gs::Register::TransmissionData, data.bits(64..128) as u64));
                     bus.gif.transfer_status.set_loop_counter(loop_counter - 1);
                     // println!("Decrementing loop counter = {}", loop_counter - 1);
                 }

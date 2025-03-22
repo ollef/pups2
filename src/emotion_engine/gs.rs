@@ -1,9 +1,14 @@
+use std::collections::VecDeque;
+
+use num_derive::FromPrimitive;
+
 use crate::bytes::Bytes;
 
 const LOCAL_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 
 pub struct Gs {
     local_memory: Box<[u8]>,
+    pub command_queue: VecDeque<(Register, u64)>,
     pcrtc_mode: u64,            // PMODE
     sync_mode1: u64,            // SMODE1
     sync_mode2: u64,            // SMODE2
@@ -29,6 +34,7 @@ impl Gs {
     pub fn new() -> Gs {
         Gs {
             local_memory: vec![0; LOCAL_MEMORY_SIZE].into_boxed_slice(),
+            command_queue: VecDeque::new(),
             pcrtc_mode: 0,
             sync_mode1: 0,
             sync_mode2: 0,
@@ -113,4 +119,63 @@ impl Gs {
             _ => panic!("Invalid GS read64 from address: 0x{:08X}", address),
         }
     }
+}
+
+#[repr(u8)]
+#[derive(FromPrimitive)]
+pub enum Register {
+    Primitive = 0x00,             // PRIM Drawing primitive setting
+    Rgbaq = 0x01,                 // RGBAQ Vertex color setting
+    St = 0x02,                    // ST Vertex texture coordinate setting (texture coordinates)
+    Uv = 0x03,                    // UV Vertex texture coordinate setting (texel coordinates)
+    Xyzf2 = 0x04,                 // XYZF2 Vertex coordinate value setting
+    Xyz2 = 0x05,                  // XYZ2 Vertex coordinate value setting
+    Tex0_1 = 0x06,                // TEX0_1 Texture information setting
+    Tex0_2 = 0x07,                // TEX0_2 Texture information setting
+    Clamp1 = 0x08,                // CLAMP_1 Texture wrap mode
+    Clamp2 = 0x09,                // CLAMP_2 Texture wrap mode
+    Fog = 0x0a,                   // FOG Vertex fog value setting
+    Xyzf3 = 0x0c,                 // XYZF3 Vertex coordinate value setting (without drawing kick)
+    Xyz3 = 0x0d,                  // XYZ3 Vertex coordinate value setting (without drawing kick)
+    Texture1_1 = 0x14,            // TEX1_1 Texture information setting
+    Texture1_2 = 0x15,            // TEX1_2 Texture information setting
+    Texture2_1 = 0x16,            // TEX2_1 Texture information setting
+    Texture2_2 = 0x17,            // TEX2_2 Texture information setting
+    Xyoffset1 = 0x18,             // XYOFFSET_1 Offset value setting
+    Xyoffset2 = 0x19,             // XYOFFSET_2 Offset value setting
+    PrimitiveModeControl = 0x1a,  // PRMODECONT Specification of primitive attribute setting method
+    PrimitiveMode = 0x1b,         // PRMODE Drawing primitive attribute setting
+    TexClut = 0x1c,               // TEXCLUT CLUT position setting
+    ScanMask = 0x22,              // SCANMSK Raster address mask setting
+    MipMap1_1 = 0x34,             // MIPTBP1_1 MIPMAP information setting (Level 1 ñ 3)
+    MipMap1_2 = 0x35,             // MIPTBP1_2 MIPMAP information setting (Level 1 ñ 3)
+    MipMap2_1 = 0x36,             // MIPTBP2_1 MIPMAP information setting (Level 4 ñ 6)
+    MipMap2_2 = 0x37,             // MIPTBP2_2 MIPMAP information setting (Level 4 ñ 6)
+    TextureAlpha = 0x3b,          // TEXA Texture alpha value setting
+    FogColor = 0x3d,              // FOGCOL Distant fog color setting
+    TextureFlush = 0x3f,          // TEXFLUSH Texture page buffer disabling
+    Scissor1 = 0x40,              // SCISSOR_1 Scissoring area setting
+    Scissor2 = 0x41,              // SCISSOR_2 Scissoring area setting
+    Alpha1 = 0x42,                // ALPHA_1 Alpha blending setting
+    Alpha2 = 0x43,                // ALPHA_2 Alpha blending setting
+    DitherMatrix = 0x44,          // DIMX Dither matrix setting
+    DitherControl = 0x45,         // DTHE Dither control
+    ColorClamp = 0x46,            // COLCLAMP Color clamp control
+    PixelTest1 = 0x47,            // TEST_1 Pixel test control
+    PixelTest2 = 0x48,            // TEST_2 Pixel test control
+    PixelAlphaBlending = 0x49,    // PABE Alpha blending control in pixel units
+    FrameBufferAlpha1 = 0x4a,     // FBA_1 Alpha correction value
+    FrameBufferAlpha2 = 0x4b,     // FBA_2 Alpha correction value
+    FrameBuffer1 = 0x4c,          // FRAME_1 Frame buffer setting
+    FrameBuffer2 = 0x4d,          // FRAME_2 Frame buffer setting
+    ZBuffer1 = 0x4e,              // ZBUF_1 Z buffer setting
+    ZBuffer2 = 0x4f,              // ZBUF_2 Z buffer setting
+    BitBlitBuffer = 0x50,         // BITBLTBUF Setting for transmission between buffers
+    TransmissionPosition = 0x51,  // TRXPOS Specification for transmission area in buffers
+    TransmissionSize = 0x52,      // TRXREG Specification for transmission area in buffers
+    TransmissionDirection = 0x53, // TRXDIR Activation of transmission between buffers
+    TransmissionData = 0x54,      // HWREG Data port for transmission between buffers
+    SignalEvent = 0x60,           // SIGNAL SIGNAL event occurrence request
+    SignalFinish = 0x61,          // FINISH FINISH event occurrence request
+    SignalLabel = 0x62,           // LABEL LABEL event occurrence request
 }

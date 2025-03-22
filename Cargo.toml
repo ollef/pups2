@@ -8,3 +8,5 @@ argh = "0.1.13"
 derive_more = { version = "2.0.1", features = ["display"] }
 elf = "0.7.4"
 enum-map = "2.7.3"
+num-derive = "0.4.2"
+num-traits = "0.2.19"
