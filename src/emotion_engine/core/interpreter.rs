@@ -94,12 +94,13 @@ impl Core {
                     0x3c => {
                         let base = self.get_register::<u32>(Register::A1);
                         let size = self.get_register::<u32>(Register::A2);
+                        println!("Argument base={:#010x}, size={:#010x}", base, size);
                         let base = if base == 0xFFFF_FFFF {
                             0x0200_0000 - size
                         } else {
                             base
                         };
-                        println!("Stack base={:#010x}, Size={:#010x}", base, size);
+                        println!("Stack base={:#010x}, size={:#010x}", base, size);
                         let stack_pointer = base + size;
                         self.main_thread_stack_pointer = stack_pointer;
                         self.set_register::<u64>(Register::V0, stack_pointer.sign_extend());
@@ -108,13 +109,14 @@ impl Core {
                     0x3d => {
                         let base = self.get_register::<u32>(Register::A0);
                         let size = self.get_register::<u32>(Register::A1);
+                        println!("Argument base={:#010x}, size={:#010x}", base, size);
                         let base = if base == 0xFFFF_FFFF {
                             self.main_thread_stack_pointer
                         } else {
                             base
                         };
                         let end = base + size;
-                        println!("Heap base={:#010x}, Size={:#010x}", base, size);
+                        println!("Heap base={:#010x}, size={:#010x}", base, size);
                         self.set_register::<u64>(Register::V0, end.sign_extend());
                     }
                     // Flush cache
