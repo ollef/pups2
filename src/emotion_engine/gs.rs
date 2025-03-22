@@ -43,9 +43,9 @@ struct Registers {
     primitive: Primitive,                            // PRIM
     rgbaq: Rgbaq,                                    // RGBAQ
     xyz2: Xyz2,                                      // XYZ2
-    frame_buffer_settings: [FrameBufferSettings; 2], // FRAME_1, FRAME_2
     xy_offset: [XyOffset; 2],                        // XYOFFSET_1, XYOFFSET_2
     scissor: [Scissor; 2],                           // SCISSOR_1, SCISSOR_2
+    frame_buffer_settings: [FrameBufferSettings; 2], // FRAME_1, FRAME_2
     bit_blit_buffer: BitBlitBuffer,                  // BITBLTBUF
     transmission_position: TransmissionPosition,     // TRXPOS
     transmission_size: TransmissionSize,             // TRXREG
