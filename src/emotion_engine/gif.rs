@@ -19,7 +19,7 @@ pub struct Gif {
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
 #[repr(u8)]
 pub enum Register {
-    Prim,
+    Primitive,
     Rgbaq,
     St,
     Uv,
@@ -217,7 +217,7 @@ impl Gif {
                 DataFormat::Packed => {
                     let register = bus.gif.tag.register(register_counter);
                     match register {
-                        Register::Prim => {
+                        Register::Primitive => {
                             // println!("GIF write to prim: {:08X}", data.bits(0..=10));
                         }
                         Register::Rgbaq => todo!(),
