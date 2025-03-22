@@ -48,6 +48,7 @@ struct Registers {
     scissor: [Scissor; 2],                           // SCISSOR_1, SCISSOR_2
     bit_blit_buffer: BitBlitBuffer,                  // BITBLTBUF
     transmission_position: TransmissionPosition,     // TRXPOS
+    transmission_size: TransmissionSize,             // TRXREG
 }
 
 impl Gs {
@@ -183,7 +184,9 @@ impl Gs {
                 Register::TransmissionPosition => {
                     self.registers.transmission_position = TransmissionPosition::from(data)
                 }
-                Register::TransmissionSize => todo!(),
+                Register::TransmissionSize => {
+                    self.registers.transmission_size = TransmissionSize::from(data)
+                }
                 Register::TransmissionDirection => todo!(),
                 Register::TransmissionData => todo!(),
                 Register::SignalSignal => todo!(),
@@ -503,6 +506,21 @@ impl From<u64> for TransmissionPosition {
             direction: PixelTransmissionOrder::from_u64(raw.bits(59..=60)).unwrap_or_else(|| {
                 panic!("Invalid pixel transmission order {:b}", raw.bits(59..=60))
             }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct TransmissionSize {
+    width: u16,
+    height: u16,
+}
+
+impl From<u64> for TransmissionSize {
+    fn from(raw: u64) -> Self {
+        TransmissionSize {
+            width: raw.bits(0..=11) as u16,
+            height: raw.bits(32..=43) as u16,
         }
     }
 }
