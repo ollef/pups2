@@ -1,8 +1,10 @@
 use std::collections::VecDeque;
 
+use enum_map::{Enum, EnumMap};
 use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
-use crate::bytes::Bytes;
+use crate::{bits::Bits, bytes::Bytes};
 
 const LOCAL_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 
@@ -28,6 +30,9 @@ pub struct Gs {
     interrupt_mask: u64,        // IMR
     bus_direction: u64,         // BUSDIR
     signal_label_id: u64,       // SIGLBLID
+    frame_buffer_settings: [FrameBufferSettings; 2],
+    xy_offset: [XyOffset; 2],
+    scissor: [Scissor; 2],
 }
 
 impl Gs {
@@ -54,6 +59,9 @@ impl Gs {
             interrupt_mask: 0,
             bus_direction: 0,
             signal_label_id: 0,
+            frame_buffer_settings: [FrameBufferSettings::from(0); 2],
+            xy_offset: [XyOffset::from(0); 2],
+            scissor: [Scissor::from(0); 2],
         }
     }
 
@@ -122,13 +130,73 @@ impl Gs {
 
     pub fn step(&mut self) {
         while let Some((register, data)) = self.command_queue.pop_front() {
-            println!("Command: {:?}={:?}", register, data)
+            println!("Command: {:?}={:x?}", register, data);
+            match register {
+                Register::Primitive => todo!(),
+                Register::Rgbaq => todo!(),
+                Register::St => todo!(),
+                Register::Uv => todo!(),
+                Register::Xyzf2 => todo!(),
+                Register::Xyz2 => todo!(),
+                Register::Tex0_1 => todo!(),
+                Register::Tex0_2 => todo!(),
+                Register::Clamp1 => todo!(),
+                Register::Clamp2 => todo!(),
+                Register::Fog => todo!(),
+                Register::Xyzf3 => todo!(),
+                Register::Xyz3 => todo!(),
+                Register::Texture1_1 => todo!(),
+                Register::Texture1_2 => todo!(),
+                Register::Texture2_1 => todo!(),
+                Register::Texture2_2 => todo!(),
+                Register::XyOffset1 => self.xy_offset[0] = XyOffset::from(data),
+                Register::XyOffset2 => self.xy_offset[1] = XyOffset::from(data),
+                Register::PrimitiveModeControl => todo!(),
+                Register::PrimitiveMode => todo!(),
+                Register::TexClut => todo!(),
+                Register::ScanMask => todo!(),
+                Register::MipMap1_1 => todo!(),
+                Register::MipMap1_2 => todo!(),
+                Register::MipMap2_1 => todo!(),
+                Register::MipMap2_2 => todo!(),
+                Register::TextureAlpha => todo!(),
+                Register::FogColor => todo!(),
+                Register::TextureFlush => todo!(),
+                Register::Scissor1 => self.scissor[0] = Scissor::from(data),
+                Register::Scissor2 => self.scissor[1] = Scissor::from(data),
+                Register::Alpha1 => todo!(),
+                Register::Alpha2 => todo!(),
+                Register::DitherMatrix => todo!(),
+                Register::DitherControl => todo!(),
+                Register::ColorClamp => todo!(),
+                Register::PixelTest1 => todo!(),
+                Register::PixelTest2 => todo!(),
+                Register::PixelAlphaBlending => todo!(),
+                Register::FrameBufferAlpha1 => todo!(),
+                Register::FrameBufferAlpha2 => todo!(),
+                Register::FrameBuffer1 => {
+                    self.frame_buffer_settings[0] = FrameBufferSettings::from(data)
+                }
+                Register::FrameBuffer2 => {
+                    self.frame_buffer_settings[1] = FrameBufferSettings::from(data)
+                }
+                Register::ZBuffer1 => todo!(),
+                Register::ZBuffer2 => todo!(),
+                Register::BitBlitBuffer => todo!(),
+                Register::TransmissionPosition => todo!(),
+                Register::TransmissionSize => todo!(),
+                Register::TransmissionDirection => todo!(),
+                Register::TransmissionData => todo!(),
+                Register::SignalSignal => todo!(),
+                Register::SignalFinish => todo!(),
+                Register::SignalLabel => todo!(),
+            }
         }
     }
 }
 
 #[repr(u8)]
-#[derive(FromPrimitive, Debug)]
+#[derive(FromPrimitive, Debug, Enum)]
 pub enum Register {
     Primitive = 0x00,             // PRIM Drawing primitive setting
     Rgbaq = 0x01,                 // RGBAQ Vertex color setting
@@ -184,4 +252,71 @@ pub enum Register {
     SignalSignal = 0x60,          // SIGNAL SIGNAL event occurrence request
     SignalFinish = 0x61,          // FINISH FINISH event occurrence request
     SignalLabel = 0x62,           // LABEL LABEL event occurrence request
+}
+
+#[derive(Debug, Clone, Copy)]
+struct FrameBufferSettings {
+    pub base_pointer: u32,
+    pub width: u32,
+    pub pixel_storage_format: PixelStorageFormat,
+    pub drawing_mask: u32,
+}
+
+impl From<u64> for FrameBufferSettings {
+    fn from(raw: u64) -> Self {
+        FrameBufferSettings {
+            base_pointer: raw.bits(0..=8) as u32 * 2048,
+            width: raw.bits(16..=21) as u32 * 64,
+            pixel_storage_format: PixelStorageFormat::from_u8(raw.bits(24..=29) as u8)
+                .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(24..=29))),
+            drawing_mask: raw.bits(32..64) as u32,
+        }
+    }
+}
+
+#[repr(u8)]
+#[derive(FromPrimitive, Debug, Clone, Copy)]
+enum PixelStorageFormat {
+    Psmct32 = 0b000000,
+    Psmct24 = 0b000001,
+    Psmct16 = 0b000010,
+    Psmct16s = 0b001010,
+    Psmz32 = 0b110000,
+    Psmz24 = 0b110001,
+    Psmz16 = 0b110010,
+    Psmz16s = 0b111010,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct XyOffset {
+    pub x: u16,
+    pub y: u16,
+}
+
+impl From<u64> for XyOffset {
+    fn from(raw: u64) -> Self {
+        XyOffset {
+            x: raw.bits(0..16) as u16,
+            y: raw.bits(32..48) as u16,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Scissor {
+    pub x0: u16,
+    pub x1: u16,
+    pub y0: u16,
+    pub y1: u16,
+}
+
+impl From<u64> for Scissor {
+    fn from(raw: u64) -> Self {
+        Scissor {
+            x0: raw.bits(0..=10) as u16,
+            x1: raw.bits(16..=26) as u16,
+            y0: raw.bits(32..=42) as u16,
+            y1: raw.bits(48..=58) as u16,
+        }
+    }
 }
