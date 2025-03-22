@@ -49,6 +49,7 @@ struct Registers {
     bit_blit_buffer: BitBlitBuffer,                  // BITBLTBUF
     transmission_position: TransmissionPosition,     // TRXPOS
     transmission_size: TransmissionSize,             // TRXREG
+    transmission_direction: TransmissionDirection,   // TRXDIR
 }
 
 impl Gs {
@@ -187,7 +188,10 @@ impl Gs {
                 Register::TransmissionSize => {
                     self.registers.transmission_size = TransmissionSize::from(data)
                 }
-                Register::TransmissionDirection => todo!(),
+                Register::TransmissionDirection => {
+                    self.registers.transmission_direction =
+                        TransmissionDirection::from_u64(data.bits(0..=1)).expect("Invalid TRXDIR")
+                }
                 Register::TransmissionData => todo!(),
                 Register::SignalSignal => todo!(),
                 Register::SignalFinish => todo!(),
@@ -523,4 +527,13 @@ impl From<u64> for TransmissionSize {
             height: raw.bits(32..=43) as u16,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default, FromPrimitive)]
+pub enum TransmissionDirection {
+    #[default]
+    HostToLocal,
+    LocalToHost,
+    LocalToLocal,
+    Deactivated,
 }
