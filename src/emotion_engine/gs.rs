@@ -32,6 +32,7 @@ pub struct Gs {
     signal_label_id: u64,                            // SIGLBLID
     primitive: Primitive,                            // PRIM
     rgbaq: Rgbaq,                                    // RGBAQ
+    xyz2: Xyz2,                                      // XYZ2
     frame_buffer_settings: [FrameBufferSettings; 2], // FRAME_1, FRAME_2
     xy_offset: [XyOffset; 2],                        // XYOFFSET_1, XYOFFSET_2
     scissor: [Scissor; 2],                           // SCISSOR_1, SCISSOR_2
@@ -63,6 +64,7 @@ impl Gs {
             signal_label_id: 0,
             primitive: Primitive::from(0),
             rgbaq: Rgbaq::from(0),
+            xyz2: Xyz2::from(0),
             frame_buffer_settings: [FrameBufferSettings::from(0); 2],
             xy_offset: [XyOffset::from(0); 2],
             scissor: [Scissor::from(0); 2],
@@ -141,7 +143,7 @@ impl Gs {
                 Register::St => todo!(),
                 Register::Uv => todo!(),
                 Register::Xyzf2 => todo!(),
-                Register::Xyz2 => todo!(),
+                Register::Xyz2 => self.xyz2 = Xyz2::from(data),
                 Register::Tex0_1 => todo!(),
                 Register::Tex0_2 => todo!(),
                 Register::Clamp1 => todo!(),
@@ -425,6 +427,23 @@ impl From<u64> for Rgbaq {
             b: raw.bits(16..24) as u8,
             a: raw.bits(24..32) as u8,
             q: f32::from_bits(raw.bits(32..64) as u32),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Xyz2 {
+    x: u16,
+    y: u16,
+    z: u32,
+}
+
+impl From<u64> for Xyz2 {
+    fn from(raw: u64) -> Self {
+        Xyz2 {
+            x: raw.bits(0..16) as u16,
+            y: raw.bits(16..32) as u16,
+            z: raw.bits(32..64) as u32,
         }
     }
 }
