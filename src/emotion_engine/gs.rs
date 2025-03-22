@@ -46,6 +46,7 @@ struct Registers {
     frame_buffer_settings: [FrameBufferSettings; 2], // FRAME_1, FRAME_2
     xy_offset: [XyOffset; 2],                        // XYOFFSET_1, XYOFFSET_2
     scissor: [Scissor; 2],                           // SCISSOR_1, SCISSOR_2
+    bit_blit_buffer: BitBlitBuffer,                  // BITBLTBUF
 }
 
 impl Gs {
@@ -175,7 +176,9 @@ impl Gs {
                 }
                 Register::ZBuffer1 => todo!(),
                 Register::ZBuffer2 => todo!(),
-                Register::BitBlitBuffer => todo!(),
+                Register::BitBlitBuffer => {
+                    self.registers.bit_blit_buffer = BitBlitBuffer::from(data)
+                }
                 Register::TransmissionPosition => todo!(),
                 Register::TransmissionSize => todo!(),
                 Register::TransmissionDirection => todo!(),
@@ -267,7 +270,6 @@ impl From<u64> for FrameBufferSettings {
     }
 }
 
-#[repr(u8)]
 #[derive(FromPrimitive, Debug, Clone, Copy, Default)]
 enum PixelStorageFormat {
     #[default]
@@ -275,6 +277,11 @@ enum PixelStorageFormat {
     Psmct24 = 0b000001,
     Psmct16 = 0b000010,
     Psmct16s = 0b001010,
+    Psmt8 = 0b010011,
+    Psmt4 = 0b010100,
+    Psmt8h = 0b011011,
+    Psmt4hl = 0b100100,
+    Psmt4hh = 0b101100,
     Psmz32 = 0b110000,
     Psmz24 = 0b110001,
     Psmz16 = 0b110010,
@@ -432,6 +439,35 @@ impl From<u64> for Xyz2 {
             x: raw.bits(0..16) as u16,
             y: raw.bits(16..32) as u16,
             z: raw.bits(32..64) as u32,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct BitBlitBuffer {
+    source_base_pointer: u32,
+    source_width: u16,
+    source_pixel_storage_format: PixelStorageFormat,
+    destination_base_pointer: u32,
+    destination_width: u16,
+    destination_pixel_storage_format: PixelStorageFormat,
+}
+
+impl From<u64> for BitBlitBuffer {
+    fn from(value: u64) -> Self {
+        BitBlitBuffer {
+            source_base_pointer: value.bits(0..=13) as u32 * 64,
+            source_width: value.bits(16..=21) as u16 * 64,
+            source_pixel_storage_format: PixelStorageFormat::from_u8(value.bits(24..=29) as u8)
+                .unwrap_or_else(|| {
+                    panic!("Invalid pixel storage format {:b}", value.bits(24..=29))
+                }),
+            destination_base_pointer: value.bits(32..=45) as u32 * 64,
+            destination_width: value.bits(48..=53) as u16 * 64,
+            destination_pixel_storage_format:
+                PixelStorageFormat::from_u8(value.bits(56..=61) as u8).unwrap_or_else(|| {
+                    panic!("Invalid pixel storage format {:b}", value.bits(56..=61))
+                }),
         }
     }
 }
