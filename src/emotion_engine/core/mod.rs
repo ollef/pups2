@@ -25,7 +25,7 @@ pub struct Core {
     pub cop0_registers: EnumMap<Cop0Register, u32>,
     pub delayed_branch_target: Option<u32>,
     pub mmu: Mmu,
-    pub main_thread_stack_base: u32, // TODO: This should be in the thread state
+    pub main_thread_stack_pointer: u32, // TODO: This should be in the thread state
 }
 
 impl Core {
@@ -37,7 +37,7 @@ impl Core {
             cop0_registers: enum_map! { _ => 0 },
             delayed_branch_target: None,
             mmu: Mmu::new(),
-            main_thread_stack_base: 0,
+            main_thread_stack_pointer: 0,
         }
     }
 
