@@ -11,25 +11,35 @@ const LOCAL_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 pub struct Gs {
     local_memory: Box<[u8]>,
     pub command_queue: VecDeque<(Register, u64)>,
-    pcrtc_mode: u64,                                 // PMODE
-    sync_mode1: u64,                                 // SMODE1
-    sync_mode2: u64,                                 // SMODE2
-    dram_refresh: u64,                               // SRFSH
-    synch1: u64,                                     // SYNCH1
-    synch2: u64,                                     // SYNCH2
-    syncv: u64,                                      // SYNCV
-    display_frame_buffer1: u64,                      // DISPFB1
-    display1: u64,                                   // DISPLAY1
-    display_frame_buffer2: u64,                      // DISPFB1
-    display2: u64,                                   // DISPLAY1
-    write_buffer: u64,                               // EXTBUF
-    write_data: u64,                                 // EXTDATA
-    write_start: u64,                                // EXTWRITE
-    background_color: u64,                           // BGCOLOR
-    status: u64,                                     // CSR
-    interrupt_mask: u64,                             // IMR
-    bus_direction: u64,                              // BUSDIR
-    signal_label_id: u64,                            // SIGLBLID
+    privileged_registers: PrivilegedRegisters,
+    registers: Registers,
+}
+
+#[derive(Debug, Default)]
+struct PrivilegedRegisters {
+    pcrtc_mode: u64,            // PMODE
+    sync_mode1: u64,            // SMODE1
+    sync_mode2: u64,            // SMODE2
+    dram_refresh: u64,          // SRFSH
+    synch1: u64,                // SYNCH1
+    synch2: u64,                // SYNCH2
+    syncv: u64,                 // SYNCV
+    display_frame_buffer1: u64, // DISPFB1
+    display1: u64,              // DISPLAY1
+    display_frame_buffer2: u64, // DISPFB1
+    display2: u64,              // DISPLAY1
+    write_buffer: u64,          // EXTBUF
+    write_data: u64,            // EXTDATA
+    write_start: u64,           // EXTWRITE
+    background_color: u64,      // BGCOLOR
+    status: u64,                // CSR
+    interrupt_mask: u64,        // IMR
+    bus_direction: u64,         // BUSDIR
+    signal_label_id: u64,       // SIGLBLID
+}
+
+#[derive(Debug, Default)]
+struct Registers {
     primitive: Primitive,                            // PRIM
     rgbaq: Rgbaq,                                    // RGBAQ
     xyz2: Xyz2,                                      // XYZ2
@@ -43,31 +53,8 @@ impl Gs {
         Gs {
             local_memory: vec![0; LOCAL_MEMORY_SIZE].into_boxed_slice(),
             command_queue: VecDeque::new(),
-            pcrtc_mode: 0,
-            sync_mode1: 0,
-            sync_mode2: 0,
-            dram_refresh: 0,
-            synch1: 0,
-            synch2: 0,
-            syncv: 0,
-            display_frame_buffer1: 0,
-            display1: 0,
-            display_frame_buffer2: 0,
-            display2: 0,
-            write_buffer: 0,
-            write_data: 0,
-            write_start: 0,
-            background_color: 0,
-            status: 0,
-            interrupt_mask: 0,
-            bus_direction: 0,
-            signal_label_id: 0,
-            primitive: Primitive::from(0),
-            rgbaq: Rgbaq::from(0),
-            xyz2: Xyz2::from(0),
-            frame_buffer_settings: [FrameBufferSettings::from(0); 2],
-            xy_offset: [XyOffset::from(0); 2],
-            scissor: [Scissor::from(0); 2],
+            privileged_registers: PrivilegedRegisters::default(),
+            registers: Registers::default(),
         }
     }
 
@@ -86,50 +73,50 @@ impl Gs {
 
     pub fn write_privileged64(&mut self, address: u32, value: u64) {
         match address {
-            0x1200_0000 => self.pcrtc_mode = value,
-            0x1200_0010 => self.sync_mode1 = value,
-            0x1200_0020 => self.sync_mode2 = value,
-            0x1200_0030 => self.dram_refresh = value,
-            0x1200_0040 => self.synch1 = value,
-            0x1200_0050 => self.synch2 = value,
-            0x1200_0060 => self.syncv = value,
-            0x1200_0070 => self.display_frame_buffer1 = value,
-            0x1200_0080 => self.display1 = value,
-            0x1200_0090 => self.display_frame_buffer2 = value,
-            0x1200_00A0 => self.display2 = value,
-            0x1200_00B0 => self.write_buffer = value,
-            0x1200_00C0 => self.write_data = value,
-            0x1200_00D0 => self.write_start = value,
-            0x1200_00E0 => self.background_color = value,
-            0x1200_1000 => self.status = value,
-            0x1200_1010 => self.interrupt_mask = value,
-            0x1200_1040 => self.bus_direction = value,
-            0x1200_1080 => self.signal_label_id = value,
+            0x1200_0000 => self.privileged_registers.pcrtc_mode = value,
+            0x1200_0010 => self.privileged_registers.sync_mode1 = value,
+            0x1200_0020 => self.privileged_registers.sync_mode2 = value,
+            0x1200_0030 => self.privileged_registers.dram_refresh = value,
+            0x1200_0040 => self.privileged_registers.synch1 = value,
+            0x1200_0050 => self.privileged_registers.synch2 = value,
+            0x1200_0060 => self.privileged_registers.syncv = value,
+            0x1200_0070 => self.privileged_registers.display_frame_buffer1 = value,
+            0x1200_0080 => self.privileged_registers.display1 = value,
+            0x1200_0090 => self.privileged_registers.display_frame_buffer2 = value,
+            0x1200_00A0 => self.privileged_registers.display2 = value,
+            0x1200_00B0 => self.privileged_registers.write_buffer = value,
+            0x1200_00C0 => self.privileged_registers.write_data = value,
+            0x1200_00D0 => self.privileged_registers.write_start = value,
+            0x1200_00E0 => self.privileged_registers.background_color = value,
+            0x1200_1000 => self.privileged_registers.status = value,
+            0x1200_1010 => self.privileged_registers.interrupt_mask = value,
+            0x1200_1040 => self.privileged_registers.bus_direction = value,
+            0x1200_1080 => self.privileged_registers.signal_label_id = value,
             _ => panic!("Invalid GS write64 {} to address: 0x{:08x}", value, address),
         }
     }
 
     pub fn read_privileged64(&self, address: u32) -> u64 {
         match address {
-            0x1200_0000 => self.pcrtc_mode,
-            0x1200_0010 => self.sync_mode1,
-            0x1200_0020 => self.sync_mode2,
-            0x1200_0030 => self.dram_refresh,
-            0x1200_0040 => self.synch1,
-            0x1200_0050 => self.synch2,
-            0x1200_0060 => self.syncv,
-            0x1200_0070 => self.display_frame_buffer1,
-            0x1200_0080 => self.display1,
-            0x1200_0090 => self.display_frame_buffer2,
-            0x1200_00A0 => self.display2,
-            0x1200_00B0 => self.write_buffer,
-            0x1200_00C0 => self.write_data,
-            0x1200_00D0 => self.write_start,
-            0x1200_00E0 => self.background_color,
-            0x1200_1000 => self.status,
-            0x1200_1010 => self.interrupt_mask,
-            0x1200_1040 => self.bus_direction,
-            0x1200_1080 => self.signal_label_id,
+            0x1200_0000 => self.privileged_registers.pcrtc_mode,
+            0x1200_0010 => self.privileged_registers.sync_mode1,
+            0x1200_0020 => self.privileged_registers.sync_mode2,
+            0x1200_0030 => self.privileged_registers.dram_refresh,
+            0x1200_0040 => self.privileged_registers.synch1,
+            0x1200_0050 => self.privileged_registers.synch2,
+            0x1200_0060 => self.privileged_registers.syncv,
+            0x1200_0070 => self.privileged_registers.display_frame_buffer1,
+            0x1200_0080 => self.privileged_registers.display1,
+            0x1200_0090 => self.privileged_registers.display_frame_buffer2,
+            0x1200_00A0 => self.privileged_registers.display2,
+            0x1200_00B0 => self.privileged_registers.write_buffer,
+            0x1200_00C0 => self.privileged_registers.write_data,
+            0x1200_00D0 => self.privileged_registers.write_start,
+            0x1200_00E0 => self.privileged_registers.background_color,
+            0x1200_1000 => self.privileged_registers.status,
+            0x1200_1010 => self.privileged_registers.interrupt_mask,
+            0x1200_1040 => self.privileged_registers.bus_direction,
+            0x1200_1080 => self.privileged_registers.signal_label_id,
             _ => panic!("Invalid GS read64 from address: 0x{:08x}", address),
         }
     }
@@ -138,12 +125,12 @@ impl Gs {
         while let Some((register, data)) = self.command_queue.pop_front() {
             println!("Command: {:?}={:x?}", register, data);
             match register {
-                Register::Primitive => self.primitive = Primitive::from(data),
-                Register::Rgbaq => self.rgbaq = Rgbaq::from(data),
+                Register::Primitive => self.registers.primitive = Primitive::from(data),
+                Register::Rgbaq => self.registers.rgbaq = Rgbaq::from(data),
                 Register::St => todo!(),
                 Register::Uv => todo!(),
                 Register::Xyzf2 => todo!(),
-                Register::Xyz2 => self.xyz2 = Xyz2::from(data),
+                Register::Xyz2 => self.registers.xyz2 = Xyz2::from(data),
                 Register::Tex0_1 => todo!(),
                 Register::Tex0_2 => todo!(),
                 Register::Clamp1 => todo!(),
@@ -155,8 +142,8 @@ impl Gs {
                 Register::Texture1_2 => todo!(),
                 Register::Texture2_1 => todo!(),
                 Register::Texture2_2 => todo!(),
-                Register::XyOffset1 => self.xy_offset[0] = XyOffset::from(data),
-                Register::XyOffset2 => self.xy_offset[1] = XyOffset::from(data),
+                Register::XyOffset1 => self.registers.xy_offset[0] = XyOffset::from(data),
+                Register::XyOffset2 => self.registers.xy_offset[1] = XyOffset::from(data),
                 Register::PrimitiveModeControl => todo!(),
                 Register::PrimitiveMode => todo!(),
                 Register::TexClut => todo!(),
@@ -168,8 +155,8 @@ impl Gs {
                 Register::TextureAlpha => todo!(),
                 Register::FogColor => todo!(),
                 Register::TextureFlush => todo!(),
-                Register::Scissor1 => self.scissor[0] = Scissor::from(data),
-                Register::Scissor2 => self.scissor[1] = Scissor::from(data),
+                Register::Scissor1 => self.registers.scissor[0] = Scissor::from(data),
+                Register::Scissor2 => self.registers.scissor[1] = Scissor::from(data),
                 Register::Alpha1 => todo!(),
                 Register::Alpha2 => todo!(),
                 Register::DitherMatrix => todo!(),
@@ -181,10 +168,10 @@ impl Gs {
                 Register::FrameBufferAlpha1 => todo!(),
                 Register::FrameBufferAlpha2 => todo!(),
                 Register::FrameBuffer1 => {
-                    self.frame_buffer_settings[0] = FrameBufferSettings::from(data)
+                    self.registers.frame_buffer_settings[0] = FrameBufferSettings::from(data)
                 }
                 Register::FrameBuffer2 => {
-                    self.frame_buffer_settings[1] = FrameBufferSettings::from(data)
+                    self.registers.frame_buffer_settings[1] = FrameBufferSettings::from(data)
                 }
                 Register::ZBuffer1 => todo!(),
                 Register::ZBuffer2 => todo!(),
@@ -260,7 +247,7 @@ pub enum Register {
     SignalLabel = 0x62,           // LABEL LABEL event occurrence request
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 struct FrameBufferSettings {
     pub base_pointer: u32,
     pub width: u32,
@@ -281,8 +268,9 @@ impl From<u64> for FrameBufferSettings {
 }
 
 #[repr(u8)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, Default)]
 enum PixelStorageFormat {
+    #[default]
     Psmct32 = 0b000000,
     Psmct24 = 0b000001,
     Psmct16 = 0b000010,
@@ -293,7 +281,7 @@ enum PixelStorageFormat {
     Psmz16s = 0b111010,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 struct XyOffset {
     pub x: u16,
     pub y: u16,
@@ -308,7 +296,7 @@ impl From<u64> for XyOffset {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 struct Scissor {
     pub x0: u16,
     pub x1: u16,
@@ -327,7 +315,7 @@ impl From<u64> for Scissor {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 struct Primitive {
     type_: PrimitiveType,                               // PRIM
     shading_method: ShadingMethod,                      // IIP
@@ -369,9 +357,9 @@ impl From<u64> for Primitive {
     }
 }
 
-#[repr(u8)]
-#[derive(FromPrimitive, Debug, Clone, Copy)]
+#[derive(FromPrimitive, Debug, Clone, Copy, Default)]
 enum PrimitiveType {
+    #[default]
     Point,
     Line,
     LineStrip,
@@ -382,35 +370,35 @@ enum PrimitiveType {
     SpecificationProhibited,
 }
 
-#[repr(u8)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 enum ShadingMethod {
+    #[default]
     Flat,
     Gouraud,
 }
 
-#[repr(u8)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 enum TextureCoordinateMethod {
+    #[default]
     Stq,
     Uv,
 }
 
-#[repr(u8)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 enum Context {
+    #[default]
     Context1,
     Context2,
 }
 
-#[repr(u8)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 enum FragmentValueControl {
+    #[default]
     Unfixed,
     Fixed,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 struct Rgbaq {
     r: u8,
     g: u8,
@@ -431,7 +419,7 @@ impl From<u64> for Rgbaq {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 struct Xyz2 {
     x: u16,
     y: u16,
