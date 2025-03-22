@@ -47,6 +47,7 @@ struct Registers {
     xy_offset: [XyOffset; 2],                        // XYOFFSET_1, XYOFFSET_2
     scissor: [Scissor; 2],                           // SCISSOR_1, SCISSOR_2
     bit_blit_buffer: BitBlitBuffer,                  // BITBLTBUF
+    transmission_position: TransmissionPosition,     // TRXPOS
 }
 
 impl Gs {
@@ -179,7 +180,9 @@ impl Gs {
                 Register::BitBlitBuffer => {
                     self.registers.bit_blit_buffer = BitBlitBuffer::from(data)
                 }
-                Register::TransmissionPosition => todo!(),
+                Register::TransmissionPosition => {
+                    self.registers.transmission_position = TransmissionPosition::from(data)
+                }
                 Register::TransmissionSize => todo!(),
                 Register::TransmissionDirection => todo!(),
                 Register::TransmissionData => todo!(),
@@ -468,6 +471,38 @@ impl From<u64> for BitBlitBuffer {
                 PixelStorageFormat::from_u8(value.bits(56..=61) as u8).unwrap_or_else(|| {
                     panic!("Invalid pixel storage format {:b}", value.bits(56..=61))
                 }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct TransmissionPosition {
+    source_x: u16,
+    source_y: u16,
+    destination_x: u16,
+    destination_y: u16,
+    direction: PixelTransmissionOrder,
+}
+
+#[derive(Debug, Clone, Copy, Default, FromPrimitive)]
+enum PixelTransmissionOrder {
+    #[default]
+    UpperLeftToLowerRight,
+    LowerLeftToUpperRight,
+    UpperRightToLowerLeft,
+    LowerRightToUpperLeft,
+}
+
+impl From<u64> for TransmissionPosition {
+    fn from(raw: u64) -> Self {
+        TransmissionPosition {
+            source_x: raw.bits(0..=10) as u16,
+            source_y: raw.bits(16..=26) as u16,
+            destination_x: raw.bits(32..=42) as u16,
+            destination_y: raw.bits(48..=58) as u16,
+            direction: PixelTransmissionOrder::from_u64(raw.bits(59..=60)).unwrap_or_else(|| {
+                panic!("Invalid pixel transmission order {:b}", raw.bits(59..=60))
+            }),
         }
     }
 }
