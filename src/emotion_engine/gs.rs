@@ -11,28 +11,30 @@ const LOCAL_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 pub struct Gs {
     local_memory: Box<[u8]>,
     pub command_queue: VecDeque<(Register, u64)>,
-    pcrtc_mode: u64,            // PMODE
-    sync_mode1: u64,            // SMODE1
-    sync_mode2: u64,            // SMODE2
-    dram_refresh: u64,          // SRFSH
-    synch1: u64,                // SYNCH1
-    synch2: u64,                // SYNCH2
-    syncv: u64,                 // SYNCV
-    display_frame_buffer1: u64, // DISPFB1
-    display1: u64,              // DISPLAY1
-    display_frame_buffer2: u64, // DISPFB1
-    display2: u64,              // DISPLAY1
-    write_buffer: u64,          // EXTBUF
-    write_data: u64,            // EXTDATA
-    write_start: u64,           // EXTWRITE
-    background_color: u64,      // BGCOLOR
-    status: u64,                // CSR
-    interrupt_mask: u64,        // IMR
-    bus_direction: u64,         // BUSDIR
-    signal_label_id: u64,       // SIGLBLID
-    frame_buffer_settings: [FrameBufferSettings; 2],
-    xy_offset: [XyOffset; 2],
-    scissor: [Scissor; 2],
+    pcrtc_mode: u64,                                 // PMODE
+    sync_mode1: u64,                                 // SMODE1
+    sync_mode2: u64,                                 // SMODE2
+    dram_refresh: u64,                               // SRFSH
+    synch1: u64,                                     // SYNCH1
+    synch2: u64,                                     // SYNCH2
+    syncv: u64,                                      // SYNCV
+    display_frame_buffer1: u64,                      // DISPFB1
+    display1: u64,                                   // DISPLAY1
+    display_frame_buffer2: u64,                      // DISPFB1
+    display2: u64,                                   // DISPLAY1
+    write_buffer: u64,                               // EXTBUF
+    write_data: u64,                                 // EXTDATA
+    write_start: u64,                                // EXTWRITE
+    background_color: u64,                           // BGCOLOR
+    status: u64,                                     // CSR
+    interrupt_mask: u64,                             // IMR
+    bus_direction: u64,                              // BUSDIR
+    signal_label_id: u64,                            // SIGLBLID
+    primitive: Primitive,                            // PRIM
+    rgbaq: Rgbaq,                                    // RGBAQ
+    frame_buffer_settings: [FrameBufferSettings; 2], // FRAME_1, FRAME_2
+    xy_offset: [XyOffset; 2],                        // XYOFFSET_1, XYOFFSET_2
+    scissor: [Scissor; 2],                           // SCISSOR_1, SCISSOR_2
 }
 
 impl Gs {
@@ -59,6 +61,8 @@ impl Gs {
             interrupt_mask: 0,
             bus_direction: 0,
             signal_label_id: 0,
+            primitive: Primitive::from(0),
+            rgbaq: Rgbaq::from(0),
             frame_buffer_settings: [FrameBufferSettings::from(0); 2],
             xy_offset: [XyOffset::from(0); 2],
             scissor: [Scissor::from(0); 2],
@@ -132,8 +136,8 @@ impl Gs {
         while let Some((register, data)) = self.command_queue.pop_front() {
             println!("Command: {:?}={:x?}", register, data);
             match register {
-                Register::Primitive => todo!(),
-                Register::Rgbaq => todo!(),
+                Register::Primitive => self.primitive = Primitive::from(data),
+                Register::Rgbaq => self.rgbaq = Rgbaq::from(data),
                 Register::St => todo!(),
                 Register::Uv => todo!(),
                 Register::Xyzf2 => todo!(),
@@ -317,6 +321,110 @@ impl From<u64> for Scissor {
             x1: raw.bits(16..=26) as u16,
             y0: raw.bits(32..=42) as u16,
             y1: raw.bits(48..=58) as u16,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Primitive {
+    type_: PrimitiveType,                               // PRIM
+    shading_method: ShadingMethod,                      // IIP
+    texture_mapping: bool,                              // TME
+    fogging: bool,                                      // FGE
+    alpha_blending: bool,                               // ABE
+    anti_aliasing: bool,                                // AA1
+    texture_coordinate_method: TextureCoordinateMethod, // FST
+    context: Context,                                   // CTXT
+    fragment_value_control: FragmentValueControl,       // FIX
+}
+
+impl From<u64> for Primitive {
+    fn from(raw: u64) -> Self {
+        Primitive {
+            type_: PrimitiveType::from_u8(raw.bits(0..=2) as u8)
+                .unwrap_or_else(|| panic!("Invalid primitive type {:b}", raw.bits(0..=2))),
+            shading_method: match raw.bit(3) {
+                false => ShadingMethod::Flat,
+                true => ShadingMethod::Gouraud,
+            },
+            texture_mapping: raw.bit(4),
+            fogging: raw.bit(5),
+            alpha_blending: raw.bit(6),
+            anti_aliasing: raw.bit(7),
+            texture_coordinate_method: match raw.bit(8) {
+                false => TextureCoordinateMethod::Stq,
+                true => TextureCoordinateMethod::Uv,
+            },
+            context: match raw.bit(9) {
+                false => Context::Context1,
+                true => Context::Context2,
+            },
+            fragment_value_control: match raw.bit(10) {
+                false => FragmentValueControl::Unfixed,
+                true => FragmentValueControl::Fixed,
+            },
+        }
+    }
+}
+
+#[repr(u8)]
+#[derive(FromPrimitive, Debug, Clone, Copy)]
+enum PrimitiveType {
+    Point,
+    Line,
+    LineStrip,
+    Triangle,
+    TriangleStrip,
+    TriangleFan,
+    Sprite,
+    SpecificationProhibited,
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+enum ShadingMethod {
+    Flat,
+    Gouraud,
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+enum TextureCoordinateMethod {
+    Stq,
+    Uv,
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+enum Context {
+    Context1,
+    Context2,
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+enum FragmentValueControl {
+    Unfixed,
+    Fixed,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Rgbaq {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+    q: f32,
+}
+
+impl From<u64> for Rgbaq {
+    fn from(raw: u64) -> Self {
+        Rgbaq {
+            r: raw.bits(0..8) as u8,
+            g: raw.bits(8..16) as u8,
+            b: raw.bits(16..24) as u8,
+            a: raw.bits(24..32) as u8,
+            q: f32::from_bits(raw.bits(32..64) as u32),
         }
     }
 }
