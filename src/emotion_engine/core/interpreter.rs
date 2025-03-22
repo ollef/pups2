@@ -306,7 +306,7 @@ impl Core {
                     memory_word.sign_extend()
                 } else {
                     let existing = self.get_register::<u64>(rt);
-                    (existing & (!0 << ((4 - byte) * 8))) | (memory_word >> (byte * 8)) as u64
+                    existing & u64::mask(byte * 8..64) | (memory_word >> (byte * 8)) as u64
                 };
                 self.set_register(rt, value);
             }
