@@ -104,7 +104,7 @@ pub fn disassemble(data: u32) -> Instruction {
         0b100001 => Instruction::Lh(rt, rs, imm16),
         0b100011 => Instruction::Lw(rt, rs, imm16),
         0b100100 => Instruction::Lbu(rt, rs, imm16),
-        0b100101 => Instruction::Lwr(rt, rs, imm16),
+        0b100110 => Instruction::Lwr(rt, rs, imm16),
         0b101000 => Instruction::Sb(rt, rs, imm16),
         0b101001 => Instruction::Sh(rt, rs, imm16),
         0b101011 => Instruction::Sw(rt, rs, imm16),
