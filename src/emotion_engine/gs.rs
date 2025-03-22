@@ -147,8 +147,8 @@ pub enum Register {
     Texture1_2 = 0x15,            // TEX1_2 Texture information setting
     Texture2_1 = 0x16,            // TEX2_1 Texture information setting
     Texture2_2 = 0x17,            // TEX2_2 Texture information setting
-    Xyoffset1 = 0x18,             // XYOFFSET_1 Offset value setting
-    Xyoffset2 = 0x19,             // XYOFFSET_2 Offset value setting
+    XyOffset1 = 0x18,             // XYOFFSET_1 Offset value setting
+    XyOffset2 = 0x19,             // XYOFFSET_2 Offset value setting
     PrimitiveModeControl = 0x1a,  // PRMODECONT Specification of primitive attribute setting method
     PrimitiveMode = 0x1b,         // PRMODE Drawing primitive attribute setting
     TexClut = 0x1c,               // TEXCLUT CLUT position setting
@@ -181,7 +181,7 @@ pub enum Register {
     TransmissionSize = 0x52,      // TRXREG Specification for transmission area in buffers
     TransmissionDirection = 0x53, // TRXDIR Activation of transmission between buffers
     TransmissionData = 0x54,      // HWREG Data port for transmission between buffers
-    SignalEvent = 0x60,           // SIGNAL SIGNAL event occurrence request
+    SignalSignal = 0x60,          // SIGNAL SIGNAL event occurrence request
     SignalFinish = 0x61,          // FINISH FINISH event occurrence request
     SignalLabel = 0x62,           // LABEL LABEL event occurrence request
 }
