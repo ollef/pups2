@@ -94,24 +94,28 @@ impl Core {
                     0x3c => {
                         let base = self.get_register::<u32>(Register::A1);
                         let size = self.get_register::<u32>(Register::A2);
-                        let stack_address = if base == 0xFFFF_FFFF {
-                            0x0200_0000
+                        let base = if base == 0xFFFF_FFFF {
+                            0x0200_0000 - size
                         } else {
-                            base + size
-                        } - 0x2A0;
-                        self.main_thread_stack_base = stack_address;
-                        self.set_register::<u64>(Register::V0, stack_address.sign_extend());
+                            base
+                        };
+                        println!("Stack base={:#010x}, Size={:#010x}", base, size);
+                        let stack_pointer = base + size;
+                        self.main_thread_stack_pointer = stack_pointer;
+                        self.set_register::<u64>(Register::V0, stack_pointer.sign_extend());
                     }
                     // RFU061/initialize heap
                     0x3d => {
                         let base = self.get_register::<u32>(Register::A0);
                         let size = self.get_register::<u32>(Register::A1);
-                        let heap_address = if size == 0xFFFF_FFFF {
-                            self.main_thread_stack_base
+                        let base = if base == 0xFFFF_FFFF {
+                            self.main_thread_stack_pointer
                         } else {
-                            base + size
+                            base
                         };
-                        self.set_register::<u64>(Register::V0, heap_address.sign_extend());
+                        let end = base + size;
+                        println!("Heap base={:#010x}, Size={:#010x}", base, size);
+                        self.set_register::<u64>(Register::V0, end.sign_extend());
                     }
                     // Flush cache
                     0x64 => {}
