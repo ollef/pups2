@@ -119,10 +119,16 @@ impl Gs {
             _ => panic!("Invalid GS read64 from address: 0x{:08X}", address),
         }
     }
+
+    pub fn step(&mut self) {
+        while let Some((register, data)) = self.command_queue.pop_front() {
+            println!("Command: {:?}={:?}", register, data)
+        }
+    }
 }
 
 #[repr(u8)]
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, Debug)]
 pub enum Register {
     Primitive = 0x00,             // PRIM Drawing primitive setting
     Rgbaq = 0x01,                 // RGBAQ Vertex color setting

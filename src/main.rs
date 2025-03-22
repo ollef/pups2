@@ -76,6 +76,7 @@ fn execute(file: &str) -> std::io::Result<()> {
         core.step_interpreter(&mut bus);
         Dmac::step(&mut bus);
         Gif::step(&mut bus);
+        bus.gs.step();
         bus.timer.step();
     }
     // for program_header in elf.segments().expect("Failed to get program headers") {
