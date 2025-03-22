@@ -219,6 +219,9 @@ impl Gif {
                     match register {
                         Register::Primitive => {
                             // println!("GIF write to prim: {:08x}", data.bits(0..=10));
+                            bus.gs
+                                .command_queue
+                                .push_back((gs::Register::Primitive, data.bits(0..=10) as u64));
                         }
                         Register::Rgbaq => todo!(),
                         Register::St => todo!(),
