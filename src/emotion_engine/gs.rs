@@ -91,7 +91,7 @@ impl Gs {
             0x1200_1010 => self.interrupt_mask = value,
             0x1200_1040 => self.bus_direction = value,
             0x1200_1080 => self.signal_label_id = value,
-            _ => panic!("Invalid GS write64 {} to address: 0x{:08X}", value, address),
+            _ => panic!("Invalid GS write64 {} to address: 0x{:08x}", value, address),
         }
     }
 
@@ -116,7 +116,7 @@ impl Gs {
             0x1200_1010 => self.interrupt_mask,
             0x1200_1040 => self.bus_direction,
             0x1200_1080 => self.signal_label_id,
-            _ => panic!("Invalid GS read64 from address: 0x{:08X}", address),
+            _ => panic!("Invalid GS read64 from address: 0x{:08x}", address),
         }
     }
 

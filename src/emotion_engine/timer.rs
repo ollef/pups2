@@ -48,7 +48,7 @@ impl Timer {
             0x1000_1000..0x1000_1800 => 2,
             0x1000_1800..0x1000_2000 => 3,
             _ => panic!(
-                "Invalid TIMER write of {} at address: 0x{:08X}",
+                "Invalid TIMER write of {} at address: 0x{:08x}",
                 value, address
             ),
         };
@@ -58,7 +58,7 @@ impl Timer {
             0x20 => todo!(),
             0x30 => todo!(),
             _ => panic!(
-                "Invalid TIMER write of {} at address: 0x{:08X}",
+                "Invalid TIMER write of {} at address: 0x{:08x}",
                 value, address
             ),
         }
@@ -70,14 +70,14 @@ impl Timer {
             0x1000_0800..0x1000_1000 => 1,
             0x1000_1000..0x1000_1800 => 2,
             0x1000_1800..0x1000_2000 => 3,
-            _ => panic!("Invalid TIMER read at address: 0x{:08X}", address),
+            _ => panic!("Invalid TIMER read at address: 0x{:08x}", address),
         };
         match address & 0xFF {
             0x00 => (self.bus_clock - self.timers[timer].start) as u16,
             0x10 => self.timers[timer].mode,
             0x20 => self.timers[timer].compare,
             0x30 => self.timers[timer].hold,
-            _ => panic!("Invalid TIMER read at address: 0x{:08X}", address),
+            _ => panic!("Invalid TIMER read at address: 0x{:08x}", address),
         }
     }
 

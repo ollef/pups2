@@ -1,4 +1,4 @@
-use std::fmt::UpperHex;
+use std::fmt::LowerHex;
 
 use crate::bytes::Bytes;
 
@@ -28,7 +28,7 @@ impl Bus {
         }
     }
 
-    pub fn read<T: Bytes + UpperHex>(&self, address: u32) -> T {
+    pub fn read<T: Bytes + LowerHex>(&self, address: u32) -> T {
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         match address {
             0x0000_0000..0x1000_0000 => {
@@ -37,22 +37,22 @@ impl Bus {
             }
             0x1000_0000..0x1000_2000 => {
                 let result = self.timer.read(address);
-                println!("Read from TIMER: 0x{:08X}==0x{:08X}", address, result);
+                println!("Read from TIMER: 0x{:08x}==0x{:08x}", address, result);
                 result
             }
             0x1000_3000..0x1000_3800 => {
                 let result = self.gif.read(address);
-                println!("Read from GIF: 0x{:08X}==0x{:08X}", address, result);
+                println!("Read from GIF: 0x{:08x}==0x{:08x}", address, result);
                 result
             }
             0x1000_8000..0x1000_F000 => {
                 let result = self.dmac.read(address);
-                println!("Read from DMAC: 0x{:08X}==0x{:08X}", address, result);
+                println!("Read from DMAC: 0x{:08x}==0x{:08x}", address, result);
                 result
             }
             0x1200_0000..0x1201_0000 => {
                 let result = self.gs.read_privileged(address);
-                println!("Read from GS: 0x{:08X}==0x{:08X}", address, result);
+                println!("Read from GS: 0x{:08x}==0x{:08x}", address, result);
                 result
             }
             0x1FC0_0000..0x2000_0000 => {
@@ -60,34 +60,34 @@ impl Bus {
                 T::from_bytes(&self.boot_memory[address..address + std::mem::size_of::<T>()])
             }
             _ => {
-                panic!("Invalid read at address: 0x{:08X}", address);
+                panic!("Invalid read at address: 0x{:08x}", address);
             }
         }
     }
 
-    pub fn write<T: Bytes + UpperHex>(&mut self, address: u32, value: T) {
+    pub fn write<T: Bytes + LowerHex>(&mut self, address: u32, value: T) {
         assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
         match address {
             0x0000_0000..0x1000_0000 => {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
-                // println!("Write to main memory: 0x{:08X}:=0x{:08X}", address, value);
+                println!("Write to main memory: 0x{:08x}:=0x{:08x}", address, value);
                 self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
             }
             0x1000_0000..0x1000_2000 => {
-                println!("Write to TIMER: 0x{:08X}:=0x{:08X}", address, value);
+                println!("Write to TIMER: 0x{:08x}:=0x{:08x}", address, value);
                 self.timer.write(address, value)
             }
             0x1000_3000..0x1000_3800 => {
-                println!("Write to GIF: 0x{:08X}:=0x{:08X}", address, value);
+                println!("Write to GIF: 0x{:08x}:=0x{:08x}", address, value);
                 self.gif.write(address, value)
             }
             0x1000_8000..0x1000_F000 => {
-                println!("Write to DMAC: 0x{:08X}:=0x{:08X}", address, value);
+                println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
                 self.dmac.write(address, value)
             }
             0x1200_0000..0x1201_0000 => {
-                println!("Write to GS: 0x{:08X}:=0x{:08X}", address, value);
+                println!("Write to GS: 0x{:08x}:=0x{:08x}", address, value);
                 self.gs.write_privileged(address, value)
             }
             0x1FC0_0000..0x2000_0000 => {
@@ -96,7 +96,7 @@ impl Bus {
                     .copy_from_slice(value.to_bytes().as_ref());
             }
             _ => {
-                panic!("Invalid write at address: 0x{:08X}", address);
+                panic!("Invalid write at address: 0x{:08x}", address);
             }
         }
     }

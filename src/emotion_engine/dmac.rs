@@ -109,7 +109,7 @@ impl Dmac {
                 self.hold_control = value;
                 return;
             }
-            _ => panic!("Invalid DMAC write address: 0x{:08X}", address),
+            _ => panic!("Invalid DMAC write address: 0x{:08x}", address),
         };
         match address & 0xFF {
             0x00 => self.channels[channel].control.raw = value,
@@ -119,7 +119,7 @@ impl Dmac {
             0x40 => self.channels[channel].tag_address_save_0 = value,
             0x50 => self.channels[channel].tag_address_save_1 = value,
             0x80 => self.channels[channel].scratchpad_memory_address = value,
-            _ => panic!("Invalid write to DMAC: 0x{:08X} {}", address, value),
+            _ => panic!("Invalid write to DMAC: 0x{:08x} {}", address, value),
         }
     }
 
@@ -144,7 +144,7 @@ impl Dmac {
             0x1000_E050 => return self.ring_buffer_offset,
             0x1000_E060 => return self.stall_address,
             0x1000_F520 => return self.hold_status,
-            _ => panic!("Invalid DMAC read address: 0x{:08X}", address),
+            _ => panic!("Invalid DMAC read address: 0x{:08x}", address),
         };
         match address & 0xFF {
             0x00 => self.channels[channel].control.raw,
@@ -154,7 +154,7 @@ impl Dmac {
             0x40 => self.channels[channel].tag_address_save_0,
             0x50 => self.channels[channel].tag_address_save_1,
             0x80 => self.channels[channel].scratchpad_memory_address,
-            _ => panic!("Invalid read from DMAC: 0x{:08X}", address),
+            _ => panic!("Invalid read from DMAC: 0x{:08x}", address),
         }
     }
 
@@ -174,7 +174,7 @@ impl Dmac {
                                 let data = bus.read::<u128>(*memory_address);
                                 bus.gif.fifo.push_back(data);
                                 // println!(
-                                //     "Transferred quad word 0x{:08X} from 0x{:08X} to GIF FIFO (QWC={})",
+                                //     "Transferred quad word 0x{:08x} from 0x{:08x} to GIF FIFO (QWC={})",
                                 //     data,
                                 //     memory_address, quad_word_count
                                 // );
@@ -184,7 +184,7 @@ impl Dmac {
                             if *quad_word_count == 0 {
                                 registers.control.set_start(false);
                                 // println!(
-                                //     "GIF channel finished, control=0x{:08X}",
+                                //     "GIF channel finished, control=0x{:08x}",
                                 //     registers.control.raw
                                 // );
                             }

@@ -168,7 +168,7 @@ impl Gif {
             0x1000_3000 => self.control = value,
             0x1000_3010 => self.mode = value,
             _ => panic!(
-                "Invalid GIF write of {} at address: 0x{:08X}",
+                "Invalid GIF write of {} at address: 0x{:08x}",
                 value, address
             ),
         }
@@ -184,13 +184,13 @@ impl Gif {
             0x1000_3080 => self.transfer_status.raw,
             0x1000_3090 => self.path3_transfer_status_counter,
             0x1000_30a0 => self.path3_tag_value,
-            _ => panic!("Invalid GIF read at address: 0x{:08X}", address),
+            _ => panic!("Invalid GIF read at address: 0x{:08x}", address),
         }
     }
 
     pub fn step(bus: &mut Bus) {
         while let Some(data) = bus.gif.fifo.pop_front() {
-            // println!("FIFO data = {:08X}", data);
+            // println!("FIFO data = {:08x}", data);
             let loop_counter = bus.gif.transfer_status.loop_counter();
             let mut register_counter = bus.gif.transfer_status.register_counter();
             if loop_counter == 0 && register_counter == 0 {
@@ -218,7 +218,7 @@ impl Gif {
                     let register = bus.gif.tag.register(register_counter);
                     match register {
                         Register::Primitive => {
-                            // println!("GIF write to prim: {:08X}", data.bits(0..=10));
+                            // println!("GIF write to prim: {:08x}", data.bits(0..=10));
                         }
                         Register::Rgbaq => todo!(),
                         Register::St => todo!(),
@@ -240,7 +240,7 @@ impl Gif {
                                 .command_queue
                                 .push_back((register, data.bits(0..64) as u64));
                             // println!(
-                            //     "GIF write address data: {:08X}={:08X}",
+                            //     "GIF write address data: {:08x}={:08x}",
                             //     data.bits(64..=71),
                             //     data.bits(0..64)
                             // );
