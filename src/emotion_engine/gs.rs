@@ -103,24 +103,7 @@ impl Gs {
 
     pub fn read_privileged64(&self, address: u32) -> u64 {
         match address {
-            0x1200_0000 => self.privileged_registers.pcrtc_mode,
-            0x1200_0010 => self.privileged_registers.sync_mode1,
-            0x1200_0020 => self.privileged_registers.sync_mode2,
-            0x1200_0030 => self.privileged_registers.dram_refresh,
-            0x1200_0040 => self.privileged_registers.synch1,
-            0x1200_0050 => self.privileged_registers.synch2,
-            0x1200_0060 => self.privileged_registers.syncv,
-            0x1200_0070 => self.privileged_registers.display_frame_buffer1,
-            0x1200_0080 => self.privileged_registers.display1,
-            0x1200_0090 => self.privileged_registers.display_frame_buffer2,
-            0x1200_00A0 => self.privileged_registers.display2,
-            0x1200_00B0 => self.privileged_registers.write_buffer,
-            0x1200_00C0 => self.privileged_registers.write_data,
-            0x1200_00D0 => self.privileged_registers.write_start,
-            0x1200_00E0 => self.privileged_registers.background_color,
             0x1200_1000 => self.privileged_registers.status,
-            0x1200_1010 => self.privileged_registers.interrupt_mask,
-            0x1200_1040 => self.privileged_registers.bus_direction,
             0x1200_1080 => self.privileged_registers.signal_label_id,
             _ => panic!("Invalid GS read64 from address: 0x{:08x}", address),
         }
