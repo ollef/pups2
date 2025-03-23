@@ -10,7 +10,7 @@ pub fn disassemble(data: u32) -> Instruction {
     let rs = Register::from(s);
     let rt = Register::from(t);
     let rd = Register::from(d);
-    let shamt = data.bits(6..10) as u8;
+    let shamt = data.bits(6..11) as u8;
     let imm16 = data.bits(0..16) as u16;
     let imm26 = data.bits(0..26);
     match opcode {
