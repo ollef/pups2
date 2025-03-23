@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, path::Display};
+use std::collections::VecDeque;
 
 use enum_map::Enum;
 use num_derive::FromPrimitive;
@@ -25,9 +25,9 @@ struct PrivilegedRegisters {
     synch2: u64,                               // SYNCH2
     syncv: u64,                                // SYNCV
     display_frame_buffer1: DisplayFrameBuffer, // DISPFB1
-    display1: u64,                             // DISPLAY1
+    display1: Display,                         // DISPLAY1
     display_frame_buffer2: DisplayFrameBuffer, // DISPFB1
-    display2: u64,                             // DISPLAY1
+    display2: Display,                         // DISPLAY1
     write_buffer: u64,                         // EXTBUF
     write_data: u64,                           // EXTDATA
     write_start: u64,                          // EXTWRITE
@@ -111,7 +111,10 @@ impl Gs {
                     self.privileged_registers.display_frame_buffer1
                 )
             }
-            0x1200_0080 => self.privileged_registers.display1 = value,
+            0x1200_0080 => {
+                self.privileged_registers.display1 = Display::from(value);
+                println!("Display 1 = {:?}", self.privileged_registers.display1)
+            }
             0x1200_0090 => {
                 self.privileged_registers.display_frame_buffer2 = DisplayFrameBuffer::from(value);
                 println!(
@@ -119,7 +122,10 @@ impl Gs {
                     self.privileged_registers.display_frame_buffer2
                 )
             }
-            0x1200_00A0 => self.privileged_registers.display2 = value,
+            0x1200_00A0 => {
+                self.privileged_registers.display2 = Display::from(value);
+                println!("Display 2 = {:?}", self.privileged_registers.display2)
+            }
             0x1200_00B0 => self.privileged_registers.write_buffer = value,
             0x1200_00C0 => self.privileged_registers.write_data = value,
             0x1200_00D0 => self.privileged_registers.write_start = value,
@@ -281,6 +287,31 @@ impl Gs {
                 Register::SignalFinish => todo!(),
                 Register::SignalLabel => todo!(),
             }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct Display {
+    x_position: u16,              // DX
+    y_position: u16,              // DX
+    horizontal_magnification: u8, // MAGH
+    vertical_magnification: u8,   // MAGV
+    width: u16,                   // DW
+    height: u16,                  // DH
+}
+
+impl From<u64> for Display {
+    fn from(raw: u64) -> Self {
+        let horizontal_magnification = raw.bits(23..=26) as u8 + 1;
+        let vertical_magnification = raw.bits(27..=28) as u8 + 1;
+        Display {
+            x_position: raw.bits(0..=11) as u16 / horizontal_magnification as u16,
+            y_position: raw.bits(12..=22) as u16 / vertical_magnification as u16,
+            horizontal_magnification,
+            vertical_magnification,
+            width: (raw.bits(32..=43) as u16 + 1) / horizontal_magnification as u16,
+            height: (raw.bits(44..=54) as u16 + 1) / vertical_magnification as u16,
         }
     }
 }
