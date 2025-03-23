@@ -50,6 +50,7 @@ struct Registers {
     transmission_position: TransmissionPosition,     // TRXPOS
     transmission_size: TransmissionSize,             // TRXREG
     transmission_direction: TransmissionDirection,   // TRXDIR
+    transmission_pixel: u32,
 }
 
 impl Gs {
@@ -188,11 +189,74 @@ impl Gs {
                 Register::TransmissionSize => {
                     self.registers.transmission_size = TransmissionSize::from(data)
                 }
-                Register::TransmissionDirection => {
+                Register::TransmissionActivation => {
                     self.registers.transmission_direction =
-                        TransmissionDirection::from_u64(data.bits(0..=1)).expect("Invalid TRXDIR")
+                        TransmissionDirection::from_u64(data.bits(0..=1)).expect("Invalid TRXDIR");
+                    self.registers.transmission_pixel = 0;
                 }
-                Register::TransmissionData => todo!(),
+                Register::TransmissionData => match self.registers.transmission_direction {
+                    TransmissionDirection::HostToLocal => {
+                        match self.registers.transmission_position.direction {
+                            PixelTransmissionOrder::UpperLeftToLowerRight => {}
+                            _ => todo!(),
+                        }
+                        let destination_x =
+                            self.registers.transmission_position.destination_x as u32;
+                        let destination_y =
+                            self.registers.transmission_position.destination_y as u32;
+                        let width = self.registers.transmission_size.width as u32;
+                        let height = self.registers.transmission_size.height as u32;
+                        let pixels = width * height;
+                        let base_pointer = self.registers.bit_blit_buffer.destination_base_pointer;
+                        let buffer_width = self.registers.bit_blit_buffer.destination_width as u32;
+                        let pixel = &mut self.registers.transmission_pixel;
+                        match self
+                            .registers
+                            .bit_blit_buffer
+                            .destination_pixel_storage_format
+                        {
+                            PixelStorageFormat::Psmct32 => {
+                                for i in 0..2 {
+                                    let data = data.bits(i * 32..(i + 1) * 32) as u32;
+                                    let x = (destination_x + *pixel % width) % 2048;
+                                    let y = (destination_y + *pixel / width) % 2048;
+                                    let destination_pointer =
+                                        base_pointer + (y * buffer_width + x) * 4;
+                                    self.local_memory[destination_pointer as usize
+                                        ..destination_pointer as usize + 4]
+                                        .copy_from_slice(&data.to_bytes());
+                                    *pixel += 1;
+                                    if *pixel == pixels {
+                                        println!("Transmission complete");
+                                        self.registers.transmission_direction =
+                                            TransmissionDirection::Deactivated;
+                                        break;
+                                    }
+                                }
+                            }
+                            PixelStorageFormat::Psmct24 => todo!(),
+                            PixelStorageFormat::Psmct16 => todo!(),
+                            PixelStorageFormat::Psmct16s => todo!(),
+                            PixelStorageFormat::Psmt8 => todo!(),
+                            PixelStorageFormat::Psmt4 => todo!(),
+                            PixelStorageFormat::Psmt8h => todo!(),
+                            PixelStorageFormat::Psmt4hl => todo!(),
+                            PixelStorageFormat::Psmt4hh => todo!(),
+                            PixelStorageFormat::Psmz32 => todo!(),
+                            PixelStorageFormat::Psmz24 => todo!(),
+                            PixelStorageFormat::Psmz16 => todo!(),
+                            PixelStorageFormat::Psmz16s => todo!(),
+                        }
+                        // let source = source as usize;
+                        // let destination = destination as usize;
+                        // let size = size as usize;
+                        // self.local_memory[destination..destination + size]
+                        //     .copy_from_slice(&self.local_memory[source..source + size]);
+                    }
+                    TransmissionDirection::LocalToHost => todo!(),
+                    TransmissionDirection::LocalToLocal => todo!(),
+                    TransmissionDirection::Deactivated => {}
+                },
                 Register::SignalSignal => todo!(),
                 Register::SignalFinish => todo!(),
                 Register::SignalLabel => todo!(),
@@ -204,60 +268,60 @@ impl Gs {
 #[repr(u8)]
 #[derive(FromPrimitive, Debug, Enum)]
 pub enum Register {
-    Primitive = 0x00,             // PRIM Drawing primitive setting
-    Rgbaq = 0x01,                 // RGBAQ Vertex color setting
-    St = 0x02,                    // ST Vertex texture coordinate setting (texture coordinates)
-    Uv = 0x03,                    // UV Vertex texture coordinate setting (texel coordinates)
-    Xyzf2 = 0x04,                 // XYZF2 Vertex coordinate value setting
-    Xyz2 = 0x05,                  // XYZ2 Vertex coordinate value setting
-    Tex0_1 = 0x06,                // TEX0_1 Texture information setting
-    Tex0_2 = 0x07,                // TEX0_2 Texture information setting
-    Clamp1 = 0x08,                // CLAMP_1 Texture wrap mode
-    Clamp2 = 0x09,                // CLAMP_2 Texture wrap mode
-    Fog = 0x0a,                   // FOG Vertex fog value setting
-    Xyzf3 = 0x0c,                 // XYZF3 Vertex coordinate value setting (without drawing kick)
-    Xyz3 = 0x0d,                  // XYZ3 Vertex coordinate value setting (without drawing kick)
-    Texture1_1 = 0x14,            // TEX1_1 Texture information setting
-    Texture1_2 = 0x15,            // TEX1_2 Texture information setting
-    Texture2_1 = 0x16,            // TEX2_1 Texture information setting
-    Texture2_2 = 0x17,            // TEX2_2 Texture information setting
-    XyOffset1 = 0x18,             // XYOFFSET_1 Offset value setting
-    XyOffset2 = 0x19,             // XYOFFSET_2 Offset value setting
-    PrimitiveModeControl = 0x1a,  // PRMODECONT Specification of primitive attribute setting method
-    PrimitiveMode = 0x1b,         // PRMODE Drawing primitive attribute setting
-    TexClut = 0x1c,               // TEXCLUT CLUT position setting
-    ScanMask = 0x22,              // SCANMSK Raster address mask setting
-    MipMap1_1 = 0x34,             // MIPTBP1_1 MIPMAP information setting (Level 1 ñ 3)
-    MipMap1_2 = 0x35,             // MIPTBP1_2 MIPMAP information setting (Level 1 ñ 3)
-    MipMap2_1 = 0x36,             // MIPTBP2_1 MIPMAP information setting (Level 4 ñ 6)
-    MipMap2_2 = 0x37,             // MIPTBP2_2 MIPMAP information setting (Level 4 ñ 6)
-    TextureAlpha = 0x3b,          // TEXA Texture alpha value setting
-    FogColor = 0x3d,              // FOGCOL Distant fog color setting
-    TextureFlush = 0x3f,          // TEXFLUSH Texture page buffer disabling
-    Scissor1 = 0x40,              // SCISSOR_1 Scissoring area setting
-    Scissor2 = 0x41,              // SCISSOR_2 Scissoring area setting
-    Alpha1 = 0x42,                // ALPHA_1 Alpha blending setting
-    Alpha2 = 0x43,                // ALPHA_2 Alpha blending setting
-    DitherMatrix = 0x44,          // DIMX Dither matrix setting
-    DitherControl = 0x45,         // DTHE Dither control
-    ColorClamp = 0x46,            // COLCLAMP Color clamp control
-    PixelTest1 = 0x47,            // TEST_1 Pixel test control
-    PixelTest2 = 0x48,            // TEST_2 Pixel test control
-    PixelAlphaBlending = 0x49,    // PABE Alpha blending control in pixel units
-    FrameBufferAlpha1 = 0x4a,     // FBA_1 Alpha correction value
-    FrameBufferAlpha2 = 0x4b,     // FBA_2 Alpha correction value
-    FrameBuffer1 = 0x4c,          // FRAME_1 Frame buffer setting
-    FrameBuffer2 = 0x4d,          // FRAME_2 Frame buffer setting
-    ZBuffer1 = 0x4e,              // ZBUF_1 Z buffer setting
-    ZBuffer2 = 0x4f,              // ZBUF_2 Z buffer setting
-    BitBlitBuffer = 0x50,         // BITBLTBUF Setting for transmission between buffers
-    TransmissionPosition = 0x51,  // TRXPOS Specification for transmission area in buffers
-    TransmissionSize = 0x52,      // TRXREG Specification for transmission area in buffers
-    TransmissionDirection = 0x53, // TRXDIR Activation of transmission between buffers
-    TransmissionData = 0x54,      // HWREG Data port for transmission between buffers
-    SignalSignal = 0x60,          // SIGNAL SIGNAL event occurrence request
-    SignalFinish = 0x61,          // FINISH FINISH event occurrence request
-    SignalLabel = 0x62,           // LABEL LABEL event occurrence request
+    Primitive = 0x00,              // PRIM Drawing primitive setting
+    Rgbaq = 0x01,                  // RGBAQ Vertex color setting
+    St = 0x02,                     // ST Vertex texture coordinate setting (texture coordinates)
+    Uv = 0x03,                     // UV Vertex texture coordinate setting (texel coordinates)
+    Xyzf2 = 0x04,                  // XYZF2 Vertex coordinate value setting
+    Xyz2 = 0x05,                   // XYZ2 Vertex coordinate value setting
+    Tex0_1 = 0x06,                 // TEX0_1 Texture information setting
+    Tex0_2 = 0x07,                 // TEX0_2 Texture information setting
+    Clamp1 = 0x08,                 // CLAMP_1 Texture wrap mode
+    Clamp2 = 0x09,                 // CLAMP_2 Texture wrap mode
+    Fog = 0x0a,                    // FOG Vertex fog value setting
+    Xyzf3 = 0x0c,                  // XYZF3 Vertex coordinate value setting (without drawing kick)
+    Xyz3 = 0x0d,                   // XYZ3 Vertex coordinate value setting (without drawing kick)
+    Texture1_1 = 0x14,             // TEX1_1 Texture information setting
+    Texture1_2 = 0x15,             // TEX1_2 Texture information setting
+    Texture2_1 = 0x16,             // TEX2_1 Texture information setting
+    Texture2_2 = 0x17,             // TEX2_2 Texture information setting
+    XyOffset1 = 0x18,              // XYOFFSET_1 Offset value setting
+    XyOffset2 = 0x19,              // XYOFFSET_2 Offset value setting
+    PrimitiveModeControl = 0x1a,   // PRMODECONT Specification of primitive attribute setting method
+    PrimitiveMode = 0x1b,          // PRMODE Drawing primitive attribute setting
+    TexClut = 0x1c,                // TEXCLUT CLUT position setting
+    ScanMask = 0x22,               // SCANMSK Raster address mask setting
+    MipMap1_1 = 0x34,              // MIPTBP1_1 MIPMAP information setting (Level 1 ñ 3)
+    MipMap1_2 = 0x35,              // MIPTBP1_2 MIPMAP information setting (Level 1 ñ 3)
+    MipMap2_1 = 0x36,              // MIPTBP2_1 MIPMAP information setting (Level 4 ñ 6)
+    MipMap2_2 = 0x37,              // MIPTBP2_2 MIPMAP information setting (Level 4 ñ 6)
+    TextureAlpha = 0x3b,           // TEXA Texture alpha value setting
+    FogColor = 0x3d,               // FOGCOL Distant fog color setting
+    TextureFlush = 0x3f,           // TEXFLUSH Texture page buffer disabling
+    Scissor1 = 0x40,               // SCISSOR_1 Scissoring area setting
+    Scissor2 = 0x41,               // SCISSOR_2 Scissoring area setting
+    Alpha1 = 0x42,                 // ALPHA_1 Alpha blending setting
+    Alpha2 = 0x43,                 // ALPHA_2 Alpha blending setting
+    DitherMatrix = 0x44,           // DIMX Dither matrix setting
+    DitherControl = 0x45,          // DTHE Dither control
+    ColorClamp = 0x46,             // COLCLAMP Color clamp control
+    PixelTest1 = 0x47,             // TEST_1 Pixel test control
+    PixelTest2 = 0x48,             // TEST_2 Pixel test control
+    PixelAlphaBlending = 0x49,     // PABE Alpha blending control in pixel units
+    FrameBufferAlpha1 = 0x4a,      // FBA_1 Alpha correction value
+    FrameBufferAlpha2 = 0x4b,      // FBA_2 Alpha correction value
+    FrameBuffer1 = 0x4c,           // FRAME_1 Frame buffer setting
+    FrameBuffer2 = 0x4d,           // FRAME_2 Frame buffer setting
+    ZBuffer1 = 0x4e,               // ZBUF_1 Z buffer setting
+    ZBuffer2 = 0x4f,               // ZBUF_2 Z buffer setting
+    BitBlitBuffer = 0x50,          // BITBLTBUF Setting for transmission between buffers
+    TransmissionPosition = 0x51,   // TRXPOS Specification for transmission area in buffers
+    TransmissionSize = 0x52,       // TRXREG Specification for transmission area in buffers
+    TransmissionActivation = 0x53, // TRXDIR Activation of transmission between buffers
+    TransmissionData = 0x54,       // HWREG Data port for transmission between buffers
+    SignalSignal = 0x60,           // SIGNAL SIGNAL event occurrence request
+    SignalFinish = 0x61,           // FINISH FINISH event occurrence request
+    SignalLabel = 0x62,            // LABEL LABEL event occurrence request
 }
 
 #[derive(Debug, Clone, Copy, Default)]
