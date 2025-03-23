@@ -156,9 +156,11 @@ impl Gs {
                 Register::FrameBufferAlpha1 => todo!(),
                 Register::FrameBufferAlpha2 => todo!(),
                 Register::FrameBuffer1 => {
+                    println!("Frame buffer 1: {:x?}", data);
                     self.registers.frame_buffer_settings[0] = FrameBufferSettings::from(data)
                 }
                 Register::FrameBuffer2 => {
+                    println!("Frame buffer 2: {:x?}", data);
                     self.registers.frame_buffer_settings[1] = FrameBufferSettings::from(data)
                 }
                 Register::ZBuffer1 => todo!(),
@@ -205,12 +207,15 @@ impl Gs {
                                     let y = (destination_y + *pixel / width) % 2048;
                                     let destination_pointer =
                                         base_pointer + (y * buffer_width + x) * 4;
+                                    println!(
+                                        "Transmitting pixel at ({x}, {y}) = {destination_pointer} buffer width={buffer_width}"
+                                    );
                                     self.local_memory[destination_pointer as usize
                                         ..destination_pointer as usize + 4]
                                         .copy_from_slice(&data.to_bytes());
                                     *pixel += 1;
                                     if *pixel == pixels {
-                                        println!("Transmission complete");
+                                        println!("Transmission of {pixels} pixels complete");
                                         self.registers.transmission_direction =
                                             TransmissionDirection::Deactivated;
                                         break;
