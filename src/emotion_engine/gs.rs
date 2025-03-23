@@ -273,11 +273,6 @@ impl Gs {
                             PixelStorageFormat::Psmz16 => todo!(),
                             PixelStorageFormat::Psmz16s => todo!(),
                         }
-                        // let source = source as usize;
-                        // let destination = destination as usize;
-                        // let size = size as usize;
-                        // self.local_memory[destination..destination + size]
-                        //     .copy_from_slice(&self.local_memory[source..source + size]);
                     }
                     TransmissionDirection::LocalToHost => todo!(),
                     TransmissionDirection::LocalToLocal => todo!(),
