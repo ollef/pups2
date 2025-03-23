@@ -244,7 +244,7 @@ impl Gs {
                     }
                     TransmissionDirection::LocalToHost => todo!(),
                     TransmissionDirection::LocalToLocal => todo!(),
-                    TransmissionDirection::Deactivated => {}
+                    TransmissionDirection::Deactivated => todo!(),
                 },
                 Register::SignalSignal => todo!(),
                 Register::SignalFinish => todo!(),
