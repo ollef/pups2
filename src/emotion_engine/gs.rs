@@ -63,6 +63,25 @@ impl Gs {
         }
     }
 
+    pub fn frame_buffer(&self) -> Option<&[u8]> {
+        for frame_buffer in [
+            &self.privileged_registers.display_frame_buffer1,
+            &self.privileged_registers.display_frame_buffer2,
+        ] {
+            if frame_buffer.width == 0 {
+                continue;
+            }
+            assert!(frame_buffer.offset_x == 0 && frame_buffer.offset_y == 0);
+            assert!(frame_buffer.pixel_storage_format == PixelStorageFormat::Psmct32);
+            assert!(frame_buffer.width == 640);
+            let start = frame_buffer.base_pointer as usize;
+            let end = start + frame_buffer.width as usize * 4 * 480;
+            println!("Frame buffer start={start} end={end}");
+            return Some(&self.local_memory[start..end]);
+        }
+        None
+    }
+
     pub fn write_privileged<T: Bytes>(&mut self, address: u32, value: T) {
         match std::mem::size_of::<T>() {
             8 => self.write_privileged64(address, u64::from_bytes(value.to_bytes().as_ref())),

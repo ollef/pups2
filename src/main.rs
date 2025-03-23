@@ -6,6 +6,7 @@ use argh::FromArgs;
 use bytes::Bytes;
 use elf::{endian::LittleEndian, ElfBytes};
 use emotion_engine::{dmac::Dmac, gif::Gif};
+use minifb::{Window, WindowOptions};
 
 #[derive(FromArgs)]
 #[argh(description = "Emotion Engine PS2 emulator")]
@@ -71,13 +72,34 @@ fn execute(file: &str) -> std::io::Result<()> {
         bus.main_memory[physical_address as usize..physical_address as usize + data.len()]
             .copy_from_slice(data);
     }
+    let mut window = Window::new("Emotion", 640, 480, WindowOptions::default())
+        .expect("Failed to create window");
     core.mmu.mmap(0, 0x2000_0000, 0);
+    let mut cycle = 0;
     loop {
         core.step_interpreter(&mut bus);
         Dmac::step(&mut bus);
         Gif::step(&mut bus);
         bus.gs.step();
         bus.timer.step();
+        cycle += 1;
+        if cycle % 1_000_000 == 0 {
+            if let Some(frame_buffer) = bus.gs.frame_buffer() {
+                let frame_buffer = unsafe {
+                    std::slice::from_raw_parts(
+                        frame_buffer.as_ptr() as *const u32,
+                        frame_buffer.len() / 4,
+                    )
+                };
+
+                // for pixels in frame_buffer.chunks_exact(640) {
+                //     println!("{:x?}", pixels);
+                // }
+                window
+                    .update_with_buffer(frame_buffer, 640, 480)
+                    .expect("Failed to update window");
+            }
+        }
     }
     // for program_header in elf.segments().expect("Failed to get program headers") {
     //     println!("Disassembling segment at {:x?}", program_header.p_paddr);
