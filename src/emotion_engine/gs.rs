@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, path::Display};
 
 use enum_map::Enum;
 use num_derive::FromPrimitive;
@@ -17,25 +17,25 @@ pub struct Gs {
 
 #[derive(Debug, Default)]
 struct PrivilegedRegisters {
-    pcrtc_mode: u64,            // PMODE
-    sync_mode1: u64,            // SMODE1
-    sync_mode2: u64,            // SMODE2
-    dram_refresh: u64,          // SRFSH
-    synch1: u64,                // SYNCH1
-    synch2: u64,                // SYNCH2
-    syncv: u64,                 // SYNCV
-    display_frame_buffer1: u64, // DISPFB1
-    display1: u64,              // DISPLAY1
-    display_frame_buffer2: u64, // DISPFB1
-    display2: u64,              // DISPLAY1
-    write_buffer: u64,          // EXTBUF
-    write_data: u64,            // EXTDATA
-    write_start: u64,           // EXTWRITE
-    background_color: u64,      // BGCOLOR
-    status: u64,                // CSR
-    interrupt_mask: u64,        // IMR
-    bus_direction: u64,         // BUSDIR
-    signal_label_id: u64,       // SIGLBLID
+    pcrtc_mode: u64,                           // PMODE
+    sync_mode1: u64,                           // SMODE1
+    sync_mode2: u64,                           // SMODE2
+    dram_refresh: u64,                         // SRFSH
+    synch1: u64,                               // SYNCH1
+    synch2: u64,                               // SYNCH2
+    syncv: u64,                                // SYNCV
+    display_frame_buffer1: DisplayFrameBuffer, // DISPFB1
+    display1: u64,                             // DISPLAY1
+    display_frame_buffer2: DisplayFrameBuffer, // DISPFB1
+    display2: u64,                             // DISPLAY1
+    write_buffer: u64,                         // EXTBUF
+    write_data: u64,                           // EXTDATA
+    write_start: u64,                          // EXTWRITE
+    background_color: u64,                     // BGCOLOR
+    status: u64,                               // CSR
+    interrupt_mask: u64,                       // IMR
+    bus_direction: u64,                        // BUSDIR
+    signal_label_id: u64,                      // SIGLBLID
 }
 
 #[derive(Debug, Default)]
@@ -85,9 +85,21 @@ impl Gs {
             0x1200_0040 => self.privileged_registers.synch1 = value,
             0x1200_0050 => self.privileged_registers.synch2 = value,
             0x1200_0060 => self.privileged_registers.syncv = value,
-            0x1200_0070 => self.privileged_registers.display_frame_buffer1 = value,
+            0x1200_0070 => {
+                self.privileged_registers.display_frame_buffer1 = DisplayFrameBuffer::from(value);
+                println!(
+                    "Display frame buffer 1 = {:?}",
+                    self.privileged_registers.display_frame_buffer1
+                )
+            }
             0x1200_0080 => self.privileged_registers.display1 = value,
-            0x1200_0090 => self.privileged_registers.display_frame_buffer2 = value,
+            0x1200_0090 => {
+                self.privileged_registers.display_frame_buffer2 = DisplayFrameBuffer::from(value);
+                println!(
+                    "Display frame buffer 2 = {:?}",
+                    self.privileged_registers.display_frame_buffer2
+                )
+            }
             0x1200_00A0 => self.privileged_registers.display2 = value,
             0x1200_00B0 => self.privileged_registers.write_buffer = value,
             0x1200_00C0 => self.privileged_registers.write_data = value,
@@ -254,6 +266,28 @@ impl Gs {
     }
 }
 
+#[derive(Debug, Default)]
+struct DisplayFrameBuffer {
+    base_pointer: u32,
+    width: u16,
+    pixel_storage_format: PixelStorageFormat,
+    offset_x: u16,
+    offset_y: u16,
+}
+
+impl From<u64> for DisplayFrameBuffer {
+    fn from(raw: u64) -> Self {
+        DisplayFrameBuffer {
+            base_pointer: raw.bits(0..=8) as u32 * 2048,
+            width: raw.bits(9..=14) as u16 * 64,
+            pixel_storage_format: PixelStorageFormat::from_u64(raw.bits(15..=19))
+                .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(24..=29))),
+            offset_x: raw.bits(32..=42) as u16,
+            offset_y: raw.bits(43..=53) as u16,
+        }
+    }
+}
+
 #[repr(u8)]
 #[derive(FromPrimitive, Debug, Enum)]
 pub enum Register {
@@ -333,7 +367,7 @@ impl From<u64> for FrameBufferSettings {
     }
 }
 
-#[derive(FromPrimitive, Debug, Clone, Copy, Default)]
+#[derive(FromPrimitive, Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum PixelStorageFormat {
     #[default]
     Psmct32 = 0b000000,
