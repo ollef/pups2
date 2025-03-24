@@ -311,6 +311,10 @@ impl Core {
                 let value = self.fpu.get_register::<f32>(fs);
                 self.fpu.set_register(fd, value);
             }
+            Instruction::Cvtws(fd, fs) => {
+                let value = self.fpu.get_register::<f32>(fs) as i32;
+                self.fpu.set_register(fd, value as u32);
+            }
             Instruction::Cvtsw(fd, fs) => {
                 let value = self.fpu.get_register::<u32>(fs) as i32;
                 self.fpu.set_register(fd, value as f32);

@@ -110,6 +110,7 @@ pub fn disassemble(data: u32) -> Instruction {
             (0b10000, 0b000010) => Instruction::Muls(fd, fs, ft),
             (0b10000, 0b000011) => Instruction::Divs(fd, fs, ft),
             (0b10000, 0b000110) => Instruction::Movs(fd, fs),
+            (0b10000, 0b100100) => Instruction::Cvtws(fd, fs),
             (0b10100, 0b100000) => Instruction::Cvtsw(fd, fs),
             _ => panic!(
                 "COP1 not implemented s={:05b} {:06b} {:#034b}",
