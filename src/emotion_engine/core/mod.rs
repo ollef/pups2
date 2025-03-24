@@ -1,10 +1,12 @@
 pub mod disassembler;
+pub mod fpu;
 pub mod instruction;
 pub mod interpreter;
 pub mod mmu;
 pub mod register;
 
 use enum_map::{enum_map, Enum, EnumMap};
+use fpu::Fpu;
 
 use {
     mmu::Mmu,
@@ -24,6 +26,7 @@ pub struct Core {
     pub registers: EnumMap<Register, u128>,
     pub cop0_registers: EnumMap<ControlRegister, u32>,
     pub delayed_branch_target: Option<u32>,
+    pub fpu: Fpu,
     pub mmu: Mmu,
     pub main_thread_stack_pointer: u32, // TODO: This should be in the thread state
 }
@@ -36,6 +39,7 @@ impl Core {
             registers: enum_map! { _ => 0 },
             cop0_registers: enum_map! { _ => 0 },
             delayed_branch_target: None,
+            fpu: Fpu::new(),
             mmu: Mmu::new(),
             main_thread_stack_pointer: 0,
         }
