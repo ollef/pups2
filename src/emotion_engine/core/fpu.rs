@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use super::register::{GetRegister, SetRegister};
 
+// Coprocessor 1
 pub struct Fpu {
     registers: [f32; 32],
 }
