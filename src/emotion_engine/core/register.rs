@@ -2,6 +2,8 @@ use std::fmt::Display;
 
 use enum_map::Enum;
 
+use super::fpu;
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
 #[repr(u8)]
 pub enum Register {
@@ -139,6 +141,21 @@ impl From<u32> for ControlRegister {
     fn from(value: u32) -> Self {
         let value = value & 0b11111;
         unsafe { std::mem::transmute(value as u8) }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum AnyRegister {
+    Core(Register),
+    Fpu(fpu::Register),
+}
+
+impl AnyRegister {
+    pub fn non_zero(self) -> Option<Self> {
+        match self {
+            AnyRegister::Core(register) => register.non_zero().map(AnyRegister::Core),
+            AnyRegister::Fpu(register) => Some(AnyRegister::Fpu(register)),
+        }
     }
 }
 

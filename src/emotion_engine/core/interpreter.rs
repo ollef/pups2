@@ -23,7 +23,7 @@ impl Core {
         //     let value = self.get_register::<u64>(reg);
         //     println!("{}={:#x}", reg, value);
         // }
-        let delayed_branch_target = self.delayed_branch_target.take();
+        let mut next_program_counter = self.delayed_branch_target.take();
         // println!("pc={:#010}: {instruction}", self.program_counter);
         match instruction {
             Instruction::Unknown => {
@@ -130,7 +130,7 @@ impl Core {
             Instruction::Sync => {
                 // TODO: maybe do something here
             }
-            Instruction::Mfhi(_) => todo!(),
+            Instruction::Mfhi(rd) => self.set_register(rd, self.get_register::<u64>(Register::Hi)),
             Instruction::Mthi(_) => todo!(),
             Instruction::Mflo(_) => todo!(),
             Instruction::Mtlo(_) => todo!(),
@@ -158,7 +158,17 @@ impl Core {
                 self.set_register(Register::Hi, hi);
             }
             Instruction::Div(_, _) => todo!(),
-            Instruction::Divu(_, _) => todo!(),
+            Instruction::Divu(rs, rt) => {
+                let dividend = self.get_register::<u32>(rs);
+                let divisor = self.get_register::<u32>(rt);
+                let (quotient, remainder) = if divisor == 0 {
+                    (!0, dividend)
+                } else {
+                    (dividend / divisor, dividend % divisor)
+                };
+                self.set_register::<u64>(Register::Lo, quotient.sign_extend());
+                self.set_register::<u64>(Register::Hi, remainder.sign_extend());
+            }
             Instruction::Add(_, _, _) => todo!(),
             Instruction::Addu(rd, rs, rt) => {
                 let value = self
@@ -222,6 +232,14 @@ impl Core {
                 self.set_register(rd, self.get_register::<u64>(rt) >> (shamt + 32));
             }
             Instruction::Dsra32(_, _, _) => todo!(),
+            Instruction::Bltz(rs, offset) => {
+                if (self.get_register::<u64>(rs) as i64) < 0 {
+                    let offset: u32 = offset.sign_extend();
+                    self.set_delayed_branch_target(
+                        self.program_counter.wrapping_add((offset << 2) + 4),
+                    );
+                }
+            }
             Instruction::Bgez(rs, offset) => {
                 if self.get_register::<u64>(rs) as i64 >= 0 {
                     let offset: u32 = offset.sign_extend();
@@ -257,6 +275,15 @@ impl Core {
                 let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
                 self.set_register::<u64>(rt, (temp as u32).sign_extend());
             }
+            Instruction::Sltiu(rt, rs, imm) => {
+                let imm: u64 = imm.sign_extend();
+                let value = if self.get_register::<u64>(rs) < imm {
+                    1
+                } else {
+                    0
+                };
+                self.set_register::<u64>(rt, value);
+            }
             Instruction::Andi(rt, rs, imm) => {
                 self.set_register::<u64>(rt, self.get_register::<u64>(rs) & (imm as u64));
             }
@@ -266,8 +293,41 @@ impl Core {
             Instruction::Lui(rt, imm) => {
                 self.set_register::<u64>(rt, ((imm as u32) << 16).sign_extend());
             }
+            Instruction::Mtc1(rt, fs) => {
+                let value = self.get_register::<u32>(rt);
+                self.fpu.set_register(fs, value);
+            }
+            Instruction::Muls(fd, fs, ft) => self.fpu.set_register(
+                fd,
+                self.fpu.get_register::<f32>(fs) * self.fpu.get_register::<f32>(ft),
+            ),
+            // TODO flags
+            Instruction::Divs(fd, fs, ft) => self.fpu.set_register(
+                fd,
+                self.fpu.get_register::<f32>(fs) / self.fpu.get_register::<f32>(ft),
+            ),
+            // TODO flags
+            Instruction::Movs(fd, fs) => {
+                let value = self.fpu.get_register::<f32>(fs);
+                self.fpu.set_register(fd, value);
+            }
+            Instruction::Cvtsw(fd, fs) => {
+                let value = self.fpu.get_register::<u32>(fs) as i32;
+                self.fpu.set_register(fd, value as f32);
+            }
             Instruction::Ei => {
                 // TODO: Set status register
+            }
+            Instruction::Beql(rs, rt, offset) => {
+                if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
+                    let offset: u32 = offset.sign_extend();
+                    self.set_delayed_branch_target(
+                        self.program_counter.wrapping_add((offset << 2) + 4),
+                    );
+                } else {
+                    assert!(next_program_counter.is_none());
+                    next_program_counter = Some(self.program_counter + 8);
+                }
             }
             Instruction::Sq(rt, base, offset) => {
                 let mut address = self
@@ -347,6 +407,17 @@ impl Core {
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 bus.write(physical_address, self.get_register::<u32>(rt));
             }
+            Instruction::Lwc1(ft, base, offset) => {
+                let address = self
+                    .get_register::<u32>(base)
+                    .wrapping_add(offset.sign_extend());
+                if address.bits(0..2) != 0 {
+                    panic!("Unaligned load at {:#010x}", address);
+                }
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
+                let value = bus.read::<u32>(physical_address);
+                self.fpu.set_register(ft, value);
+            }
             Instruction::Ld(rt, base, offset) => {
                 let address = self
                     .get_register::<u32>(base)
@@ -357,6 +428,16 @@ impl Core {
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let value = bus.read(physical_address);
                 self.set_register::<u64>(rt, value);
+            }
+            Instruction::Swc1(ft, base, offset) => {
+                let address = self
+                    .get_register::<u32>(base)
+                    .wrapping_add(offset.sign_extend());
+                if address.bits(0..2) != 0 {
+                    panic!("Unaligned store at {:#010x}", address);
+                }
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
+                bus.write(physical_address, self.fpu.get_register::<u32>(ft));
             }
             Instruction::Sd(rt, base, offset) => {
                 let address = self
@@ -373,10 +454,6 @@ impl Core {
         //     let value = self.get_register::<u64>(reg);
         //     println!("{}:={:#x}", reg, value);
         // }
-        if let Some(branch_target) = delayed_branch_target {
-            self.program_counter = branch_target;
-        } else {
-            self.program_counter += 4;
-        }
+        self.program_counter = next_program_counter.unwrap_or(self.program_counter + 4);
     }
 }

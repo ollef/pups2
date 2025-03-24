@@ -1,6 +1,6 @@
 use crate::bits::Bits;
 
-use super::{instruction::Instruction, register::Register};
+use super::{fpu, instruction::Instruction, register::Register};
 
 pub fn disassemble(data: u32) -> Instruction {
     let opcode = data.bits(26..32);
@@ -10,6 +10,9 @@ pub fn disassemble(data: u32) -> Instruction {
     let rs = Register::from(s);
     let rt = Register::from(t);
     let rd = Register::from(d);
+    let ft = fpu::Register::from(t);
+    let fs = fpu::Register::from(d);
+    let fd = fpu::Register::from(data.bits(6..11));
     let shamt = data.bits(6..11) as u8;
     let imm16 = data.bits(0..16) as u16;
     let imm26 = data.bits(0..26);
@@ -82,14 +85,16 @@ pub fn disassemble(data: u32) -> Instruction {
             _ => panic!("Special not implemented {:#034b}", data),
         },
         0b000001 => match t {
+            0b00000 => Instruction::Bltz(rs, imm16),
             0b00001 => Instruction::Bgez(rs, imm16),
-            _ => panic!("Branch not implemented {:#034b}", data),
+            _ => panic!("Branch not implemented t={:#05b} {:#034b}", t, data),
         },
         0b000010 => Instruction::J(imm26),
         0b000011 => Instruction::Jal(imm26),
         0b000100 => Instruction::Beq(rs, rt, imm16),
         0b000101 => Instruction::Bne(rs, rt, imm16),
         0b001001 => Instruction::Addiu(rt, rs, imm16),
+        0b001011 => Instruction::Sltiu(rt, rs, imm16),
         0b001100 => Instruction::Andi(rt, rs, imm16),
         0b001101 => Instruction::Ori(rt, rs, imm16),
         0b001111 => Instruction::Lui(rt, imm16),
@@ -98,8 +103,22 @@ pub fn disassemble(data: u32) -> Instruction {
                 0b111000 => Instruction::Ei,
                 _ => panic!("TLB/Exception not implemented {:#034b}", data),
             },
-            _ => panic!("COP0 not implemented {:#034b}", data),
+            _ => panic!("COP0 not implemented s={:05b} {:#034b}", s, data),
         },
+        0b010001 => match (s, data.bits(0..6)) {
+            (0b00100, _) => Instruction::Mtc1(rt, fs),
+            (0b10000, 0b000010) => Instruction::Muls(fd, fs, ft),
+            (0b10000, 0b000011) => Instruction::Divs(fd, fs, ft),
+            (0b10000, 0b000110) => Instruction::Movs(fd, fs),
+            (0b10100, 0b100000) => Instruction::Cvtsw(fd, fs),
+            _ => panic!(
+                "COP1 not implemented s={:05b} {:06b} {:#034b}",
+                s,
+                data.bits(0..6),
+                data
+            ),
+        },
+        0b010100 => Instruction::Beql(rs, rt, imm16),
         0b011111 => Instruction::Sq(rt, rs, imm16),
         0b100001 => Instruction::Lh(rt, rs, imm16),
         0b100011 => Instruction::Lw(rt, rs, imm16),
@@ -109,8 +128,10 @@ pub fn disassemble(data: u32) -> Instruction {
         0b101000 => Instruction::Sb(rt, rs, imm16),
         0b101001 => Instruction::Sh(rt, rs, imm16),
         0b101011 => Instruction::Sw(rt, rs, imm16),
+        0b110001 => Instruction::Lwc1(ft, rs, imm16),
         0b110111 => Instruction::Ld(rt, rs, imm16),
+        0b111001 => Instruction::Swc1(ft, rs, imm16),
         0b111111 => Instruction::Sd(rt, rs, imm16),
-        _ => panic!("Not implemented {:#034b}", data),
+        _ => panic!("Not implemented opcode={:06b}, {:#034b}", opcode, data),
     }
 }
