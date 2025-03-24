@@ -8,7 +8,7 @@ use enum_map::{enum_map, Enum, EnumMap};
 
 use {
     mmu::Mmu,
-    register::{Cop0Register, GetRegister, Register, SetRegister},
+    register::{ControlRegister, GetRegister, Register, SetRegister},
 };
 
 #[derive(Enum, Copy, Clone, Debug)]
@@ -22,7 +22,7 @@ pub struct Core {
     pub mode: Mode,
     pub program_counter: u32,
     pub registers: EnumMap<Register, u128>,
-    pub cop0_registers: EnumMap<Cop0Register, u32>,
+    pub cop0_registers: EnumMap<ControlRegister, u32>,
     pub delayed_branch_target: Option<u32>,
     pub mmu: Mmu,
     pub main_thread_stack_pointer: u32, // TODO: This should be in the thread state

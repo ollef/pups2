@@ -100,7 +100,7 @@ impl Register {
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
 #[repr(u8)]
-pub enum Cop0Register {
+pub enum ControlRegister {
     Index,
     Random,
     EntryLo0,
@@ -135,7 +135,7 @@ pub enum Cop0Register {
     Undefined31,
 }
 
-impl From<u32> for Cop0Register {
+impl From<u32> for ControlRegister {
     fn from(value: u32) -> Self {
         let value = value & 0b11111;
         unsafe { std::mem::transmute(value as u8) }
