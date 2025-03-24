@@ -98,6 +98,9 @@ fn execute(file: &str) -> std::io::Result<()> {
                 window
                     .update_with_buffer(frame_buffer, 640, 480)
                     .expect("Failed to update window");
+                if window.is_key_pressed(minifb::Key::Escape, minifb::KeyRepeat::No) {
+                    break;
+                }
             }
         }
     }
@@ -121,7 +124,7 @@ fn execute(file: &str) -> std::io::Result<()> {
     //         }
     //     }
     // }
-    // Ok(())
+    Ok(())
 }
 
 fn main() -> Result<(), std::io::Error> {
