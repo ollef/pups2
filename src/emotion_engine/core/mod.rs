@@ -8,7 +8,7 @@ use enum_map::{enum_map, Enum, EnumMap};
 
 use {
     mmu::Mmu,
-    register::{Cop0Register, GetRegister, Register, RegisterState, SetRegister},
+    register::{Cop0Register, GetRegister, Register, SetRegister},
 };
 
 #[derive(Enum, Copy, Clone, Debug)]
@@ -21,7 +21,7 @@ pub enum Mode {
 pub struct Core {
     pub mode: Mode,
     pub program_counter: u32,
-    pub registers: EnumMap<Register, RegisterState>,
+    pub registers: EnumMap<Register, u128>,
     pub cop0_registers: EnumMap<Cop0Register, u32>,
     pub delayed_branch_target: Option<u32>,
     pub mmu: Mmu,
@@ -33,7 +33,7 @@ impl Core {
         Core {
             mode: Mode::Kernel,
             program_counter,
-            registers: enum_map! { _ => RegisterState::new() },
+            registers: enum_map! { _ => 0 },
             cop0_registers: enum_map! { _ => 0 },
             delayed_branch_target: None,
             mmu: Mmu::new(),
@@ -43,14 +43,14 @@ impl Core {
 
     pub fn get_register<T>(&self, register: Register) -> T
     where
-        RegisterState: GetRegister<T>,
+        u128: GetRegister<T>,
     {
         self.registers[register].get_register()
     }
 
     pub fn set_register<T>(&mut self, register: Register, value: T)
     where
-        RegisterState: SetRegister<T>,
+        u128: SetRegister<T>,
     {
         if register == Register::Zero {
             return;

@@ -142,16 +142,6 @@ impl From<u32> for Cop0Register {
     }
 }
 
-pub struct RegisterState {
-    pub value: u128,
-}
-
-impl RegisterState {
-    pub fn new() -> Self {
-        RegisterState { value: 0 }
-    }
-}
-
 pub trait SetRegister<T> {
     fn set_register(&mut self, value: T);
 }
@@ -160,44 +150,44 @@ pub trait GetRegister<T> {
     fn get_register(&self) -> T;
 }
 
-impl SetRegister<u64> for RegisterState {
+impl SetRegister<u64> for u128 {
     fn set_register(&mut self, value: u64) {
-        self.value = value as u128 | (self.value & 0xFFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000);
+        *self = value as u128 | (*self & 0xFFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000);
     }
 }
 
-impl SetRegister<u128> for RegisterState {
+impl SetRegister<u128> for u128 {
     fn set_register(&mut self, value: u128) {
-        self.value = value;
+        *self = value;
     }
 }
 
-impl GetRegister<u8> for RegisterState {
+impl GetRegister<u8> for u128 {
     fn get_register(&self) -> u8 {
-        self.value as u8
+        *self as u8
     }
 }
 
-impl GetRegister<u16> for RegisterState {
+impl GetRegister<u16> for u128 {
     fn get_register(&self) -> u16 {
-        self.value as u16
+        *self as u16
     }
 }
 
-impl GetRegister<u32> for RegisterState {
+impl GetRegister<u32> for u128 {
     fn get_register(&self) -> u32 {
-        self.value as u32
+        *self as u32
     }
 }
 
-impl GetRegister<u64> for RegisterState {
+impl GetRegister<u64> for u128 {
     fn get_register(&self) -> u64 {
-        self.value as u64
+        *self as u64
     }
 }
 
-impl GetRegister<u128> for RegisterState {
+impl GetRegister<u128> for u128 {
     fn get_register(&self) -> u128 {
-        self.value
+        *self
     }
 }
