@@ -12,7 +12,7 @@ pub struct Fifo<T> {
 
 impl<T> Drop for Fifo<T> {
     fn drop(&mut self) {
-        while self.pop_back().is_some() {}
+        self.clear()
     }
 }
 
@@ -49,6 +49,10 @@ impl<T> Fifo<T> {
 
     pub fn is_full(&self) -> bool {
         self.len == self.capacity
+    }
+
+    pub fn clear(&mut self) {
+        while self.pop_back().is_some() {}
     }
 
     pub fn push_back(&mut self, value: T) {
