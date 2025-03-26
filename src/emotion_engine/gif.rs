@@ -226,8 +226,35 @@ impl Gif {
                         Register::Rgbaq => todo!(),
                         Register::St => todo!(),
                         Register::Uv => todo!(),
-                        Register::Xyzf2 => todo!(),
-                        Register::Xyz2 => todo!(),
+                        Register::Xyzf2 => {
+                            let x = data.bits(0..=15) as u64;
+                            let y = data.bits(32..=47) as u64;
+                            let z = data.bits(68..=91) as u64;
+                            let f = data.bits(100..=107) as u64;
+                            let adc = data.bit(111);
+                            bus.gs.command_queue.push_back((
+                                if adc {
+                                    gs::Register::Xyzf3
+                                } else {
+                                    gs::Register::Xyzf2
+                                },
+                                x | (y << 16) | (z << 32) | (f << 56),
+                            ));
+                        }
+                        Register::Xyz2 => {
+                            let x = data.bits(0..=15) as u64;
+                            let y = data.bits(32..=47) as u64;
+                            let z = data.bits(64..=95) as u64;
+                            let adc = data.bit(111);
+                            bus.gs.command_queue.push_back((
+                                if adc {
+                                    gs::Register::Xyz3
+                                } else {
+                                    gs::Register::Xyz2
+                                },
+                                x | (y << 16) | (z << 32),
+                            ));
+                        }
                         Register::Tex01 => todo!(),
                         Register::Tex02 => todo!(),
                         Register::Clamp1 => todo!(),
