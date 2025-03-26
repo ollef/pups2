@@ -401,7 +401,6 @@ impl Gs {
             return;
         }
         let frame = self.contextual_registers().frame_buffer_settings;
-        // TODO memory block structure
         match frame.pixel_storage_format {
             PixelStorageFormat::Psmct32 => {
                 let address =
@@ -427,6 +426,7 @@ impl Gs {
             PixelStorageFormat::Psmz16 => todo!(),
             PixelStorageFormat::Psmz16s => todo!(),
         }
+        // TODO memory block structure
         // TODO scan mask
         // TODO texturing
         // TODO depth test
