@@ -84,7 +84,7 @@ fn execute(file: &str) -> std::io::Result<()> {
         bus.timer.step();
         cycle += 1;
         if cycle % 1_000_000 == 0 {
-            if let Some(frame_buffer) = bus.gs.frame_buffer() {
+            if let Some((frame_buffer_width, frame_buffer)) = bus.gs.frame_buffer() {
                 let frame_buffer = unsafe {
                     std::slice::from_raw_parts(
                         frame_buffer.as_ptr() as *const u32,
@@ -96,7 +96,11 @@ fn execute(file: &str) -> std::io::Result<()> {
                 //     println!("{:x?}", pixels);
                 // }
                 window
-                    .update_with_buffer(frame_buffer, 640, 480)
+                    .update_with_buffer(
+                        frame_buffer,
+                        frame_buffer_width as usize,
+                        frame_buffer.len() / frame_buffer_width as usize,
+                    )
                     .expect("Failed to update window");
                 if window.is_key_pressed(minifb::Key::Escape, minifb::KeyRepeat::No) {
                     break;
