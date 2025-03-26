@@ -76,7 +76,7 @@ impl Gs {
         }
     }
 
-    pub fn frame_buffer(&self) -> Option<(u16, &[u8])> {
+    pub fn frame_buffer(&self) -> Option<(u16, Vec<u8>)> {
         for frame_buffer in [
             &self.privileged_registers.display_frame_buffer1,
             &self.privileged_registers.display_frame_buffer2,
@@ -86,12 +86,58 @@ impl Gs {
             }
             assert!(frame_buffer.offset_x == 0 && frame_buffer.offset_y == 0);
             assert!(frame_buffer.pixel_storage_format == PixelStorageFormat::Psmct32);
-            let start = frame_buffer.base_pointer as usize;
-            let end = start + frame_buffer.width as usize * 4 * 480;
-            println!("Frame buffer start={start} end={end}");
-            return Some((frame_buffer.width, &self.local_memory[start..end]));
+            let mut result = Vec::with_capacity(frame_buffer.width as usize * 4 * 480);
+            for y in 0..480 {
+                for x in 0..frame_buffer.width {
+                    result.extend_from_slice(
+                        &self
+                            .read_psmct32(frame_buffer.base_pointer, x, y, frame_buffer.width)
+                            .to_bytes(),
+                    );
+                }
+            }
+            return Some((frame_buffer.width, result));
         }
         None
+    }
+
+    fn psmct32_offset(x: u16, y: u16, width: u16) -> u32 {
+        let page_x = x / 64;
+        let page_y = y / 32;
+        let page_index = page_y as u32 * (width as u32 / 64) + page_x as u32;
+        let page_size = 8192;
+        let page_offset = page_index * page_size;
+        let block_x = (x % 64) / 8;
+        let block_y = (y % 32) / 8;
+        let block_index = block_x.bit(0).then_some(1).unwrap_or_default()
+            | block_x.bit(1).then_some(4).unwrap_or_default()
+            | block_x.bit(2).then_some(16).unwrap_or_default()
+            | block_y.bit(0).then_some(2).unwrap_or_default()
+            | block_y.bit(1).then_some(8).unwrap_or_default();
+        let block_size = 256;
+        let block_offset = block_index * block_size;
+        let local_x = x % 8;
+        let local_y = y % 8;
+        let local_index = local_x.bit(0).then_some(1).unwrap_or_default()
+            | local_x.bit(1).then_some(4).unwrap_or_default()
+            | local_x.bit(2).then_some(8).unwrap_or_default()
+            | local_y.bit(0).then_some(2).unwrap_or_default()
+            | local_y.bit(1).then_some(16).unwrap_or_default()
+            | local_y.bit(2).then_some(32).unwrap_or_default();
+        let pixel_size = 4;
+        let local_offset = local_index * pixel_size;
+        page_offset + block_offset + local_offset
+    }
+
+    fn read_psmct32(&self, base_pointer: u32, x: u16, y: u16, width: u16) -> u32 {
+        let address = base_pointer + Self::psmct32_offset(x, y, width);
+        u32::from_bytes(&self.local_memory[address as usize..address as usize + 4])
+    }
+
+    fn write_psmct32(&mut self, base_pointer: u32, x: u16, y: u16, width: u16, value: u32) {
+        let address = base_pointer + Self::psmct32_offset(x, y, width);
+        self.local_memory[address as usize..address as usize + 4]
+            .copy_from_slice(&value.to_bytes());
     }
 
     pub fn write_privileged<T: Bytes>(&mut self, address: u32, value: T) {
@@ -250,9 +296,8 @@ impl Gs {
                         let width = self.registers.transmission_size.width as u32;
                         let height = self.registers.transmission_size.height as u32;
                         let pixels = width * height;
-                        let base_pointer = self.registers.bit_blit_buffer.destination_base_pointer;
                         let buffer_width = self.registers.bit_blit_buffer.destination_width as u32;
-                        let pixel = &mut self.registers.transmission_pixel;
+                        let mut pixel = self.registers.transmission_pixel;
                         match self
                             .registers
                             .bit_blit_buffer
@@ -261,18 +306,21 @@ impl Gs {
                             PixelStorageFormat::Psmct32 => {
                                 for i in 0..2 {
                                     let data = data.bits(i * 32..(i + 1) * 32) as u32;
-                                    let x = (destination_x + *pixel % width) % 2048;
-                                    let y = (destination_y + *pixel / width) % 2048;
-                                    let destination_pointer =
-                                        base_pointer + (y * buffer_width + x) * 4;
-                                    println!(
-                                        "Transmitting pixel at ({x}, {y}) = {destination_pointer} buffer width={buffer_width}"
+                                    let x = (destination_x + pixel % width) % 2048;
+                                    let y = (destination_y + pixel / width) % 2048;
+                                    self.write_psmct32(
+                                        self.registers.bit_blit_buffer.destination_base_pointer,
+                                        x as u16,
+                                        y as u16,
+                                        self.registers.bit_blit_buffer.destination_width,
+                                        data,
                                     );
-                                    self.local_memory[destination_pointer as usize
-                                        ..destination_pointer as usize + 4]
-                                        .copy_from_slice(&data.to_bytes());
-                                    *pixel += 1;
-                                    if *pixel == pixels {
+                                    println!(
+                                        "Transmitting pixel at ({x}, {y}) buffer width={buffer_width}"
+                                    );
+                                    pixel += 1;
+                                    self.registers.transmission_pixel = pixel;
+                                    if pixel == pixels {
                                         println!("Transmission of {pixels} pixels complete");
                                         self.registers.transmission_direction =
                                             TransmissionDirection::Deactivated;
@@ -403,14 +451,18 @@ impl Gs {
         let frame = self.contextual_registers().frame_buffer_settings;
         match frame.pixel_storage_format {
             PixelStorageFormat::Psmct32 => {
-                let address =
-                    frame.base_pointer + (pixel_y as u32 * frame.width as u32 + pixel_x as u32) * 4;
-                self.local_memory[address as usize..address as usize + 4].copy_from_slice(&[
-                    vertex.color.r,
-                    vertex.color.g,
-                    vertex.color.b,
-                    vertex.color.a,
-                ]);
+                self.write_psmct32(
+                    frame.base_pointer,
+                    pixel_x,
+                    pixel_y,
+                    frame.width,
+                    u32::from_bytes(&[
+                        vertex.color.r,
+                        vertex.color.g,
+                        vertex.color.b,
+                        vertex.color.a,
+                    ]),
+                );
             }
             PixelStorageFormat::Psmct24 => todo!(),
             PixelStorageFormat::Psmct16 => todo!(),
