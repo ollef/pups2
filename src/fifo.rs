@@ -55,6 +55,20 @@ impl<T> Fifo<T> {
         while self.pop_back().is_some() {}
     }
 
+    pub fn front(&self) -> Option<&T> {
+        if self.len == 0 {
+            return None;
+        }
+        Some(&self[0])
+    }
+
+    pub fn back(&self) -> Option<&T> {
+        if self.len == 0 {
+            return None;
+        }
+        Some(&self[self.len - 1])
+    }
+
     pub fn push_back(&mut self, value: T) {
         assert!(self.len < self.capacity);
         self.data[self.wrap_index(self.front + self.len)].write(value);
