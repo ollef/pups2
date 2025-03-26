@@ -4,7 +4,7 @@ use enum_map::Enum;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-use crate::{bits::Bits, bytes::Bytes};
+use crate::{bits::Bits, bytes::Bytes, fifo::Fifo};
 
 const LOCAL_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 
@@ -13,6 +13,13 @@ pub struct Gs {
     pub command_queue: VecDeque<(Register, u64)>,
     privileged_registers: PrivilegedRegisters,
     registers: Registers,
+    vertex_queue: Fifo<Vertex>,
+}
+
+#[derive(Debug, Clone)]
+struct Vertex {
+    position: Xyz,
+    color: Rgbaq,
 }
 
 #[derive(Debug, Default)]
@@ -40,17 +47,22 @@ struct PrivilegedRegisters {
 
 #[derive(Debug, Default)]
 struct Registers {
-    primitive: Primitive,                            // PRIM
-    rgbaq: Rgbaq,                                    // RGBAQ
-    xyz2: Xyz2,                                      // XYZ2
-    xy_offset: [XyOffset; 2],                        // XYOFFSET_1, XYOFFSET_2
-    scissor: [Scissor; 2],                           // SCISSOR_1, SCISSOR_2
-    frame_buffer_settings: [FrameBufferSettings; 2], // FRAME_1, FRAME_2
-    bit_blit_buffer: BitBlitBuffer,                  // BITBLTBUF
-    transmission_position: TransmissionPosition,     // TRXPOS
-    transmission_size: TransmissionSize,             // TRXREG
-    transmission_direction: TransmissionDirection,   // TRXDIR
+    primitive: Primitive,                          // PRIM
+    rgbaq: Rgbaq,                                  // RGBAQ
+    xyz: Xyz,                                      // XYZ2
+    bit_blit_buffer: BitBlitBuffer,                // BITBLTBUF
+    transmission_position: TransmissionPosition,   // TRXPOS
+    transmission_size: TransmissionSize,           // TRXREG
+    transmission_direction: TransmissionDirection, // TRXDIR
     transmission_pixel: u32,
+    contextual: [ContextualRegisters; 2],
+}
+
+#[derive(Debug, Default)]
+pub struct ContextualRegisters {
+    xy_offset: XyOffset,                        // XYOFFSET_1, XYOFFSET_2
+    scissor: Scissor,                           // SCISSOR_1, SCISSOR_2
+    frame_buffer_settings: FrameBufferSettings, // FRAME_1, FRAME_2
 }
 
 impl Gs {
@@ -60,6 +72,7 @@ impl Gs {
             command_queue: VecDeque::new(),
             privileged_registers: PrivilegedRegisters::default(),
             registers: Registers::default(),
+            vertex_queue: Fifo::with_capacity(2),
         }
     }
 
@@ -154,7 +167,10 @@ impl Gs {
                 Register::St => todo!(),
                 Register::Uv => todo!(),
                 Register::Xyzf2 => todo!(),
-                Register::Xyz2 => self.registers.xyz2 = Xyz2::from(data),
+                Register::Xyz2 => {
+                    self.registers.xyz = Xyz::from(data);
+                    self.vertex_kick(/* drawing_kick */ true);
+                }
                 Register::Tex0_1 => todo!(),
                 Register::Tex0_2 => todo!(),
                 Register::Clamp1 => todo!(),
@@ -166,8 +182,12 @@ impl Gs {
                 Register::Texture1_2 => todo!(),
                 Register::Texture2_1 => todo!(),
                 Register::Texture2_2 => todo!(),
-                Register::XyOffset1 => self.registers.xy_offset[0] = XyOffset::from(data),
-                Register::XyOffset2 => self.registers.xy_offset[1] = XyOffset::from(data),
+                Register::XyOffset1 => {
+                    self.registers.contextual[0].xy_offset = XyOffset::from(data)
+                }
+                Register::XyOffset2 => {
+                    self.registers.contextual[1].xy_offset = XyOffset::from(data)
+                }
                 Register::PrimitiveModeControl => todo!(),
                 Register::PrimitiveMode => todo!(),
                 Register::TexClut => todo!(),
@@ -179,8 +199,8 @@ impl Gs {
                 Register::TextureAlpha => todo!(),
                 Register::FogColor => todo!(),
                 Register::TextureFlush => todo!(),
-                Register::Scissor1 => self.registers.scissor[0] = Scissor::from(data),
-                Register::Scissor2 => self.registers.scissor[1] = Scissor::from(data),
+                Register::Scissor1 => self.registers.contextual[0].scissor = Scissor::from(data),
+                Register::Scissor2 => self.registers.contextual[1].scissor = Scissor::from(data),
                 Register::Alpha1 => todo!(),
                 Register::Alpha2 => todo!(),
                 Register::DitherMatrix => todo!(),
@@ -193,11 +213,13 @@ impl Gs {
                 Register::FrameBufferAlpha2 => todo!(),
                 Register::FrameBuffer1 => {
                     println!("Frame buffer 1: {:x?}", data);
-                    self.registers.frame_buffer_settings[0] = FrameBufferSettings::from(data)
+                    self.registers.contextual[0].frame_buffer_settings =
+                        FrameBufferSettings::from(data)
                 }
                 Register::FrameBuffer2 => {
                     println!("Frame buffer 2: {:x?}", data);
-                    self.registers.frame_buffer_settings[1] = FrameBufferSettings::from(data)
+                    self.registers.contextual[1].frame_buffer_settings =
+                        FrameBufferSettings::from(data)
                 }
                 Register::ZBuffer1 => todo!(),
                 Register::ZBuffer2 => todo!(),
@@ -282,6 +304,147 @@ impl Gs {
                 Register::SignalLabel => todo!(),
             }
         }
+    }
+
+    pub fn contextual_registers(&self) -> &ContextualRegisters {
+        &self.registers.contextual[self.registers.primitive.context.index()]
+    }
+
+    pub fn vertex_kick(&mut self, drawing_kick: bool) {
+        let vertex = Vertex {
+            position: Xyz {
+                x: self.registers.xyz.x - self.contextual_registers().xy_offset.x,
+                y: self.registers.xyz.y - self.contextual_registers().xy_offset.y,
+                z: self.registers.xyz.z,
+            },
+            color: self.registers.rgbaq,
+        };
+
+        match self.registers.primitive.type_ {
+            PrimitiveType::Point => {
+                self.vertex_queue.clear();
+                if drawing_kick {
+                    self.draw_point(&vertex);
+                }
+            }
+            PrimitiveType::Line => {
+                if let Some(vertex1) = self.vertex_queue.pop_back() {
+                    self.vertex_queue.clear();
+                    if drawing_kick {
+                        self.draw_line(&vertex1, &vertex);
+                    }
+                } else {
+                    self.vertex_queue.push_back(vertex);
+                }
+            }
+            PrimitiveType::LineStrip => {
+                if let Some(vertex1) = self.vertex_queue.pop_back() {
+                    if drawing_kick {
+                        self.draw_line(&vertex1, &vertex);
+                    }
+                    self.vertex_queue.clear();
+                    self.vertex_queue.push_back(vertex);
+                }
+            }
+            PrimitiveType::Triangle => {
+                if self.vertex_queue.len() == 2 {
+                    let vertex2 = self.vertex_queue.pop_back().unwrap();
+                    let vertex1 = self.vertex_queue.pop_back().unwrap();
+                    if drawing_kick {
+                        self.draw_triangle(&vertex1, &vertex2, &vertex);
+                    }
+                } else {
+                    self.vertex_queue.push_back(vertex);
+                }
+            }
+            PrimitiveType::TriangleStrip => {
+                if self.vertex_queue.len() == 2 {
+                    let vertex1 = self.vertex_queue.pop_front().unwrap();
+                    let vertex2 = self.vertex_queue.front().unwrap().clone();
+                    if drawing_kick {
+                        self.draw_triangle(&vertex1, &vertex2, &vertex);
+                    }
+                }
+                self.vertex_queue.push_back(vertex);
+            }
+            PrimitiveType::TriangleFan => {
+                if self.vertex_queue.len() == 2 {
+                    let vertex1 = self.vertex_queue.front().unwrap().clone();
+                    let vertex2 = self.vertex_queue.pop_back().unwrap();
+                    if drawing_kick {
+                        self.draw_triangle(&vertex1, &vertex2, &vertex);
+                    }
+                }
+                self.vertex_queue.push_back(vertex);
+            }
+            PrimitiveType::Sprite => {
+                if let Some(vertex1) = self.vertex_queue.pop_back() {
+                    self.vertex_queue.clear();
+                    if drawing_kick {
+                        self.draw_sprite(&vertex1, &vertex);
+                    }
+                } else {
+                    self.vertex_queue.push_back(vertex);
+                }
+            }
+            PrimitiveType::SpecificationProhibited => todo!(),
+        }
+    }
+
+    fn draw_point(&mut self, vertex: &Vertex) {
+        let scissor = self.contextual_registers().scissor;
+        let pixel_x = vertex.position.x.bits(4..16);
+        let pixel_y = vertex.position.y.bits(4..16);
+        println!("Draw point: {vertex:?}=({pixel_x}, {pixel_y})");
+        if !scissor.contains(pixel_x, pixel_y) {
+            println!("Point outside scissor: {:?}", scissor);
+            return;
+        }
+        let frame = self.contextual_registers().frame_buffer_settings;
+        // TODO memory block structure
+        match frame.pixel_storage_format {
+            PixelStorageFormat::Psmct32 => {
+                let address =
+                    frame.base_pointer + (pixel_y as u32 * frame.width as u32 + pixel_x as u32) * 4;
+                self.local_memory[address as usize..address as usize + 4].copy_from_slice(&[
+                    vertex.color.r,
+                    vertex.color.g,
+                    vertex.color.b,
+                    vertex.color.a,
+                ]);
+            }
+            PixelStorageFormat::Psmct24 => todo!(),
+            PixelStorageFormat::Psmct16 => todo!(),
+            PixelStorageFormat::Psmct16s => todo!(),
+            PixelStorageFormat::Psgpu24 => todo!(),
+            PixelStorageFormat::Psmt8 => todo!(),
+            PixelStorageFormat::Psmt4 => todo!(),
+            PixelStorageFormat::Psmt8h => todo!(),
+            PixelStorageFormat::Psmt4hl => todo!(),
+            PixelStorageFormat::Psmt4hh => todo!(),
+            PixelStorageFormat::Psmz32 => todo!(),
+            PixelStorageFormat::Psmz24 => todo!(),
+            PixelStorageFormat::Psmz16 => todo!(),
+            PixelStorageFormat::Psmz16s => todo!(),
+        }
+        // TODO scan mask
+        // TODO texturing
+        // TODO depth test
+        // TODO alpha
+        // TODO z update
+        // TODO drawing mask
+    }
+
+    fn draw_line(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
+        println!("Draw line: {:?} {:?}", vertex1, vertex2);
+    }
+
+    fn draw_triangle(&mut self, vertex1: &Vertex, vertex2: &Vertex, vertex3: &Vertex) {
+        println!("Draw triangle: {:?} {:?} {:?}", vertex1, vertex2, vertex3);
+    }
+
+    fn draw_sprite(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
+        println!("Draw sprite: {:?} {:?}", vertex1, vertex2);
     }
 }
 
@@ -394,7 +557,7 @@ pub enum Register {
 #[derive(Debug, Clone, Copy, Default)]
 struct FrameBufferSettings {
     pub base_pointer: u32,
-    pub width: u32,
+    pub width: u16,
     pub pixel_storage_format: PixelStorageFormat,
     pub drawing_mask: u32,
 }
@@ -403,7 +566,7 @@ impl From<u64> for FrameBufferSettings {
     fn from(raw: u64) -> Self {
         FrameBufferSettings {
             base_pointer: raw.bits(0..=8) as u32 * 2048,
-            width: raw.bits(16..=21) as u32 * 64,
+            width: raw.bits(16..=21) as u16 * 64,
             pixel_storage_format: PixelStorageFormat::from_u8(raw.bits(24..=29) as u8)
                 .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(24..=29))),
             drawing_mask: raw.bits(32..64) as u32,
@@ -451,6 +614,12 @@ struct Scissor {
     pub x1: u16,
     pub y0: u16,
     pub y1: u16,
+}
+
+impl Scissor {
+    pub fn contains(&self, x: u16, y: u16) -> bool {
+        (self.x0..=self.x1).contains(&x) && (self.y0..=self.y1).contains(&y)
+    }
 }
 
 impl From<u64> for Scissor {
@@ -540,6 +709,15 @@ enum Context {
     Context2,
 }
 
+impl Context {
+    pub fn index(self) -> usize {
+        match self {
+            Context::Context1 => 0,
+            Context::Context2 => 1,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 enum FragmentValueControl {
     #[default]
@@ -569,15 +747,15 @@ impl From<u64> for Rgbaq {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-struct Xyz2 {
+struct Xyz {
     x: u16,
     y: u16,
     z: u32,
 }
 
-impl From<u64> for Xyz2 {
+impl From<u64> for Xyz {
     fn from(raw: u64) -> Self {
-        Xyz2 {
+        Xyz {
             x: raw.bits(0..16) as u16,
             y: raw.bits(16..32) as u16,
             z: raw.bits(32..64) as u32,
