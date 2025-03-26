@@ -293,6 +293,10 @@ impl Core {
             Instruction::Lui(rt, imm) => {
                 self.set_register::<u64>(rt, ((imm as u32) << 16).sign_extend());
             }
+            Instruction::Mfc1(rt, fs) => {
+                let value = self.fpu.get_register::<u32>(fs);
+                self.set_register::<u64>(rt, value.sign_extend());
+            }
             Instruction::Mtc1(rt, fs) => {
                 let value = self.get_register::<u32>(rt);
                 self.fpu.set_register(fs, value);

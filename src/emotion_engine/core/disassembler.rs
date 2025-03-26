@@ -106,6 +106,7 @@ pub fn disassemble(data: u32) -> Instruction {
             _ => panic!("COP0 not implemented s={:05b} {:#034b}", s, data),
         },
         0b010001 => match (s, data.bits(0..6)) {
+            (0b00000, _) => Instruction::Mfc1(rt, fs),
             (0b00100, _) => Instruction::Mtc1(rt, fs),
             (0b10000, 0b000010) => Instruction::Muls(fd, fs, ft),
             (0b10000, 0b000011) => Instruction::Divs(fd, fs, ft),
