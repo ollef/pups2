@@ -536,8 +536,95 @@ impl Gs {
         // TODO drawing mask
     }
 
-    fn draw_line(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
-        println!("Draw line: {:?} {:?}", vertex1, vertex2);
+    fn clip_line(&self, start: Xyz, end: Xyz) -> Option<(f32, f32)> {
+        let scissor = self.contextual_registers().scissor;
+        let sx0 = f32::from(scissor.x0);
+        let sy0 = f32::from(scissor.y0);
+        let sx1 = f32::from(scissor.x1 + 1);
+        let sy1 = f32::from(scissor.y1 + 1);
+        let vx0 = f32::from(start.x);
+        let vy0 = f32::from(start.y);
+        let vx1 = f32::from(end.x);
+        let vy1 = f32::from(end.y);
+        let dx = vx1 - vx0;
+        let dy = vy1 - vy0;
+
+        let mut t0: f32 = 0.0;
+        let mut t1: f32 = 1.0;
+
+        if dx == 0.0 {
+            if !(sx0..sx1).contains(&vx0) {
+                return None;
+            }
+        } else {
+            let mut p = (sx0 - vx0) / dx;
+            let mut q = (sx1 - vx0) / dx;
+            if dx < 0.0 {
+                std::mem::swap(&mut p, &mut q);
+            }
+            t0 = t0.max(p);
+            t1 = t1.min(q);
+            if t0 > t1 {
+                return None;
+            }
+        }
+
+        if dy == 0.0 {
+            if !(sy0..sy1).contains(&vy0) {
+                return None;
+            }
+        } else {
+            let mut p = (sy0 - vy0) / dy;
+            let mut q = (sy1 - vy0) / dy;
+            if dy < 0.0 {
+                std::mem::swap(&mut p, &mut q);
+            }
+            t0 = t0.max(p);
+            t1 = t1.min(q);
+            if t0 > t1 {
+                return None;
+            }
+        }
+
+        Some((t0, t1))
+    }
+
+    fn draw_line(&mut self, start: &Vertex, end: &Vertex) {
+        println!("Draw line: {:?} {:?}", start, end);
+        let Some((t0, t1)) = self.clip_line(start.position, end.position) else {
+            return;
+        };
+        let dx = f32::from(end.position.x) - f32::from(start.position.x);
+        let dy = f32::from(end.position.y) - f32::from(start.position.y);
+        let dr = end.color.r as i32 - start.color.r as i32;
+        let dg = end.color.g as i32 - start.color.g as i32;
+        let db = end.color.b as i32 - start.color.b as i32;
+        let da = end.color.a as i32 - start.color.a as i32;
+        let pixels = dx.abs().max(dy.abs()).round();
+        let start_pixel = (t0 * pixels) as i32;
+        let end_pixel = (t1 * pixels) as i32;
+
+        let frame = self.contextual_registers().frame_buffer_settings;
+        match frame.pixel_storage_format {
+            PixelStorageFormat::Psmct32 => {
+                for i in start_pixel..end_pixel {
+                    let pixel_x = (start.position.x + Fix124::from(dx * i as f32 / pixels)).round();
+                    let pixel_y = (start.position.y + Fix124::from(dy * i as f32 / pixels)).round();
+                    let r = (start.color.r as i32 + dr * i / pixels as i32) as u8;
+                    let g = (start.color.g as i32 + dg * i / pixels as i32) as u8;
+                    let b = (start.color.b as i32 + db * i / pixels as i32) as u8;
+                    let a = (start.color.a as i32 + da * i / pixels as i32) as u8;
+                    self.write_psmct32(
+                        frame.base_pointer,
+                        pixel_x,
+                        pixel_y,
+                        frame.width,
+                        u32::from_bytes(&[r, g, b, a]),
+                    );
+                }
+            }
+            _ => todo!(),
+        }
     }
 
     fn draw_triangle(&mut self, vertex1: &Vertex, vertex2: &Vertex, vertex3: &Vertex) {
