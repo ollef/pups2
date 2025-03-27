@@ -513,19 +513,7 @@ impl Gs {
                     ]),
                 );
             }
-            PixelStorageFormat::Psmct24 => todo!(),
-            PixelStorageFormat::Psmct16 => todo!(),
-            PixelStorageFormat::Psmct16s => todo!(),
-            PixelStorageFormat::Psgpu24 => todo!(),
-            PixelStorageFormat::Psmt8 => todo!(),
-            PixelStorageFormat::Psmt4 => todo!(),
-            PixelStorageFormat::Psmt8h => todo!(),
-            PixelStorageFormat::Psmt4hl => todo!(),
-            PixelStorageFormat::Psmt4hh => todo!(),
-            PixelStorageFormat::Psmz32 => todo!(),
-            PixelStorageFormat::Psmz24 => todo!(),
-            PixelStorageFormat::Psmz16 => todo!(),
-            PixelStorageFormat::Psmz16s => todo!(),
+            _ => todo!(),
         }
         // TODO memory block structure
         // TODO scan mask
