@@ -515,7 +515,6 @@ impl Gs {
             }
             _ => todo!(),
         }
-        // TODO memory block structure
         // TODO scan mask
         // TODO texturing
         // TODO depth test
