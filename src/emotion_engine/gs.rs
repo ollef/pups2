@@ -264,7 +264,7 @@ impl Gs {
 
     pub fn step(&mut self) {
         while let Some((register, data)) = self.command_queue.pop_front() {
-            println!("Command: {:?}={:x?}", register, data);
+            // println!("Command: {:?}={:x?}", register, data);
             match register {
                 Register::Primitive => {
                     self.registers.primitive = Primitive::from(data);
@@ -492,9 +492,9 @@ impl Gs {
         let scissor = self.contextual_registers().scissor;
         let pixel_x = vertex.position.x.round();
         let pixel_y = vertex.position.y.round();
-        println!("Draw point: {vertex:?}=({pixel_x}, {pixel_y})");
+        // println!("Draw point: {vertex:?}=({pixel_x}, {pixel_y})");
         if !scissor.contains(pixel_x, pixel_y) {
-            println!("Point outside scissor: {:?}", scissor);
+            // println!("Point outside scissor: {:?}", scissor);
             return;
         }
         let frame = self.contextual_registers().frame_buffer_settings;
@@ -577,7 +577,7 @@ impl Gs {
     }
 
     fn draw_line(&mut self, start: &Vertex, end: &Vertex) {
-        println!("Draw line: {:?} {:?}", start, end);
+        // println!("Draw line: {:?} {:?}", start, end);
         let Some((t0, t1)) = self.clip_line(start.position, end.position) else {
             return;
         };
@@ -615,7 +615,7 @@ impl Gs {
     }
 
     fn draw_triangle(&mut self, vertex1: &Vertex, vertex2: &Vertex, vertex3: &Vertex) {
-        println!("Draw triangle: {:?} {:?} {:?}", vertex1, vertex2, vertex3);
+        todo!()
     }
 
     fn draw_sprite(&mut self, vertex1: &Vertex, vertex2: &Vertex) {

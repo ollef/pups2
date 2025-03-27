@@ -83,7 +83,7 @@ impl Bus {
                 self.gif.write(address, value)
             }
             0x1000_8000..0x1000_F000 => {
-                println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
+                // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
                 self.dmac.write(address, value)
             }
             0x1200_0000..0x1201_0000 => {
