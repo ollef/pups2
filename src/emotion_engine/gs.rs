@@ -490,8 +490,8 @@ impl Gs {
 
     fn draw_point(&mut self, vertex: &Vertex) {
         let scissor = self.contextual_registers().scissor;
-        let pixel_x = vertex.position.x.bits(4..16);
-        let pixel_y = vertex.position.y.bits(4..16);
+        let pixel_x = vertex.position.x.round();
+        let pixel_y = vertex.position.y.round();
         println!("Draw point: {vertex:?}=({pixel_x}, {pixel_y})");
         if !scissor.contains(pixel_x, pixel_y) {
             println!("Point outside scissor: {:?}", scissor);
@@ -696,15 +696,19 @@ enum PixelStorageFormat {
 
 #[derive(Debug, Clone, Copy, Default)]
 struct XyOffset {
-    pub x: u16,
-    pub y: u16,
+    pub x: Fix124,
+    pub y: Fix124,
 }
 
 impl From<u64> for XyOffset {
     fn from(raw: u64) -> Self {
         XyOffset {
-            x: raw.bits(0..16) as u16,
-            y: raw.bits(32..48) as u16,
+            x: Fix124 {
+                raw: raw.bits(0..16) as u16,
+            },
+            y: Fix124 {
+                raw: raw.bits(32..48) as u16,
+            },
         }
     }
 }
@@ -849,16 +853,20 @@ impl From<u64> for Rgbaq {
 
 #[derive(Debug, Clone, Copy, Default)]
 struct Xyz {
-    x: u16,
-    y: u16,
+    x: Fix124,
+    y: Fix124,
     z: u32,
 }
 
 impl From<u64> for Xyz {
     fn from(raw: u64) -> Self {
         Xyz {
-            x: raw.bits(0..16) as u16,
-            y: raw.bits(16..32) as u16,
+            x: Fix124 {
+                raw: raw.bits(0..16) as u16,
+            },
+            y: Fix124 {
+                raw: raw.bits(16..32) as u16,
+            },
             z: raw.bits(32..64) as u32,
         }
     }
