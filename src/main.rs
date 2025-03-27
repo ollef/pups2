@@ -95,6 +95,20 @@ fn execute(file: &str) -> std::io::Result<()> {
                 // for pixels in frame_buffer.chunks_exact(640) {
                 //     println!("{:x?}", pixels);
                 // }
+                if window.get_size()
+                    != (
+                        frame_buffer_width as usize,
+                        frame_buffer.len() / frame_buffer_width as usize,
+                    )
+                {
+                    window = Window::new(
+                        "Emotion",
+                        frame_buffer_width as usize,
+                        frame_buffer.len() / frame_buffer_width as usize,
+                        WindowOptions::default(),
+                    )
+                    .expect("Failed to create window");
+                }
                 window
                     .update_with_buffer(
                         frame_buffer,
