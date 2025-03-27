@@ -1,4 +1,7 @@
-use std::collections::VecDeque;
+use std::{
+    collections::VecDeque,
+    ops::{Add, Sub},
+};
 
 use enum_map::Enum;
 use num_derive::FromPrimitive;
@@ -20,6 +23,61 @@ pub struct Gs {
 struct Vertex {
     position: Xyz,
     color: Rgbaq,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+struct Fix124 {
+    raw: u16,
+}
+
+impl Fix124 {
+    pub fn round(self) -> u16 {
+        (self.raw + 8).bits(4..16)
+    }
+
+    pub fn floor(self) -> u16 {
+        self.raw.bits(4..16)
+    }
+}
+
+impl Add for Fix124 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Fix124 {
+            raw: self.raw + rhs.raw,
+        }
+    }
+}
+
+impl Sub for Fix124 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        Fix124 {
+            raw: self.raw - rhs.raw,
+        }
+    }
+}
+
+impl From<u16> for Fix124 {
+    fn from(x: u16) -> Self {
+        Fix124 { raw: x << 4 }
+    }
+}
+
+impl From<Fix124> for f32 {
+    fn from(x: Fix124) -> Self {
+        x.raw as f32 / (1.0 * 16.0)
+    }
+}
+
+impl From<f32> for Fix124 {
+    fn from(x: f32) -> Self {
+        Fix124 {
+            raw: (x * 16.0) as u16,
+        }
+    }
 }
 
 #[derive(Debug, Default)]
