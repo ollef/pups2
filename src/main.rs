@@ -72,8 +72,22 @@ fn execute(file: &str) -> std::io::Result<()> {
         bus.main_memory[physical_address as usize..physical_address as usize + data.len()]
             .copy_from_slice(data);
     }
-    let mut window = Window::new("Emotion", 640, 480, WindowOptions::default())
-        .expect("Failed to create window");
+    let mut window = Window::new(
+        "Emotion",
+        640,
+        480,
+        WindowOptions {
+            borderless: false,
+            title: true,
+            resize: true,
+            scale: minifb::Scale::X2,
+            scale_mode: minifb::ScaleMode::UpperLeft,
+            topmost: false,
+            transparency: false,
+            none: false,
+        },
+    )
+    .expect("Failed to create window");
     core.mmu.mmap(0, 0x2000_0000, 0);
     let mut cycle = 0;
     loop {
@@ -92,23 +106,6 @@ fn execute(file: &str) -> std::io::Result<()> {
                     )
                 };
 
-                // for pixels in frame_buffer.chunks_exact(640) {
-                //     println!("{:x?}", pixels);
-                // }
-                if window.get_size()
-                    != (
-                        frame_buffer_width as usize,
-                        frame_buffer.len() / frame_buffer_width as usize,
-                    )
-                {
-                    window = Window::new(
-                        "Emotion",
-                        frame_buffer_width as usize,
-                        frame_buffer.len() / frame_buffer_width as usize,
-                        WindowOptions::default(),
-                    )
-                    .expect("Failed to create window");
-                }
                 window
                     .update_with_buffer(
                         frame_buffer,
