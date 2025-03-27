@@ -88,6 +88,7 @@ fn execute(file: &str) -> std::io::Result<()> {
         },
     )
     .expect("Failed to create window");
+    window.set_background_color(20, 20, 20);
     core.mmu.mmap(0, 0x2000_0000, 0);
     let mut cycle = 0;
     loop {
