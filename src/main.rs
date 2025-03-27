@@ -6,7 +6,7 @@ use argh::FromArgs;
 use bytes::Bytes;
 use elf::{endian::LittleEndian, ElfBytes};
 use emotion_engine::{dmac::Dmac, gif::Gif};
-use minifb::{Window, WindowOptions};
+use minifb::{Scale, ScaleMode, Window, WindowOptions};
 
 #[derive(FromArgs)]
 #[argh(description = "Emotion Engine PS2 emulator")]
@@ -80,8 +80,8 @@ fn execute(file: &str) -> std::io::Result<()> {
             borderless: false,
             title: true,
             resize: true,
-            scale: minifb::Scale::X2,
-            scale_mode: minifb::ScaleMode::UpperLeft,
+            scale: Scale::X2,
+            scale_mode: ScaleMode::Center,
             topmost: false,
             transparency: false,
             none: false,
