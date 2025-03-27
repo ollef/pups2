@@ -266,7 +266,10 @@ impl Gs {
         while let Some((register, data)) = self.command_queue.pop_front() {
             println!("Command: {:?}={:x?}", register, data);
             match register {
-                Register::Primitive => self.registers.primitive = Primitive::from(data),
+                Register::Primitive => {
+                    self.registers.primitive = Primitive::from(data);
+                    self.vertex_queue.clear();
+                }
                 Register::Rgbaq => self.registers.rgbaq = Rgbaq::from(data),
                 Register::St => todo!(),
                 Register::Uv => todo!(),
