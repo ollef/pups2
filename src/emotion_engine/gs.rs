@@ -599,8 +599,10 @@ impl Gs {
         match frame.pixel_storage_format {
             PixelStorageFormat::Psmct32 => {
                 for i in start_pixel..end_pixel {
-                    let pixel_x = (start.position.x + Fix124::from(dx * i as f32 / pixels)).round();
-                    let pixel_y = (start.position.y + Fix124::from(dy * i as f32 / pixels)).round();
+                    let pixel_x =
+                        (f32::from(start.position.x) + dx * i as f32 / pixels).round() as u16;
+                    let pixel_y =
+                        (f32::from(start.position.y) + dy * i as f32 / pixels).round() as u16;
                     let r = (start.color.r as i32 + dr * i / pixels as i32) as u8;
                     let g = (start.color.g as i32 + dg * i / pixels as i32) as u8;
                     let b = (start.color.b as i32 + db * i / pixels as i32) as u8;
