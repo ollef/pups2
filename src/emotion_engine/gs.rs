@@ -38,6 +38,10 @@ impl Fix124 {
     pub fn floor(self) -> u16 {
         self.raw.bits(4..16)
     }
+
+    pub fn ceil(self) -> u16 {
+        (self.raw + 15).bits(4..16)
+    }
 }
 
 impl Add for Fix124 {
