@@ -437,8 +437,8 @@ impl Gs {
                         self.draw_line(&vertex1, &vertex);
                     }
                     self.vertex_queue.clear();
-                    self.vertex_queue.push_back(vertex);
                 }
+                self.vertex_queue.push_back(vertex);
             }
             PrimitiveType::Triangle => {
                 if self.vertex_queue.len() == 2 {
