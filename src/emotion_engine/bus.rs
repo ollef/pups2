@@ -70,7 +70,7 @@ impl Bus {
         match address {
             0x0000_0000..0x1000_0000 => {
                 let address = address as usize & (MAIN_MEMORY_SIZE - 1);
-                println!("Write to main memory: 0x{:08x}:=0x{:08x}", address, value);
+                // println!("Write to main memory: 0x{:08x}:=0x{:08x}", address, value);
                 self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
             }
