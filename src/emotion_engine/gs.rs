@@ -625,7 +625,40 @@ impl Gs {
     }
 
     fn draw_sprite(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
-        println!("Draw sprite: {:?} {:?}", vertex1, vertex2);
+        let scissor = self.contextual_registers().scissor;
+        let x0 = vertex1.position.x.ceil().clamp(scissor.x0, scissor.x1) as i32;
+        let mut x1 = vertex2.position.x.ceil().clamp(scissor.x0, scissor.x1 + 1) as i32;
+        let y0 = vertex1.position.y.ceil().clamp(scissor.y0, scissor.y1) as i32;
+        let mut y1 = vertex2.position.y.ceil().clamp(scissor.y0, scissor.y1 + 1) as i32;
+        let frame = self.contextual_registers().frame_buffer_settings;
+        if x1 == x0 || y1 == y0 {
+            return;
+        }
+
+        x1 -= 1;
+        y1 -= 1;
+        // TODO: interpolate color
+        match frame.pixel_storage_format {
+            PixelStorageFormat::Psmct32 => {
+                for y in y0.min(y1)..=y1.max(y0) {
+                    for x in x0.min(x1)..=x1.max(x0) {
+                        self.write_psmct32(
+                            frame.base_pointer,
+                            x as u16,
+                            y as u16,
+                            frame.width,
+                            u32::from_bytes(&[
+                                vertex1.color.r,
+                                vertex1.color.g,
+                                vertex1.color.b,
+                                vertex1.color.a,
+                            ]),
+                        );
+                    }
+                }
+            }
+            _ => todo!(),
+        }
     }
 }
 
