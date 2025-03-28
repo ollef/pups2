@@ -280,6 +280,14 @@ impl Core {
                     );
                 }
             }
+            Instruction::Blez(rs, offset) => {
+                if (self.get_register::<u64>(rs) as i64) <= 0 {
+                    let offset: u32 = offset.sign_extend();
+                    self.set_delayed_branch_target(
+                        self.program_counter.wrapping_add((offset << 2) + 4),
+                    );
+                }
+            }
             Instruction::Addiu(rt, rs, imm) => {
                 let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
                 self.set_register::<u64>(rt, (temp as u32).sign_extend());
