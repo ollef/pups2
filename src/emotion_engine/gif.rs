@@ -1,4 +1,3 @@
-use enum_map::Enum;
 use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes, fifo::Fifo};
@@ -16,7 +15,7 @@ pub struct Gif {
     path3_tag_value: u32,               // P3TAG
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 #[repr(u8)]
 pub enum Register {
     Primitive,
@@ -49,7 +48,7 @@ pub struct Tag {
     raw: u128,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DataFormat {
     Packed,
     RegisterList,
