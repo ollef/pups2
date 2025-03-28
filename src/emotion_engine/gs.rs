@@ -316,7 +316,7 @@ impl Gs {
                 Register::MipMap2_2 => todo!(),
                 Register::TextureAlpha => todo!(),
                 Register::FogColor => todo!(),
-                Register::TextureFlush => todo!(),
+                Register::TextureFlush => {}
                 Register::Scissor1 => self.registers.contextual[0].scissor = Scissor::from(data),
                 Register::Scissor2 => self.registers.contextual[1].scissor = Scissor::from(data),
                 Register::Alpha1 => todo!(),
