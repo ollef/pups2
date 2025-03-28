@@ -112,6 +112,7 @@ struct Registers {
     primitive: Primitive,                          // PRIM
     rgbaq: Rgbaq,                                  // RGBAQ
     xyz: Xyz,                                      // XYZ2
+    uv: Uv,                                        // UV
     bit_blit_buffer: BitBlitBuffer,                // BITBLTBUF
     transmission_position: TransmissionPosition,   // TRXPOS
     transmission_size: TransmissionSize,           // TRXREG
@@ -279,7 +280,7 @@ impl Gs {
                 }
                 Register::Rgbaq => self.registers.rgbaq = Rgbaq::from(data),
                 Register::St => todo!(),
-                Register::Uv => todo!(),
+                Register::Uv => self.registers.uv = Uv::from(data),
                 Register::Xyzf2 => todo!(),
                 Register::Xyz2 => {
                     self.registers.xyz = Xyz::from(data);
@@ -1013,6 +1014,25 @@ impl From<u64> for Xyz {
                 raw: raw.bits(16..32) as u16,
             },
             z: raw.bits(32..64) as u32,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct Uv {
+    u: Fix124,
+    v: Fix124,
+}
+
+impl From<u64> for Uv {
+    fn from(raw: u64) -> Self {
+        Uv {
+            u: Fix124 {
+                raw: raw.bits(0..=13) as u16,
+            },
+            v: Fix124 {
+                raw: raw.bits(16..=29) as u16,
+            },
         }
     }
 }
