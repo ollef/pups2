@@ -177,7 +177,14 @@ impl Core {
                 self.set_register::<u64>(rd, value.sign_extend());
             }
             Instruction::Sub(_, _, _) => todo!(),
-            Instruction::Subu(_, _, _) => todo!(),
+            Instruction::Subu(rd, rs, rt) => {
+                self.set_register::<u64>(
+                    rd,
+                    self.get_register::<u32>(rs)
+                        .wrapping_sub(self.get_register::<u32>(rt))
+                        .sign_extend(),
+                );
+            }
             Instruction::And(rd, rs, rt) => {
                 self.set_register(
                     rd,
