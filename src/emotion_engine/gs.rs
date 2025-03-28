@@ -127,6 +127,7 @@ pub struct ContextualRegisters {
     scissor: Scissor,                           // SCISSOR_1, SCISSOR_2
     frame_buffer_settings: FrameBufferSettings, // FRAME_1, FRAME_2
     pixel_test: PixelTest,                      // TEST_1, TEST_2
+    texture: [Texture; 3],                      // TEX0_1, TEX0_2, TEX1_1, TEX1_2, TEX2_1, TEX2_2
 }
 
 impl Gs {
@@ -284,17 +285,29 @@ impl Gs {
                     self.registers.xyz = Xyz::from(data);
                     self.vertex_kick(/* drawing_kick */ true);
                 }
-                Register::Texture0_1 => todo!(),
-                Register::Texture0_2 => todo!(),
+                Register::Texture0_1 => {
+                    self.registers.contextual[0].texture[0] = Texture::from(data)
+                }
+                Register::Texture0_2 => {
+                    self.registers.contextual[1].texture[0] = Texture::from(data)
+                }
                 Register::Clamp1 => todo!(),
                 Register::Clamp2 => todo!(),
                 Register::Fog => todo!(),
                 Register::Xyzf3 => todo!(),
                 Register::Xyz3 => todo!(),
-                Register::Texture1_1 => todo!(),
-                Register::Texture1_2 => todo!(),
-                Register::Texture2_1 => todo!(),
-                Register::Texture2_2 => todo!(),
+                Register::Texture1_1 => {
+                    self.registers.contextual[0].texture[1] = Texture::from(data)
+                }
+                Register::Texture1_2 => {
+                    self.registers.contextual[1].texture[1] = Texture::from(data)
+                }
+                Register::Texture2_1 => {
+                    self.registers.contextual[0].texture[2] = Texture::from(data)
+                }
+                Register::Texture2_2 => {
+                    self.registers.contextual[1].texture[2] = Texture::from(data)
+                }
                 Register::XyOffset1 => {
                     self.registers.contextual[0].xy_offset = XyOffset::from(data)
                 }
@@ -1157,4 +1170,73 @@ pub enum DepthTest {
     Always = 0b01,
     GreaterOrEqual = 0b10,
     Greater = 0b11,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Texture {
+    base_pointer: u32,                               // TBP0
+    buffer_width: u16,                               // TBW
+    pixel_storage_format: PixelStorageFormat,        // PSM
+    width: u16,                                      // TW
+    height: u16,                                     // TH
+    has_alpha: bool,                                 // TCC
+    function: TextureFunction,                       // TFX
+    clut_buffer_base_pointer: u32,                   // CBP
+    clut_pixel_storage_format: PixelStorageFormat,   // CPSM
+    clut_storage_mode: ClutStorageMode,              // CSM
+    clut_entry_offset: u16,                          // CSA
+    clut_buffer_load_control: ClutBufferLoadControl, // CLD
+}
+
+impl From<u64> for Texture {
+    fn from(raw: u64) -> Self {
+        Texture {
+            base_pointer: raw.bits(0..=13) as u32 * 64,
+            buffer_width: raw.bits(14..=19) as u16 * 64,
+            pixel_storage_format: PixelStorageFormat::from_u64(raw.bits(20..=25))
+                .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(20..=25))),
+            width: 2u16.pow(raw.bits(26..=29) as _),
+            height: 2u16.pow(raw.bits(30..=33) as _),
+            has_alpha: raw.bit(34),
+            function: TextureFunction::from_u64(raw.bits(35..=36))
+                .unwrap_or_else(|| panic!("Invalid texture function {:b}", raw.bits(35..=36))),
+            clut_buffer_base_pointer: raw.bits(37..=50) as u32 * 64,
+            clut_pixel_storage_format: PixelStorageFormat::from_u64(raw.bits(51..=54))
+                .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(51..=54))),
+            clut_storage_mode: ClutStorageMode::from_u64(raw.bits(55..=55))
+                .unwrap_or_else(|| panic!("Invalid CLUT storage mode {:b}", raw.bits(55..=55))),
+            clut_entry_offset: raw.bits(56..=60) as u16 * 16,
+            clut_buffer_load_control: ClutBufferLoadControl::from_u64(raw.bits(61..=63))
+                .unwrap_or_else(|| {
+                    panic!("Invalid CLUT buffer load control {:b}", raw.bits(61..=63))
+                }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, FromPrimitive)]
+pub enum TextureFunction {
+    #[default]
+    Modulate = 0b00,
+    Decal = 0b01,
+    Highlight = 0b10,
+    Highlight2 = 0b11,
+}
+
+#[derive(Debug, Clone, Copy, Default, FromPrimitive)]
+pub enum ClutStorageMode {
+    #[default]
+    Csm1,
+    Csm2,
+}
+
+#[derive(Debug, Clone, Copy, Default, FromPrimitive)]
+pub enum ClutBufferLoadControl {
+    #[default]
+    NotChanged = 0b000,
+    LoadFromCsa = 0b001,
+    LoadFromCsaCopyToCbp0 = 0b010,
+    LoadFromCsaCopyToCbp1 = 0b011,
+    LoadFromCbpCopyToCbp0 = 0b100,
+    LoadFromCbpCopyToCbp1 = 0b101,
 }
