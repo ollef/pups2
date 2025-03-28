@@ -2,6 +2,7 @@ mod bits;
 mod bytes;
 mod emotion_engine;
 mod fifo;
+mod fix;
 use argh::FromArgs;
 use bytes::Bytes;
 use elf::{endian::LittleEndian, ElfBytes};
