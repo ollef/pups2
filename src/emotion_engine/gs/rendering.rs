@@ -87,14 +87,14 @@ impl Gs {
             PrimitiveType::Point => {
                 self.vertex_queue.clear();
                 if drawing_kick {
-                    self.draw_point(&vertex);
+                    self.render_point(&vertex);
                 }
             }
             PrimitiveType::Line => {
                 if let Some(vertex1) = self.vertex_queue.pop_back() {
                     self.vertex_queue.clear();
                     if drawing_kick {
-                        self.draw_line(&vertex1, &vertex);
+                        self.render_line(&vertex1, &vertex);
                     }
                 } else {
                     self.vertex_queue.push_back(vertex);
@@ -103,7 +103,7 @@ impl Gs {
             PrimitiveType::LineStrip => {
                 if let Some(vertex1) = self.vertex_queue.pop_back() {
                     if drawing_kick {
-                        self.draw_line(&vertex1, &vertex);
+                        self.render_line(&vertex1, &vertex);
                     }
                     self.vertex_queue.clear();
                 }
@@ -114,7 +114,7 @@ impl Gs {
                     let vertex2 = self.vertex_queue.pop_back().unwrap();
                     let vertex1 = self.vertex_queue.pop_back().unwrap();
                     if drawing_kick {
-                        self.draw_triangle(&vertex1, &vertex2, &vertex);
+                        self.render_triangle(&vertex1, &vertex2, &vertex);
                     }
                 } else {
                     self.vertex_queue.push_back(vertex);
@@ -125,7 +125,7 @@ impl Gs {
                     let vertex1 = self.vertex_queue.pop_front().unwrap();
                     let vertex2 = self.vertex_queue.front().unwrap().clone();
                     if drawing_kick {
-                        self.draw_triangle(&vertex1, &vertex2, &vertex);
+                        self.render_triangle(&vertex1, &vertex2, &vertex);
                     }
                 }
                 self.vertex_queue.push_back(vertex);
@@ -135,7 +135,7 @@ impl Gs {
                     let vertex1 = self.vertex_queue.front().unwrap().clone();
                     let vertex2 = self.vertex_queue.pop_back().unwrap();
                     if drawing_kick {
-                        self.draw_triangle(&vertex1, &vertex2, &vertex);
+                        self.render_triangle(&vertex1, &vertex2, &vertex);
                     }
                 }
                 self.vertex_queue.push_back(vertex);
@@ -144,7 +144,7 @@ impl Gs {
                 if let Some(vertex1) = self.vertex_queue.pop_back() {
                     self.vertex_queue.clear();
                     if drawing_kick {
-                        self.draw_sprite(&vertex1, &vertex);
+                        self.render_sprite(&vertex1, &vertex);
                     }
                 } else {
                     self.vertex_queue.push_back(vertex);
@@ -154,7 +154,7 @@ impl Gs {
         }
     }
 
-    fn draw_point(&mut self, vertex: &Vertex) {
+    fn render_point(&mut self, vertex: &Vertex) {
         let scissor = self.contextual_registers().scissor;
         let pixel_x = vertex.position.x.round();
         let pixel_y = vertex.position.y.round();
@@ -242,7 +242,7 @@ impl Gs {
         Some((t0, t1))
     }
 
-    fn draw_line(&mut self, start: &Vertex, end: &Vertex) {
+    fn render_line(&mut self, start: &Vertex, end: &Vertex) {
         // println!("Draw line: {:?} {:?}", start, end);
         let Some((t0, t1)) = self.clip_line(start.position, end.position) else {
             return;
@@ -282,11 +282,11 @@ impl Gs {
         }
     }
 
-    fn draw_triangle(&mut self, vertex1: &Vertex, vertex2: &Vertex, vertex3: &Vertex) {
+    fn render_triangle(&mut self, vertex1: &Vertex, vertex2: &Vertex, vertex3: &Vertex) {
         todo!()
     }
 
-    fn draw_sprite(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
+    fn render_sprite(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
         let scissor = self.contextual_registers().scissor;
         let x0 = vertex1.position.x.ceil().clamp(scissor.x0, scissor.x1) as i32;
         let mut x1 = vertex2.position.x.ceil().clamp(scissor.x0, scissor.x1 + 1) as i32;
