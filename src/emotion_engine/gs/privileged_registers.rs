@@ -2,7 +2,7 @@ use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes};
 
-use super::{Gs, PixelStorageFormat};
+use super::{registers::PixelStorageFormat, Gs};
 
 #[derive(Debug, Default)]
 pub struct PrivilegedRegisters {

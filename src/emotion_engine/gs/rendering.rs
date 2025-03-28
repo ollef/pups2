@@ -1,11 +1,14 @@
-use crate::{bits::Bits, bytes::Bytes};
+use crate::{bits::Bits, bytes::Bytes, emotion_engine::gs::registers::PixelStorageFormat};
 
-use super::{Gs, PixelStorageFormat, PrimitiveType, Rgbaq, Xyz};
+use super::{
+    registers::{PrimitiveType, Rgbaq, Xyz},
+    Gs,
+};
 
 #[derive(Debug, Clone)]
 pub struct Vertex {
-    position: Xyz,
-    color: Rgbaq,
+    pub position: Xyz,
+    pub color: Rgbaq,
 }
 
 impl Gs {
