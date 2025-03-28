@@ -126,6 +126,7 @@ pub struct ContextualRegisters {
     xy_offset: XyOffset,                        // XYOFFSET_1, XYOFFSET_2
     scissor: Scissor,                           // SCISSOR_1, SCISSOR_2
     frame_buffer_settings: FrameBufferSettings, // FRAME_1, FRAME_2
+    pixel_test: PixelTest,                      // TEST_1, TEST_2
 }
 
 impl Gs {
@@ -323,8 +324,20 @@ impl Gs {
                 Register::DitherMatrix => todo!(),
                 Register::DitherControl => todo!(),
                 Register::ColorClamp => todo!(),
-                Register::PixelTest1 => todo!(),
-                Register::PixelTest2 => todo!(),
+                Register::PixelTest1 => {
+                    self.registers.contextual[0].pixel_test = PixelTest::from(data);
+                    println!(
+                        "Pixel test 1: {:?}",
+                        self.registers.contextual[0].pixel_test
+                    );
+                }
+                Register::PixelTest2 => {
+                    self.registers.contextual[1].pixel_test = PixelTest::from(data);
+                    println!(
+                        "Pixel test 2: {:?}",
+                        self.registers.contextual[1].pixel_test
+                    );
+                }
                 Register::PixelAlphaBlending => todo!(),
                 Register::FrameBufferAlpha1 => todo!(),
                 Register::FrameBufferAlpha2 => todo!(),
@@ -1081,4 +1094,67 @@ pub enum PrimitiveModeControl {
     #[default]
     PrimitiveMode, // Use PRMODE register
     Primitive, // Use PRIM register
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct PixelTest {
+    alpha_test: AlphaTest,        // ATE + ATST
+    alpha_reference: u8,          // AREF
+    alpha_fail: AlphaFail,        // AFAIL
+    destination_alpha_test: bool, // DATE
+    destination_alpha_mode: bool, // DATM
+    depth_test: DepthTest,        // ZTE + ZTST
+}
+
+impl From<u64> for PixelTest {
+    fn from(raw: u64) -> Self {
+        PixelTest {
+            alpha_test: match raw.bit(0) {
+                false => AlphaTest::Always,
+                true => AlphaTest::from_u64(raw.bits(1..=3))
+                    .unwrap_or_else(|| panic!("Invalid alpha test {:b}", raw.bits(1..=3))),
+            },
+            alpha_reference: raw.bits(4..=11) as u8,
+            alpha_fail: AlphaFail::from_u64(raw.bits(12..=13))
+                .unwrap_or_else(|| panic!("Invalid alpha fail {:b}", raw.bits(12..=13))),
+            destination_alpha_test: raw.bit(14),
+            destination_alpha_mode: raw.bit(15),
+            depth_test: match raw.bit(16) {
+                false => DepthTest::Always, // Not allowed according the the spec, but I'll allow it,
+                true => DepthTest::from_u64(raw.bits(17..=18))
+                    .unwrap_or_else(|| panic!("Invalid depth test {:b}", raw.bits(17..=18))),
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, FromPrimitive)]
+pub enum AlphaTest {
+    Never = 0b000,
+    #[default]
+    Always = 0b001, // Same as ATE=0
+    Less = 0b010,
+    LessOrEqual = 0b011,
+    Equal = 0b100,
+    GreaterOrEqual = 0b101,
+    Greater = 0b110,
+    NotEqual = 0b111,
+}
+
+#[derive(Debug, Clone, Copy, Default, FromPrimitive)]
+pub enum AlphaFail {
+    #[default]
+    Keep = 0b00,
+    FramebufferOnly = 0b01,
+    DepthBufferOnly = 0b10,
+    RgbOnly = 0b11,
+}
+
+#[derive(Debug, Clone, Copy, Default, FromPrimitive)]
+pub enum DepthTest {
+    #[default]
+    Never = 0b00,
+    Always = 0b01,
+    GreaterOrEqual = 0b10,
+    Greater = 0b11,
 }
