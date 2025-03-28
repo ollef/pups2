@@ -284,8 +284,8 @@ impl Gs {
                     self.registers.xyz = Xyz::from(data);
                     self.vertex_kick(/* drawing_kick */ true);
                 }
-                Register::Tex0_1 => todo!(),
-                Register::Tex0_2 => todo!(),
+                Register::Texture0_1 => todo!(),
+                Register::Texture0_2 => todo!(),
                 Register::Clamp1 => todo!(),
                 Register::Clamp2 => todo!(),
                 Register::Fog => todo!(),
@@ -737,8 +737,8 @@ pub enum Register {
     Uv = 0x03,                     // UV Vertex texture coordinate setting (texel coordinates)
     Xyzf2 = 0x04,                  // XYZF2 Vertex coordinate value setting
     Xyz2 = 0x05,                   // XYZ2 Vertex coordinate value setting
-    Tex0_1 = 0x06,                 // TEX0_1 Texture information setting
-    Tex0_2 = 0x07,                 // TEX0_2 Texture information setting
+    Texture0_1 = 0x06,             // TEX0_1 Texture information setting
+    Texture0_2 = 0x07,             // TEX0_2 Texture information setting
     Clamp1 = 0x08,                 // CLAMP_1 Texture wrap mode
     Clamp2 = 0x09,                 // CLAMP_2 Texture wrap mode
     Fog = 0x0a,                    // FOG Vertex fog value setting
