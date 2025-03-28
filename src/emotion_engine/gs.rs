@@ -116,6 +116,7 @@ struct Registers {
     transmission_position: TransmissionPosition,   // TRXPOS
     transmission_size: TransmissionSize,           // TRXREG
     transmission_direction: TransmissionDirection, // TRXDIR
+    primitive_mode_control: PrimitiveModeControl,
     transmission_pixel: u32,
     contextual: [ContextualRegisters; 2],
 }
@@ -299,7 +300,12 @@ impl Gs {
                 Register::XyOffset2 => {
                     self.registers.contextual[1].xy_offset = XyOffset::from(data)
                 }
-                Register::PrimitiveModeControl => todo!(),
+                Register::PrimitiveModeControl => {
+                    self.registers.primitive_mode_control = match data.bit(0) {
+                        false => PrimitiveModeControl::PrimitiveMode,
+                        true => PrimitiveModeControl::Primitive,
+                    }
+                }
                 Register::PrimitiveMode => todo!(),
                 Register::TexClut => todo!(),
                 Register::ScanMask => todo!(),
@@ -1068,4 +1074,11 @@ pub enum TransmissionDirection {
     LocalToHost,
     LocalToLocal,
     Deactivated,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub enum PrimitiveModeControl {
+    #[default]
+    PrimitiveMode, // Use PRMODE register
+    Primitive, // Use PRIM register
 }
