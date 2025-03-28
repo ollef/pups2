@@ -201,7 +201,16 @@ impl Core {
             Instruction::Nor(_, _, _) => todo!(),
             Instruction::Mfsa(_) => todo!(),
             Instruction::Mtsa(_) => todo!(),
-            Instruction::Slt(_, _, _) => todo!(),
+            Instruction::Slt(rd, rs, rt) => {
+                let value = if (self.get_register::<u64>(rs) as i64)
+                    < (self.get_register::<u64>(rt) as i64)
+                {
+                    1
+                } else {
+                    0
+                };
+                self.set_register::<u64>(rd, value);
+            }
             Instruction::Sltu(rd, rs, rt) => {
                 let value = if self.get_register::<u64>(rs) < self.get_register::<u64>(rt) {
                     1
