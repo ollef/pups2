@@ -71,7 +71,7 @@ pub struct ContextualRegisters {
     scissor: Scissor,                           // SCISSOR_1, SCISSOR_2
     frame_buffer_settings: FrameBufferSettings, // FRAME_1, FRAME_2
     pixel_test: PixelTest,                      // TEST_1, TEST_2
-    texture: [Texture; 3],                      // TEX0_1, TEX0_2, TEX1_1, TEX1_2, TEX2_1, TEX2_2
+    texture: Texture,                           // TEX0_1, TEX0_2, TEX2_1, TEX2_2
 }
 
 impl Gs {
@@ -229,29 +229,21 @@ impl Gs {
                     self.registers.xyz = Xyz::from(data);
                     self.vertex_kick(/* drawing_kick */ true);
                 }
-                Register::Texture0_1 => {
-                    self.registers.contextual[0].texture[0] = Texture::from(data)
-                }
-                Register::Texture0_2 => {
-                    self.registers.contextual[1].texture[0] = Texture::from(data)
-                }
+                Register::Texture0_1 => self.registers.contextual[0].texture = Texture::from(data),
+                Register::Texture0_2 => self.registers.contextual[1].texture = Texture::from(data),
                 Register::Clamp1 => todo!(),
                 Register::Clamp2 => todo!(),
                 Register::Fog => todo!(),
                 Register::Xyzf3 => todo!(),
                 Register::Xyz3 => todo!(),
-                Register::Texture1_1 => {
-                    self.registers.contextual[0].texture[1] = Texture::from(data)
-                }
-                Register::Texture1_2 => {
-                    self.registers.contextual[1].texture[1] = Texture::from(data)
-                }
-                Register::Texture2_1 => {
-                    self.registers.contextual[0].texture[2] = Texture::from(data)
-                }
-                Register::Texture2_2 => {
-                    self.registers.contextual[1].texture[2] = Texture::from(data)
-                }
+                Register::Texture1_1 => todo!(),
+                Register::Texture1_2 => todo!(),
+                Register::TextureClut1 => self.registers.contextual[0]
+                    .texture
+                    .update_clut_info(Texture::from(data)),
+                Register::TextureClut2 => self.registers.contextual[1]
+                    .texture
+                    .update_clut_info(Texture::from(data)),
                 Register::XyOffset1 => {
                     self.registers.contextual[0].xy_offset = XyOffset::from(data)
                 }
@@ -703,8 +695,8 @@ pub enum Register {
     Xyz3 = 0x0d,                   // XYZ3 Vertex coordinate value setting (without drawing kick)
     Texture1_1 = 0x14,             // TEX1_1 Texture information setting
     Texture1_2 = 0x15,             // TEX1_2 Texture information setting
-    Texture2_1 = 0x16,             // TEX2_1 Texture information setting
-    Texture2_2 = 0x17,             // TEX2_2 Texture information setting
+    TextureClut1 = 0x16,           // TEX2_1 Texture information setting
+    TextureClut2 = 0x17,           // TEX2_2 Texture information setting
     XyOffset1 = 0x18,              // XYOFFSET_1 Offset value setting
     XyOffset2 = 0x19,              // XYOFFSET_2 Offset value setting
     PrimitiveModeControl = 0x1a,   // PRMODECONT Specification of primitive attribute setting method
@@ -1137,6 +1129,16 @@ pub struct Texture {
     clut_storage_mode: ClutStorageMode,              // CSM
     clut_entry_offset: u16,                          // CSA
     clut_buffer_load_control: ClutBufferLoadControl, // CLD
+}
+impl Texture {
+    fn update_clut_info(&mut self, new: Texture) {
+        self.pixel_storage_format = new.pixel_storage_format;
+        self.clut_buffer_base_pointer = new.clut_buffer_base_pointer;
+        self.clut_pixel_storage_format = new.clut_pixel_storage_format;
+        self.clut_storage_mode = new.clut_storage_mode;
+        self.clut_entry_offset = new.clut_entry_offset;
+        self.clut_buffer_load_control = new.clut_buffer_load_control;
+    }
 }
 
 impl From<u64> for Texture {
