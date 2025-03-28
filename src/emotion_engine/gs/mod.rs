@@ -6,6 +6,7 @@ use rendering::Vertex;
 
 use crate::fifo::Fifo;
 
+mod pixel_storage;
 mod privileged_registers;
 mod registers;
 mod rendering;
