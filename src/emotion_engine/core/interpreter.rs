@@ -255,7 +255,9 @@ impl Core {
                     );
                 }
             }
-            Instruction::J(_) => todo!(),
+            Instruction::J(target) => self.set_delayed_branch_target(
+                ((self.program_counter + 4) & 0xF000_0000).wrapping_add(target << 2),
+            ),
             Instruction::Jal(target) => {
                 self.set_register(Register::Ra, (self.program_counter + 8) as u64);
                 self.set_delayed_branch_target(
