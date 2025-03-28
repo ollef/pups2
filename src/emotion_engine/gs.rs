@@ -229,15 +229,15 @@ impl Gs {
                     self.registers.xyz = Xyz::from(data);
                     self.vertex_kick(/* drawing_kick */ true);
                 }
-                Register::Texture0_1 => self.registers.contextual[0].texture = Texture::from(data),
-                Register::Texture0_2 => self.registers.contextual[1].texture = Texture::from(data),
+                Register::Texture1 => self.registers.contextual[0].texture = Texture::from(data),
+                Register::Texture2 => self.registers.contextual[1].texture = Texture::from(data),
                 Register::Clamp1 => todo!(),
                 Register::Clamp2 => todo!(),
                 Register::Fog => todo!(),
                 Register::Xyzf3 => todo!(),
                 Register::Xyz3 => todo!(),
-                Register::Texture1_1 => todo!(),
-                Register::Texture1_2 => todo!(),
+                Register::TextureMipMap1 => todo!(),
+                Register::TextureMipMap2 => todo!(),
                 Register::TextureClut1 => self.registers.contextual[0]
                     .texture
                     .update_clut_info(Texture::from(data)),
@@ -686,15 +686,15 @@ pub enum Register {
     Uv = 0x03,                     // UV Vertex texture coordinate setting (texel coordinates)
     Xyzf2 = 0x04,                  // XYZF2 Vertex coordinate value setting
     Xyz2 = 0x05,                   // XYZ2 Vertex coordinate value setting
-    Texture0_1 = 0x06,             // TEX0_1 Texture information setting
-    Texture0_2 = 0x07,             // TEX0_2 Texture information setting
+    Texture1 = 0x06,               // TEX0_1 Texture information setting
+    Texture2 = 0x07,               // TEX0_2 Texture information setting
     Clamp1 = 0x08,                 // CLAMP_1 Texture wrap mode
     Clamp2 = 0x09,                 // CLAMP_2 Texture wrap mode
     Fog = 0x0a,                    // FOG Vertex fog value setting
     Xyzf3 = 0x0c,                  // XYZF3 Vertex coordinate value setting (without drawing kick)
     Xyz3 = 0x0d,                   // XYZ3 Vertex coordinate value setting (without drawing kick)
-    Texture1_1 = 0x14,             // TEX1_1 Texture information setting
-    Texture1_2 = 0x15,             // TEX1_2 Texture information setting
+    TextureMipMap1 = 0x14,         // TEX1_1 Texture information setting
+    TextureMipMap2 = 0x15,         // TEX1_2 Texture information setting
     TextureClut1 = 0x16,           // TEX2_1 Texture information setting
     TextureClut2 = 0x17,           // TEX2_2 Texture information setting
     XyOffset1 = 0x18,              // XYOFFSET_1 Offset value setting
