@@ -585,7 +585,7 @@ impl From<u64> for PixelTest {
             destination_alpha_test: raw.bit(14),
             destination_alpha_mode: raw.bit(15),
             depth_test: match raw.bit(16) {
-                false => DepthTest::Always, // Not allowed according the the spec, but I'll allow it,
+                false => DepthTest::Always, // Not allowed according the the spec, but I'll allow it.
                 true => DepthTest::from_u64(raw.bits(17..=18))
                     .unwrap_or_else(|| panic!("Invalid depth test {:b}", raw.bits(17..=18))),
             },
