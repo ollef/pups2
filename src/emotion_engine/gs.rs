@@ -800,7 +800,7 @@ impl From<u64> for FrameBufferSettings {
         FrameBufferSettings {
             base_pointer: raw.bits(0..=8) as u32 * 2048,
             width: raw.bits(16..=21) as u16 * 64,
-            pixel_storage_format: PixelStorageFormat::from_u8(raw.bits(24..=29) as u8)
+            pixel_storage_format: PixelStorageFormat::from_u64(raw.bits(24..=29))
                 .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(24..=29))),
             drawing_mask: raw.bits(32..64) as u32,
         }
@@ -886,7 +886,7 @@ struct Primitive {
 impl From<u64> for Primitive {
     fn from(raw: u64) -> Self {
         Primitive {
-            type_: PrimitiveType::from_u8(raw.bits(0..=2) as u8)
+            type_: PrimitiveType::from_u64(raw.bits(0..=2))
                 .unwrap_or_else(|| panic!("Invalid primitive type {:b}", raw.bits(0..=2))),
             shading_method: match raw.bit(3) {
                 false => ShadingMethod::Flat,
@@ -1019,14 +1019,14 @@ impl From<u64> for BitBlitBuffer {
         BitBlitBuffer {
             source_base_pointer: value.bits(0..=13) as u32 * 64,
             source_width: value.bits(16..=21) as u16 * 64,
-            source_pixel_storage_format: PixelStorageFormat::from_u8(value.bits(24..=29) as u8)
+            source_pixel_storage_format: PixelStorageFormat::from_u64(value.bits(24..=29))
                 .unwrap_or_else(|| {
                     panic!("Invalid pixel storage format {:b}", value.bits(24..=29))
                 }),
             destination_base_pointer: value.bits(32..=45) as u32 * 64,
             destination_width: value.bits(48..=53) as u16 * 64,
-            destination_pixel_storage_format:
-                PixelStorageFormat::from_u8(value.bits(56..=61) as u8).unwrap_or_else(|| {
+            destination_pixel_storage_format: PixelStorageFormat::from_u64(value.bits(56..=61))
+                .unwrap_or_else(|| {
                     panic!("Invalid pixel storage format {:b}", value.bits(56..=61))
                 }),
         }
