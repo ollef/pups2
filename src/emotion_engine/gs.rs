@@ -7,7 +7,7 @@ use enum_map::Enum;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-use crate::{bits::Bits, bytes::Bytes, fifo::Fifo};
+use crate::{bits::Bits, bytes::Bytes, fifo::Fifo, fix::Fix};
 
 const LOCAL_MEMORY_SIZE: usize = 4 * 1024 * 1024;
 
@@ -25,64 +25,7 @@ struct Vertex {
     color: Rgbaq,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-struct Fix124 {
-    raw: u16,
-}
-
-impl Fix124 {
-    pub fn round(self) -> u16 {
-        (self.raw + 8).bits(4..16)
-    }
-
-    pub fn floor(self) -> u16 {
-        self.raw.bits(4..16)
-    }
-
-    pub fn ceil(self) -> u16 {
-        (self.raw + 15).bits(4..16)
-    }
-}
-
-impl Add for Fix124 {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self {
-        Fix124 {
-            raw: self.raw + rhs.raw,
-        }
-    }
-}
-
-impl Sub for Fix124 {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self {
-        Fix124 {
-            raw: self.raw - rhs.raw,
-        }
-    }
-}
-
-impl From<u16> for Fix124 {
-    fn from(x: u16) -> Self {
-        Fix124 { raw: x << 4 }
-    }
-}
-
-impl From<Fix124> for f32 {
-    fn from(x: Fix124) -> Self {
-        x.raw as f32 / (1.0 * 16.0)
-    }
-}
-
-impl From<f32> for Fix124 {
-    fn from(x: f32) -> Self {
-        Fix124 {
-            raw: (x * 16.0) as u16,
-        }
-    }
-}
+type Fix124 = Fix<u16, 4>;
 
 #[derive(Debug, Default)]
 struct PrivilegedRegisters {
@@ -849,12 +792,8 @@ struct XyOffset {
 impl From<u64> for XyOffset {
     fn from(raw: u64) -> Self {
         XyOffset {
-            x: Fix124 {
-                raw: raw.bits(0..16) as u16,
-            },
-            y: Fix124 {
-                raw: raw.bits(32..48) as u16,
-            },
+            x: Fix124::from_raw(raw.bits(0..16) as u16),
+            y: Fix124::from_raw(raw.bits(32..48) as u16),
         }
     }
 }
@@ -1007,12 +946,8 @@ struct Xyz {
 impl From<u64> for Xyz {
     fn from(raw: u64) -> Self {
         Xyz {
-            x: Fix124 {
-                raw: raw.bits(0..16) as u16,
-            },
-            y: Fix124 {
-                raw: raw.bits(16..32) as u16,
-            },
+            x: Fix124::from_raw(raw.bits(0..16) as u16),
+            y: Fix124::from_raw(raw.bits(16..32) as u16),
             z: raw.bits(32..64) as u32,
         }
     }
@@ -1027,12 +962,8 @@ struct Uv {
 impl From<u64> for Uv {
     fn from(raw: u64) -> Self {
         Uv {
-            u: Fix124 {
-                raw: raw.bits(0..=13) as u16,
-            },
-            v: Fix124 {
-                raw: raw.bits(16..=29) as u16,
-            },
+            u: Fix124::from_raw(raw.bits(0..=13) as u16),
+            v: Fix124::from_raw(raw.bits(16..=29) as u16),
         }
     }
 }
