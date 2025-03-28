@@ -409,13 +409,16 @@ impl Instruction {
 
     pub fn branch_target(&self, address: u32) -> Option<u32> {
         match self {
-            Instruction::Bgez(_, offset)
+            Instruction::Bltz(_, offset)
+            | Instruction::Bgez(_, offset)
             | Instruction::Beq(_, _, offset)
-            | Instruction::Bne(_, _, offset) => Some({
+            | Instruction::Bne(_, _, offset)
+            | Instruction::Blez(_, offset)
+            | Instruction::Beql(_, _, offset) => Some({
                 let offset: u32 = offset.sign_extend();
                 address.wrapping_add(4).wrapping_add(offset << 2)
             }),
-            Instruction::Jal(target) => {
+            Instruction::J(target) | Instruction::Jal(target) => {
                 Some(((address + 4) & 0xF000_0000).wrapping_add(target << 2))
             }
             _ => None,
