@@ -1,7 +1,11 @@
-use crate::{bytes::Bytes, emotion_engine::gs::registers::PixelStorageFormat};
+use std::ops::{Add, AddAssign, Div, Mul, Sub};
+
+use num_traits::AsPrimitive;
+
+use crate::{bytes::Bytes, emotion_engine::gs::registers::PixelStorageFormat, fix::Fix};
 
 use super::{
-    registers::{PrimitiveType, Rgbaq, Xyz},
+    registers::{PrimitiveType, Rgbaq, Uv, Xyz},
     Gs,
 };
 
@@ -9,6 +13,187 @@ use super::{
 pub struct Vertex {
     pub position: Xyz,
     pub color: Rgbaq,
+    pub uv: Uv,
+}
+
+#[derive(Debug, Clone)]
+pub struct FloatVertex {
+    x: f32,
+    y: f32,
+    z: f32,
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
+    q: f32,
+    u: f32,
+    v: f32,
+}
+
+impl FloatVertex {
+    pub fn xy(&self) -> Xy {
+        Xy {
+            x: self.x,
+            y: self.y,
+        }
+    }
+}
+
+impl From<&Vertex> for FloatVertex {
+    fn from(v: &Vertex) -> Self {
+        FloatVertex {
+            x: f32::from(v.position.x),
+            y: f32::from(v.position.y),
+            z: v.position.z as f32,
+            r: v.color.r as f32,
+            g: v.color.g as f32,
+            b: v.color.b as f32,
+            a: v.color.a as f32,
+            q: v.color.q,
+            u: f32::from(v.uv.u),
+            v: f32::from(v.uv.v),
+        }
+    }
+}
+
+impl Sub for &FloatVertex {
+    type Output = FloatVertex;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        FloatVertex {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+            r: self.r - rhs.r,
+            g: self.g - rhs.g,
+            b: self.b - rhs.b,
+            a: self.a - rhs.a,
+            q: self.q - rhs.q,
+            u: self.u - rhs.u,
+            v: self.v - rhs.v,
+        }
+    }
+}
+
+impl Sub for FloatVertex {
+    type Output = FloatVertex;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        &self - &rhs
+    }
+}
+
+impl Add for &FloatVertex {
+    type Output = FloatVertex;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        FloatVertex {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+            r: self.r + rhs.r,
+            g: self.g + rhs.g,
+            b: self.b + rhs.b,
+            a: self.a + rhs.a,
+            q: self.q + rhs.q,
+            u: self.u + rhs.u,
+            v: self.v + rhs.v,
+        }
+    }
+}
+
+impl Add for FloatVertex {
+    type Output = FloatVertex;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        &self + &rhs
+    }
+}
+
+impl AddAssign<&FloatVertex> for FloatVertex {
+    fn add_assign(&mut self, rhs: &Self) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+        self.z += rhs.z;
+        self.r += rhs.r;
+        self.g += rhs.g;
+        self.b += rhs.b;
+        self.a += rhs.a;
+        self.q += rhs.q;
+        self.u += rhs.u;
+        self.v += rhs.v;
+    }
+}
+
+impl Mul<f32> for &FloatVertex {
+    type Output = FloatVertex;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        FloatVertex {
+            x: self.x * rhs,
+            y: self.y * rhs,
+            z: self.z * rhs,
+            r: self.r * rhs,
+            g: self.g * rhs,
+            b: self.b * rhs,
+            a: self.a * rhs,
+            q: self.q * rhs,
+            u: self.u * rhs,
+            v: self.v * rhs,
+        }
+    }
+}
+
+impl Mul<f32> for FloatVertex {
+    type Output = FloatVertex;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        &self * rhs
+    }
+}
+
+impl Div<f32> for &FloatVertex {
+    type Output = FloatVertex;
+
+    fn div(self, rhs: f32) -> Self::Output {
+        FloatVertex {
+            x: self.x / rhs,
+            y: self.y / rhs,
+            z: self.z / rhs,
+            r: self.r / rhs,
+            g: self.g / rhs,
+            b: self.b / rhs,
+            a: self.a / rhs,
+            q: self.q / rhs,
+            u: self.u / rhs,
+            v: self.v / rhs,
+        }
+    }
+}
+
+impl Div<f32> for FloatVertex {
+    type Output = FloatVertex;
+
+    fn div(self, rhs: f32) -> Self::Output {
+        &self / rhs
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Xy {
+    x: f32,
+    y: f32,
+}
+
+impl Mul<f32> for Xy {
+    type Output = Xy;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Xy {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
 }
 
 impl Gs {
@@ -45,6 +230,7 @@ impl Gs {
                 z: self.registers.xyz.z,
             },
             color: self.registers.rgbaq,
+            uv: self.registers.uv,
         };
 
         match self.registers.primitive.type_ {
@@ -153,30 +339,19 @@ impl Gs {
         // TODO drawing mask
     }
 
-    fn clip_line(&self, start: Xyz, end: Xyz) -> Option<(f32, f32)> {
+    fn clip_line(&self, start: &FloatVertex, delta: &FloatVertex) -> Option<(f32, f32)> {
         let scissor = self.contextual_registers().scissor;
-        let sx0 = f32::from(scissor.x0);
-        let sy0 = f32::from(scissor.y0);
-        let sx1 = f32::from(scissor.x1 + 1);
-        let sy1 = f32::from(scissor.y1 + 1);
-        let vx0 = f32::from(start.x);
-        let vy0 = f32::from(start.y);
-        let vx1 = f32::from(end.x);
-        let vy1 = f32::from(end.y);
-        let dx = vx1 - vx0;
-        let dy = vy1 - vy0;
-
         let mut t0: f32 = 0.0;
         let mut t1: f32 = 1.0;
 
-        if dx == 0.0 {
-            if !(sx0..sx1).contains(&vx0) {
+        if delta.x == 0.0 {
+            if !(f32::from(scissor.x0)..f32::from(scissor.x1) + 1.0).contains(&start.x) {
                 return None;
             }
         } else {
-            let mut p = (sx0 - vx0) / dx;
-            let mut q = (sx1 - vx0) / dx;
-            if dx < 0.0 {
+            let mut p = (f32::from(scissor.x0) - start.x) / delta.x;
+            let mut q = (f32::from(scissor.x1) + 1.0 - start.x) / delta.x;
+            if delta.x < 0.0 {
                 std::mem::swap(&mut p, &mut q);
             }
             t0 = t0.max(p);
@@ -186,14 +361,14 @@ impl Gs {
             }
         }
 
-        if dy == 0.0 {
-            if !(sy0..sy1).contains(&vy0) {
+        if delta.y == 0.0 {
+            if !(f32::from(scissor.y0)..f32::from(scissor.y1) + 1.0).contains(&start.y) {
                 return None;
             }
         } else {
-            let mut p = (sy0 - vy0) / dy;
-            let mut q = (sy1 - vy0) / dy;
-            if dy < 0.0 {
+            let mut p = (f32::from(scissor.y0) - start.y) / delta.y;
+            let mut q = (f32::from(scissor.y1) + 1.0 - start.y) / delta.y;
+            if delta.y < 0.0 {
                 std::mem::swap(&mut p, &mut q);
             }
             t0 = t0.max(p);
@@ -207,47 +382,153 @@ impl Gs {
     }
 
     fn render_line(&mut self, start: &Vertex, end: &Vertex) {
+        let start = FloatVertex::from(start);
+        let end = FloatVertex::from(end);
+        let delta = &end - &start;
+
         // println!("Draw line: {:?} {:?}", start, end);
-        let Some((t0, t1)) = self.clip_line(start.position, end.position) else {
+        let Some((t0, t1)) = self.clip_line(&start, &delta) else {
             return;
         };
-        let dx = f32::from(end.position.x) - f32::from(start.position.x);
-        let dy = f32::from(end.position.y) - f32::from(start.position.y);
-        let dr = end.color.r as i32 - start.color.r as i32;
-        let dg = end.color.g as i32 - start.color.g as i32;
-        let db = end.color.b as i32 - start.color.b as i32;
-        let da = end.color.a as i32 - start.color.a as i32;
-        let pixels = dx.abs().max(dy.abs()).round();
+        let pixels = delta.x.abs().max(delta.y.abs()).round();
+        let delta_pixel = &delta / pixels;
         let start_pixel = (t0 * pixels) as i32;
         let end_pixel = (t1 * pixels) as i32;
 
         let frame = self.contextual_registers().frame_buffer_settings;
         match frame.pixel_storage_format {
             PixelStorageFormat::Psmct32 => {
-                for i in start_pixel..end_pixel {
-                    let pixel_x =
-                        (f32::from(start.position.x) + dx * i as f32 / pixels).round() as u16;
-                    let pixel_y =
-                        (f32::from(start.position.y) + dy * i as f32 / pixels).round() as u16;
-                    let r = (start.color.r as i32 + dr * i / pixels as i32) as u8;
-                    let g = (start.color.g as i32 + dg * i / pixels as i32) as u8;
-                    let b = (start.color.b as i32 + db * i / pixels as i32) as u8;
-                    let a = (start.color.a as i32 + da * i / pixels as i32) as u8;
+                let mut v = &start + &(&delta_pixel * start_pixel as f32);
+                for _ in start_pixel..end_pixel {
                     self.write_psmct32(
                         frame.base_pointer,
-                        pixel_x,
-                        pixel_y,
+                        v.x as u16,
+                        v.y as u16,
                         frame.width,
-                        u32::from_bytes(&[r, g, b, a]),
+                        u32::from_bytes(&[v.r as u8, v.g as u8, v.b as u8, v.a as u8]),
                     );
+                    v += &delta_pixel;
                 }
             }
             _ => todo!(),
         }
     }
 
+    fn edge(v1: Xy, v2: Xy, v3: Xy) -> f32 {
+        (v2.x - v1.x) * (v3.y - v1.y) - (v2.y - v1.y) * (v3.x - v1.x)
+    }
+
     fn render_triangle(&mut self, vertex1: &Vertex, vertex2: &Vertex, vertex3: &Vertex) {
-        todo!()
+        let vertex1 = FloatVertex::from(vertex1);
+        let vertex2 = FloatVertex::from(vertex2);
+        let vertex3 = FloatVertex::from(vertex3);
+        let area = Self::edge(vertex1.xy(), vertex2.xy(), vertex3.xy()); // Signed (twice the) triangle area
+        if area == 0.0 {
+            return;
+        }
+        // Ensure counter-clockwise winding order.
+        let (area, vertex2, vertex3) = if area < 0.0 {
+            (-area, vertex3, vertex2)
+        } else {
+            (area, vertex2, vertex3)
+        };
+
+        let scissor = self.contextual_registers().scissor;
+        let min_pixel = Xy {
+            x: vertex1
+                .x
+                .min(vertex2.x)
+                .min(vertex3.x)
+                .ceil()
+                .max(scissor.x0 as f32),
+            y: vertex1
+                .y
+                .min(vertex2.y)
+                .min(vertex3.y)
+                .ceil()
+                .max(scissor.y0 as f32),
+        };
+        let max_pixel = Xy {
+            x: vertex1
+                .x
+                .max(vertex2.x)
+                .max(vertex3.x)
+                .ceil()
+                .min(scissor.x1 as f32 + 1.0),
+            y: vertex1
+                .y
+                .max(vertex2.y)
+                .max(vertex3.y)
+                .ceil()
+                .min(scissor.y1 as f32 + 1.0),
+        };
+
+        if min_pixel.x >= max_pixel.x || min_pixel.y >= max_pixel.y {
+            return;
+        }
+
+        let inv_area = 1.0 / area;
+
+        let mut w1_start = Self::edge(vertex2.xy(), vertex3.xy(), min_pixel) * inv_area;
+        let mut w2_start = Self::edge(vertex3.xy(), vertex1.xy(), min_pixel) * inv_area;
+        let mut w3_start = Self::edge(vertex1.xy(), vertex2.xy(), min_pixel) * inv_area;
+        let delta = |p1: Xy, p2: Xy| Xy {
+            x: p1.y - p2.y,
+            y: p2.x - p1.x,
+        };
+        let w1_delta = delta(vertex2.xy(), vertex3.xy()) * inv_area;
+        let w2_delta = delta(vertex3.xy(), vertex1.xy()) * inv_area;
+        let w3_delta = delta(vertex1.xy(), vertex2.xy()) * inv_area;
+        let bias = |p1: Xy, p2: Xy| {
+            if (p1.y, p2.x) < (p2.y, p1.x) {
+                1.0 / 16.0
+            } else {
+                0.0
+            }
+        };
+        let bias1 = bias(vertex2.xy(), vertex3.xy()) * inv_area;
+        let bias2 = bias(vertex3.xy(), vertex1.xy()) * inv_area;
+        let bias3 = bias(vertex1.xy(), vertex2.xy()) * inv_area;
+
+        let frame = self.contextual_registers().frame_buffer_settings;
+
+        for y in min_pixel.y as u16..max_pixel.y as u16 {
+            let mut w1 = w1_start;
+            let mut w2 = w2_start;
+            let mut w3 = w3_start;
+
+            for x in min_pixel.x as u16..max_pixel.x as u16 {
+                if w1 >= bias1 && w2 >= bias2 && w3 >= bias3 {
+                    let vertex = &vertex1 * w1 + &vertex2 * w2 + &vertex3 * w3;
+
+                    match frame.pixel_storage_format {
+                        PixelStorageFormat::Psmct32 => {
+                            self.write_psmct32(
+                                frame.base_pointer,
+                                x,
+                                y,
+                                frame.width,
+                                u32::from_bytes(&[
+                                    vertex.r as u8,
+                                    vertex.g as u8,
+                                    vertex.b as u8,
+                                    vertex.a as u8,
+                                ]),
+                            );
+                        }
+                        _ => todo!(),
+                    }
+                }
+
+                w1 += w1_delta.x;
+                w2 += w2_delta.x;
+                w3 += w3_delta.x;
+            }
+
+            w1_start += w1_delta.y;
+            w2_start += w2_delta.y;
+            w3_start += w3_delta.y;
+        }
     }
 
     fn render_sprite(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
