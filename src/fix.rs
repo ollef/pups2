@@ -1,4 +1,4 @@
-use std::ops::{Add, Div, Mul, Shl, Shr, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Shl, Shr, Sub};
 
 use num_traits::{AsPrimitive, One};
 
@@ -47,6 +47,20 @@ impl<T, const F: usize> Fix<T, F> {
         T: Shr<usize, Output = T>,
     {
         (self.0 + (T::one() << F) - T::one()) >> F
+    }
+}
+
+impl<S, T, const E: usize, const F: usize> AsPrimitive<Fix<T, F>> for Fix<S, E>
+where
+    T: Copy + 'static + Shl<usize, Output = T> + Shr<usize, Output = T>,
+    S: AsPrimitive<T>,
+{
+    fn as_(self) -> Fix<T, F> {
+        Fix(if E < F {
+            self.0.as_() << (F - E)
+        } else {
+            self.0.as_() >> (E - F)
+        })
     }
 }
 
@@ -112,6 +126,15 @@ where
 
     fn div(self, rhs: Fix<T, F>) -> Self::Output {
         Fix((self.0 << F) / rhs.0)
+    }
+}
+
+impl<S, T, const F: usize> AddAssign<Fix<S, F>> for Fix<T, F>
+where
+    T: AddAssign<S>,
+{
+    fn add_assign(&mut self, rhs: Fix<S, F>) {
+        self.0 += rhs.0;
     }
 }
 
