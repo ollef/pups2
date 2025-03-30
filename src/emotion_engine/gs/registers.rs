@@ -456,8 +456,8 @@ impl From<u64> for Xyz {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Uv {
-    u: Fix124,
-    v: Fix124,
+    pub u: Fix124,
+    pub v: Fix124,
 }
 
 impl From<u64> for Uv {
