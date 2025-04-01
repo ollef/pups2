@@ -532,36 +532,55 @@ impl Gs {
     }
 
     fn render_sprite(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
+        let color = vertex2.color;
+        let vertex1 = FloatVertex::from(vertex1);
+        let vertex2 = FloatVertex::from(vertex2);
         let scissor = self.contextual_registers().scissor;
-        let x0 = vertex1.position.x.ceil().clamp(scissor.x0, scissor.x1) as i32;
-        let mut x1 = vertex2.position.x.ceil().clamp(scissor.x0, scissor.x1 + 1) as i32;
-        let y0 = vertex1.position.y.ceil().clamp(scissor.y0, scissor.y1) as i32;
-        let mut y1 = vertex2.position.y.ceil().clamp(scissor.y0, scissor.y1 + 1) as i32;
+        let x0 = vertex1.x.min(vertex2.x).ceil().max(f32::from(scissor.x0));
+        let x1 = vertex1
+            .x
+            .max(vertex2.x)
+            .ceil()
+            .min(f32::from(scissor.x1 + 1));
+        let y0 = vertex1.y.min(vertex2.y).ceil().max(f32::from(scissor.y0));
+        let y1 = vertex1
+            .y
+            .max(vertex2.y)
+            .ceil()
+            .min(f32::from(scissor.y1 + 1));
         let frame = self.contextual_registers().frame_buffer_settings;
-        if x1 == x0 || y1 == y0 {
+        if x0 >= x1 || y0 >= y1 {
             return;
         }
 
-        x1 -= 1;
-        y1 -= 1;
+        let w = vertex2.x - vertex1.x;
+        let inv_w = 1.0 / w;
+        let h = vertex2.y - vertex1.y;
+        let inv_h = 1.0 / h;
+
+        let mut u =
+            vertex1.u * (1.0 - (x0 - vertex1.x) * inv_w) + vertex2.u * (x0 - vertex1.x) * inv_w;
+        let mut v =
+            vertex1.v * (1.0 - (y0 - vertex1.y) * inv_h) + vertex2.v * (y0 - vertex1.y) * inv_h;
+
+        let step_x_u = (vertex2.u - vertex1.u) * inv_w;
+        let step_y_v = (vertex2.v - vertex1.v) * inv_h;
+
         // TODO: interpolate color
         match frame.pixel_storage_format {
             PixelStorageFormat::Psmct32 => {
-                for y in y0.min(y1)..=y1.max(y0) {
-                    for x in x0.min(x1)..=x1.max(x0) {
+                for y in y0 as u16..y1 as u16 {
+                    for x in x0 as u16..x1 as u16 {
                         self.write_psmct32(
                             frame.base_pointer,
-                            x as u16,
-                            y as u16,
+                            x,
+                            y,
                             frame.width,
-                            u32::from_bytes(&[
-                                vertex1.color.r,
-                                vertex1.color.g,
-                                vertex1.color.b,
-                                vertex1.color.a,
-                            ]),
+                            u32::from_bytes(&[color.r, color.g, color.b, color.a]),
                         );
+                        u += step_x_u;
                     }
+                    v += step_y_v;
                 }
             }
             _ => todo!(),
