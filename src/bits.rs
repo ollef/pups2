@@ -85,6 +85,15 @@ pub trait SignExtend<T> {
     fn sign_extend(self) -> T;
 }
 
+impl<T> SignExtend<T> for u8
+where
+    i8: SignExtend<T>,
+{
+    fn sign_extend(self) -> T {
+        (self as u8).sign_extend()
+    }
+}
+
 impl<T> SignExtend<T> for u16
 where
     i16: SignExtend<T>,
@@ -106,6 +115,12 @@ where
 impl SignExtend<u32> for i16 {
     fn sign_extend(self) -> u32 {
         self as i32 as u32
+    }
+}
+
+impl SignExtend<u64> for i8 {
+    fn sign_extend(self) -> u64 {
+        self as i32 as u64
     }
 }
 
