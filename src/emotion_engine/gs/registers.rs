@@ -625,19 +625,20 @@ pub enum DepthTest {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Texture {
-    base_pointer: u32,                               // TBP0
-    buffer_width: u16,                               // TBW
-    pixel_storage_format: PixelStorageFormat,        // PSM
-    width: u16,                                      // TW
-    height: u16,                                     // TH
-    has_alpha: bool,                                 // TCC
-    function: TextureFunction,                       // TFX
-    clut_buffer_base_pointer: u32,                   // CBP
-    clut_pixel_storage_format: PixelStorageFormat,   // CPSM
-    clut_storage_mode: ClutStorageMode,              // CSM
-    clut_entry_offset: u16,                          // CSA
-    clut_buffer_load_control: ClutBufferLoadControl, // CLD
+    pub base_pointer: u32,                               // TBP0
+    pub buffer_width: u16,                               // TBW
+    pub pixel_storage_format: PixelStorageFormat,        // PSM
+    pub width: u16,                                      // TW
+    pub height: u16,                                     // TH
+    pub has_alpha: bool,                                 // TCC
+    pub function: TextureFunction,                       // TFX
+    pub clut_buffer_base_pointer: u32,                   // CBP
+    pub clut_pixel_storage_format: PixelStorageFormat,   // CPSM
+    pub clut_storage_mode: ClutStorageMode,              // CSM
+    pub clut_entry_offset: u16,                          // CSA
+    pub clut_buffer_load_control: ClutBufferLoadControl, // CLD
 }
+
 impl Texture {
     fn update_clut_info(&mut self, new: Texture) {
         self.pixel_storage_format = new.pixel_storage_format;
