@@ -10,7 +10,7 @@ use emotion_engine::{dmac::Dmac, gif::Gif};
 use minifb::{Scale, ScaleMode, Window, WindowOptions};
 
 #[derive(FromArgs)]
-#[argh(description = "Emotion Engine PS2 emulator")]
+#[argh(description = "Perpetually Unfinished PS2 emulator")]
 struct Arguments {
     #[argh(switch, short = 'd', description = "disassemble the ELF file")]
     disassemble: bool,
