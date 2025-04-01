@@ -218,9 +218,9 @@ impl Gs {
                                     self.registers.bit_blit_buffer.destination_width,
                                     data,
                                 );
-                                println!(
-                                    "Transmitting pixel at ({x}, {y}) buffer width={buffer_width}"
-                                );
+                                // println!(
+                                //     "Transmitting pixel at ({x}, {y}) buffer width={buffer_width}"
+                                // );
                                 pixel += 1;
                                 self.registers.transmission_pixel = pixel;
                                 if pixel == pixels {
