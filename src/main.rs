@@ -74,7 +74,7 @@ fn execute(file: &str) -> std::io::Result<()> {
             .copy_from_slice(data);
     }
     let mut window = Window::new(
-        "Emotion",
+        "pups2",
         640,
         480,
         WindowOptions {
