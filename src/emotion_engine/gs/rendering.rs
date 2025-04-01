@@ -1,11 +1,11 @@
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
-use num_traits::AsPrimitive;
-
-use crate::{bytes::Bytes, emotion_engine::gs::registers::PixelStorageFormat, fix::Fix};
+use crate::{
+    bits::Bits, bytes::Bytes, emotion_engine::gs::registers::PixelStorageFormat, fix::Fix,
+};
 
 use super::{
-    registers::{PrimitiveType, Rgbaq, Uv, Xyz},
+    registers::{PrimitiveType, Rgbaq, TextureCoordinateMethod, Uv, Xyz},
     Gs,
 };
 
@@ -39,19 +39,21 @@ impl FloatVertex {
     }
 }
 
-impl From<&Vertex> for FloatVertex {
-    fn from(v: &Vertex) -> Self {
-        FloatVertex {
-            x: f32::from(v.position.x),
-            y: f32::from(v.position.y),
-            z: v.position.z as f32,
-            r: v.color.r as f32,
-            g: v.color.g as f32,
-            b: v.color.b as f32,
-            a: v.color.a as f32,
-            q: v.color.q,
-            u: f32::from(v.uv.u),
-            v: f32::from(v.uv.v),
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Rgba {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+impl From<u32> for Rgba {
+    fn from(raw: u32) -> Self {
+        Rgba {
+            r: raw.bits(0..8) as u8,
+            g: raw.bits(8..16) as u8,
+            b: raw.bits(16..24) as u8,
+            a: raw.bits(24..32) as u8,
         }
     }
 }
@@ -180,7 +182,7 @@ impl Div<f32> for FloatVertex {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Xy {
+pub struct Xy {
     x: f32,
     y: f32,
 }
@@ -225,8 +227,8 @@ impl Gs {
     pub fn vertex_kick(&mut self, drawing_kick: bool) {
         let vertex = Vertex {
             position: Xyz {
-                x: self.registers.xyz.x - self.contextual_registers().xy_offset.x,
-                y: self.registers.xyz.y - self.contextual_registers().xy_offset.y,
+                x: self.registers.xyz.x,
+                y: self.registers.xyz.y,
                 z: self.registers.xyz.z,
             },
             color: self.registers.rgbaq,
@@ -304,39 +306,46 @@ impl Gs {
         }
     }
 
+    fn relative(&self, v: &Vertex) -> FloatVertex {
+        let xy_offset = self.contextual_registers().xy_offset;
+        FloatVertex {
+            x: f32::from(v.position.x) - f32::from(xy_offset.x),
+            y: f32::from(v.position.y) - f32::from(xy_offset.y),
+            z: v.position.z as f32,
+            r: v.color.r as f32,
+            g: v.color.g as f32,
+            b: v.color.b as f32,
+            a: v.color.a as f32,
+            q: v.color.q,
+            u: f32::from(v.uv.u),
+            v: f32::from(v.uv.v),
+        }
+    }
+
     fn render_point(&mut self, vertex: &Vertex) {
         let scissor = self.contextual_registers().scissor;
-        let pixel_x = vertex.position.x.round();
-        let pixel_y = vertex.position.y.round();
+        let vertex = self.relative(vertex);
+        let x = vertex.x as u16;
+        let y = vertex.y as u16;
         // println!("Draw point: {vertex:?}=({pixel_x}, {pixel_y})");
-        if !scissor.contains(pixel_x, pixel_y) {
+        if !scissor.contains(x, y) {
             // println!("Point outside scissor: {:?}", scissor);
             return;
         }
-        let frame = self.contextual_registers().frame_buffer_settings;
-        match frame.pixel_storage_format {
-            PixelStorageFormat::Psmct32 => {
-                self.write_psmct32(
-                    frame.base_pointer,
-                    pixel_x,
-                    pixel_y,
-                    frame.width,
-                    u32::from_bytes(&[
-                        vertex.color.r,
-                        vertex.color.g,
-                        vertex.color.b,
-                        vertex.color.a,
-                    ]),
-                );
-            }
-            _ => todo!(),
-        }
-        // TODO scan mask
-        // TODO texturing
-        // TODO depth test
-        // TODO alpha
-        // TODO z update
-        // TODO drawing mask
+        self.render_pixel(
+            x,
+            y,
+            Rgba {
+                r: vertex.r as u8,
+                g: vertex.g as u8,
+                b: vertex.b as u8,
+                a: vertex.a as u8,
+            },
+            Uv {
+                u: Fix::from(vertex.u),
+                v: Fix::from(vertex.v),
+            },
+        );
     }
 
     fn clip_line(&self, start: &FloatVertex, delta: &FloatVertex) -> Option<(f32, f32)> {
@@ -382,8 +391,8 @@ impl Gs {
     }
 
     fn render_line(&mut self, start: &Vertex, end: &Vertex) {
-        let start = FloatVertex::from(start);
-        let end = FloatVertex::from(end);
+        let start = self.relative(start);
+        let end = self.relative(end);
         let delta = &end - &start;
 
         // println!("Draw line: {:?} {:?}", start, end);
@@ -394,23 +403,23 @@ impl Gs {
         let delta_pixel = &delta / pixels;
         let start_pixel = (t0 * pixels) as i32;
         let end_pixel = (t1 * pixels) as i32;
-
-        let frame = self.contextual_registers().frame_buffer_settings;
-        match frame.pixel_storage_format {
-            PixelStorageFormat::Psmct32 => {
-                let mut v = &start + &(&delta_pixel * start_pixel as f32);
-                for _ in start_pixel..end_pixel {
-                    self.write_psmct32(
-                        frame.base_pointer,
-                        v.x as u16,
-                        v.y as u16,
-                        frame.width,
-                        u32::from_bytes(&[v.r as u8, v.g as u8, v.b as u8, v.a as u8]),
-                    );
-                    v += &delta_pixel;
-                }
-            }
-            _ => todo!(),
+        let mut v = &start + &(&delta_pixel * start_pixel as f32);
+        for _ in start_pixel..end_pixel {
+            self.render_pixel(
+                v.x as u16,
+                v.y as u16,
+                Rgba {
+                    r: v.r as u8,
+                    g: v.g as u8,
+                    b: v.b as u8,
+                    a: v.a as u8,
+                },
+                Uv {
+                    u: Fix::from(v.u),
+                    v: Fix::from(v.v),
+                },
+            );
+            v += &delta_pixel;
         }
     }
 
@@ -419,9 +428,9 @@ impl Gs {
     }
 
     fn render_triangle(&mut self, vertex1: &Vertex, vertex2: &Vertex, vertex3: &Vertex) {
-        let vertex1 = FloatVertex::from(vertex1);
-        let vertex2 = FloatVertex::from(vertex2);
-        let vertex3 = FloatVertex::from(vertex3);
+        let vertex1 = self.relative(vertex1);
+        let vertex2 = self.relative(vertex2);
+        let vertex3 = self.relative(vertex3);
         let area = Self::edge(vertex1.xy(), vertex2.xy(), vertex3.xy()); // Signed (twice the) triangle area
         if area == 0.0 {
             return;
@@ -490,8 +499,6 @@ impl Gs {
         let bias2 = bias(vertex3.xy(), vertex1.xy()) * inv_area;
         let bias3 = bias(vertex1.xy(), vertex2.xy()) * inv_area;
 
-        let frame = self.contextual_registers().frame_buffer_settings;
-
         for y in min_pixel.y as u16..max_pixel.y as u16 {
             let mut w1 = w1_start;
             let mut w2 = w2_start;
@@ -501,23 +508,20 @@ impl Gs {
                 if w1 >= bias1 && w2 >= bias2 && w3 >= bias3 {
                     let vertex = &vertex1 * w1 + &vertex2 * w2 + &vertex3 * w3;
 
-                    match frame.pixel_storage_format {
-                        PixelStorageFormat::Psmct32 => {
-                            self.write_psmct32(
-                                frame.base_pointer,
-                                x,
-                                y,
-                                frame.width,
-                                u32::from_bytes(&[
-                                    vertex.r as u8,
-                                    vertex.g as u8,
-                                    vertex.b as u8,
-                                    vertex.a as u8,
-                                ]),
-                            );
-                        }
-                        _ => todo!(),
-                    }
+                    self.render_pixel(
+                        x,
+                        y,
+                        Rgba {
+                            r: vertex.r as u8,
+                            g: vertex.g as u8,
+                            b: vertex.b as u8,
+                            a: vertex.a as u8,
+                        },
+                        Uv {
+                            u: Fix::from(vertex.u),
+                            v: Fix::from(vertex.v),
+                        },
+                    );
                 }
 
                 w1 += w1_delta.x;
@@ -533,8 +537,8 @@ impl Gs {
 
     fn render_sprite(&mut self, vertex1: &Vertex, vertex2: &Vertex) {
         let color = vertex2.color;
-        let vertex1 = FloatVertex::from(vertex1);
-        let vertex2 = FloatVertex::from(vertex2);
+        let vertex1 = self.relative(vertex1);
+        let vertex2 = self.relative(vertex2);
         let scissor = self.contextual_registers().scissor;
         let x0 = vertex1.x.min(vertex2.x).ceil().max(f32::from(scissor.x0));
         let x1 = vertex1
@@ -548,7 +552,6 @@ impl Gs {
             .max(vertex2.y)
             .ceil()
             .min(f32::from(scissor.y1 + 1));
-        let frame = self.contextual_registers().frame_buffer_settings;
         if x0 >= x1 || y0 >= y1 {
             return;
         }
@@ -558,7 +561,7 @@ impl Gs {
         let h = vertex2.y - vertex1.y;
         let inv_h = 1.0 / h;
 
-        let mut u =
+        let u_start =
             vertex1.u * (1.0 - (x0 - vertex1.x) * inv_w) + vertex2.u * (x0 - vertex1.x) * inv_w;
         let mut v =
             vertex1.v * (1.0 - (y0 - vertex1.y) * inv_h) + vertex2.v * (y0 - vertex1.y) * inv_h;
@@ -566,23 +569,67 @@ impl Gs {
         let step_x_u = (vertex2.u - vertex1.u) * inv_w;
         let step_y_v = (vertex2.v - vertex1.v) * inv_h;
 
-        // TODO: interpolate color
-        match frame.pixel_storage_format {
-            PixelStorageFormat::Psmct32 => {
-                for y in y0 as u16..y1 as u16 {
-                    for x in x0 as u16..x1 as u16 {
-                        self.write_psmct32(
-                            frame.base_pointer,
-                            x,
-                            y,
-                            frame.width,
-                            u32::from_bytes(&[color.r, color.g, color.b, color.a]),
-                        );
-                        u += step_x_u;
-                    }
-                    v += step_y_v;
-                }
+        for y in y0 as u16..y1 as u16 {
+            let mut u = u_start;
+            for x in x0 as u16..x1 as u16 {
+                self.render_pixel(
+                    x,
+                    y,
+                    Rgba {
+                        r: color.r,
+                        g: color.g,
+                        b: color.b,
+                        a: color.a,
+                    },
+                    Uv {
+                        u: Fix::from(u),
+                        v: Fix::from(v),
+                    },
+                );
+                u += step_x_u;
             }
+            v += step_y_v;
+        }
+    }
+
+    pub fn render_pixel(&mut self, x: u16, y: u16, mut color: Rgba, uv: Uv) {
+        // println!("Render pixel: ({x}, {y}) color={color:?} uv={uv:?}");
+        let primitive = self.registers.primitive;
+        if primitive.texture_mapping {
+            let uv = match primitive.texture_coordinate_method {
+                TextureCoordinateMethod::Stq => todo!(),
+                TextureCoordinateMethod::Uv => uv,
+            };
+
+            // TODO wrap
+            // TODO scan mask
+            // TODO depth test
+            // TODO alpha
+            // TODO z update
+            // TODO drawing mask
+            let texture = self.contextual_registers().texture;
+            match texture.pixel_storage_format {
+                PixelStorageFormat::Psmct32 => {
+                    color = Rgba::from(self.read_psmct32(
+                        texture.base_pointer,
+                        uv.u.round(),
+                        uv.v.round(),
+                        texture.buffer_width,
+                    ));
+                }
+                _ => todo!(),
+            }
+        }
+
+        let frame = self.contextual_registers().frame_buffer_settings;
+        match frame.pixel_storage_format {
+            PixelStorageFormat::Psmct32 => self.write_psmct32(
+                frame.base_pointer,
+                x,
+                y,
+                frame.width,
+                u32::from_bytes(&[color.r, color.g, color.b, color.a]),
+            ),
             _ => todo!(),
         }
     }
