@@ -199,7 +199,6 @@ impl Gs {
                     let width = self.registers.transmission_size.width as u32;
                     let height = self.registers.transmission_size.height as u32;
                     let pixels = width * height;
-                    let buffer_width = self.registers.bit_blit_buffer.destination_width as u32;
                     let mut pixel = self.registers.transmission_pixel;
                     match self
                         .registers
