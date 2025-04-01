@@ -371,6 +371,14 @@ impl Core {
                 let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 bus.write(physical_address, self.get_register::<u128>(rt));
             }
+            Instruction::Lb(rt, base, offset) => {
+                let address = self
+                    .get_register::<u32>(base)
+                    .wrapping_add(offset.sign_extend());
+                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
+                let value = bus.read::<u8>(physical_address);
+                self.set_register::<u64>(rt, value.sign_extend());
+            }
             Instruction::Lh(rt, base, offset) => {
                 let address = self
                     .get_register::<u32>(base)
