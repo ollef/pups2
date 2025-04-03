@@ -77,12 +77,29 @@ impl From<u64> for Display {
 impl Gs {
     pub fn write_privileged<T: Bytes>(&mut self, address: u32, value: T) {
         match std::mem::size_of::<T>() {
+            4 => {
+                let aligned_address = address & !0b111;
+                let offset_bytes = (address - aligned_address) as usize;
+                let existing = self.read_privileged64(aligned_address);
+                let value =
+                    (u32::from_bytes(value.to_bytes().as_ref()) as u64) << (offset_bytes * 8);
+                let value = existing
+                    & !<u64 as Bits<usize>>::mask(offset_bytes * 8..offset_bytes * 8 + 32)
+                    | value;
+                self.write_privileged64(aligned_address, value);
+            }
             8 => self.write_privileged64(address, u64::from_bytes(value.to_bytes().as_ref())),
             _ => panic!("Invalid GS write size: {}", std::mem::size_of::<T>()),
         }
     }
     pub fn read_privileged<T: Bytes>(&self, address: u32) -> T {
         match std::mem::size_of::<T>() {
+            4 => {
+                let aligned_address = address & !0b111;
+                let result = self.read_privileged64(aligned_address);
+                let offset_bytes = (address - aligned_address) as usize;
+                T::from_bytes(&result.to_bytes()[offset_bytes..offset_bytes + 4])
+            }
             8 => T::from_bytes(self.read_privileged64(address).to_bytes().as_ref()),
             _ => panic!(
                 "Invalid privileged GS read size: {} to {address:08x}",
