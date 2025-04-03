@@ -84,7 +84,10 @@ impl Gs {
     pub fn read_privileged<T: Bytes>(&self, address: u32) -> T {
         match std::mem::size_of::<T>() {
             8 => T::from_bytes(self.read_privileged64(address).to_bytes().as_ref()),
-            _ => panic!("Invalid GS read size: {}", std::mem::size_of::<T>()),
+            _ => panic!(
+                "Invalid privileged GS read size: {} to {address:08x}",
+                std::mem::size_of::<T>()
+            ),
         }
     }
 
