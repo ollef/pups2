@@ -57,7 +57,10 @@ impl Bus {
             }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
-                T::from_bytes(&self.boot_memory[address..address + std::mem::size_of::<T>()])
+                let result =
+                    T::from_bytes(&self.boot_memory[address..address + std::mem::size_of::<T>()]);
+                println!("Read from Boot memory: 0x{:08x}==0x{:08x}", address, result);
+                result
             }
             _ => {
                 panic!("Invalid read at address: 0x{:08x}", address);
@@ -92,6 +95,7 @@ impl Bus {
             }
             0x1FC0_0000..0x2000_0000 => {
                 let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+                println!("Write to boot memory: 0x{:08x}:=0x{:08x}", address, value);
                 self.main_memory[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
             }
