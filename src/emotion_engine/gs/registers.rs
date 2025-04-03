@@ -17,6 +17,8 @@ pub struct Registers {
     pub transmission_position: TransmissionPosition,   // TRXPOS
     pub transmission_size: TransmissionSize,           // TRXREG
     pub transmission_direction: TransmissionDirection, // TRXDIR
+    pub dither_control: DitherControl,                 // DTHE
+    pub color_clamp: ColorClamp,                       // COLCLAMP
     pub primitive_mode_control: PrimitiveModeControl,
     pub transmission_pixel: u32,
     pub contextual: [ContextualRegisters; 2],
@@ -29,6 +31,7 @@ pub struct ContextualRegisters {
     pub frame_buffer_settings: FrameBufferSettings, // FRAME_1, FRAME_2
     pub pixel_test: PixelTest,                      // TEST_1, TEST_2
     pub texture: Texture,                           // TEX0_1, TEX0_2, TEX2_1, TEX2_2
+    pub z_buffer_settings: ZBufferSettings,         // ZBUF_1, ZBUF_2
 }
 
 #[repr(u8)]
@@ -147,8 +150,8 @@ impl Gs {
             Register::Alpha1 => todo!(),
             Register::Alpha2 => todo!(),
             Register::DitherMatrix => todo!(),
-            Register::DitherControl => todo!(),
-            Register::ColorClamp => todo!(),
+            Register::DitherControl => self.registers.dither_control = DitherControl::from(data),
+            Register::ColorClamp => self.registers.color_clamp = ColorClamp::from(data),
             Register::PixelTest1 => {
                 self.registers.contextual[0].pixel_test = PixelTest::from(data);
                 println!(
@@ -174,8 +177,14 @@ impl Gs {
                 println!("Frame buffer 2: {:x?}", data);
                 self.registers.contextual[1].frame_buffer_settings = FrameBufferSettings::from(data)
             }
-            Register::ZBuffer1 => todo!(),
-            Register::ZBuffer2 => todo!(),
+            Register::ZBuffer1 => {
+                println!("Z buffer 1: {:x?}", data);
+                self.registers.contextual[0].z_buffer_settings = ZBufferSettings::from(data)
+            }
+            Register::ZBuffer2 => {
+                println!("Z buffer 2: {:x?}", data);
+                self.registers.contextual[1].z_buffer_settings = ZBufferSettings::from(data)
+            }
             Register::BitBlitBuffer => self.registers.bit_blit_buffer = BitBlitBuffer::from(data),
             Register::TransmissionPosition => {
                 self.registers.transmission_position = TransmissionPosition::from(data)
@@ -262,6 +271,33 @@ impl From<u64> for FrameBufferSettings {
             drawing_mask: raw.bits(32..64) as u32,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ZBufferSettings {
+    pub base_pointer: u32,
+    pub storage_format: ZStorageFormat,
+    pub no_update: bool,
+}
+
+impl From<u64> for ZBufferSettings {
+    fn from(raw: u64) -> Self {
+        ZBufferSettings {
+            base_pointer: raw.bits(0..=8) as u32 * 2048,
+            storage_format: ZStorageFormat::from_u64(raw.bits(24..=27))
+                .unwrap_or_else(|| panic!("Invalid Z storage format {:b}", raw.bits(24..=27))),
+            no_update: raw.bit(32),
+        }
+    }
+}
+
+#[derive(FromPrimitive, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ZStorageFormat {
+    #[default]
+    Z32 = 0b0000,
+    Z24 = 0b0001,
+    Z16 = 0b0010,
+    Z16s = 0b1010,
 }
 
 #[derive(FromPrimitive, Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -551,6 +587,33 @@ pub enum TransmissionDirection {
     LocalToHost,
     LocalToLocal,
     Deactivated,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DitherControl {
+    enabled: bool,
+}
+
+impl From<u64> for DitherControl {
+    fn from(raw: u64) -> Self {
+        DitherControl {
+            enabled: raw.bit(0),
+        }
+    }
+}
+
+#[derive(FromPrimitive, Debug, Clone, Copy, Default)]
+pub enum ColorClamp {
+    #[default]
+    Mask,
+    Clamp,
+}
+
+impl From<u64> for ColorClamp {
+    fn from(raw: u64) -> Self {
+        ColorClamp::from_u64(raw.bits(0..=0))
+            .unwrap_or_else(|| panic!("Invalid color clamp {:b}", raw.bits(0..=0)))
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
