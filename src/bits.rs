@@ -90,7 +90,7 @@ where
     i8: SignExtend<T>,
 {
     fn sign_extend(self) -> T {
-        (self as u8).sign_extend()
+        (self as i8).sign_extend()
     }
 }
 
