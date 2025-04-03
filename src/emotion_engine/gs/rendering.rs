@@ -208,7 +208,7 @@ impl Gs {
                 continue;
             }
             assert!(frame_buffer.offset_x == 0 && frame_buffer.offset_y == 0);
-            assert!(frame_buffer.pixel_storage_format == PixelStorageFormat::Psmct32);
+            assert!(frame_buffer.pixel_storage_format == PixelStorageFormat::Ct32);
             let mut result = Vec::with_capacity(frame_buffer.width as usize * 4 * 480);
             for y in 0..480 {
                 for x in 0..frame_buffer.width {
@@ -609,7 +609,7 @@ impl Gs {
             // TODO drawing mask
             let texture = self.contextual_registers().texture;
             match texture.pixel_storage_format {
-                PixelStorageFormat::Psmct32 => {
+                PixelStorageFormat::Ct32 => {
                     color = Rgba::from(self.read_psmct32(
                         texture.base_pointer,
                         uv.u.round(),
@@ -623,7 +623,7 @@ impl Gs {
 
         let frame = self.contextual_registers().frame_buffer_settings;
         match frame.pixel_storage_format {
-            PixelStorageFormat::Psmct32 => self.write_psmct32(
+            PixelStorageFormat::Ct32 => self.write_psmct32(
                 frame.base_pointer,
                 x,
                 y,

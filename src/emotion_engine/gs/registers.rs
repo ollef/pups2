@@ -205,7 +205,7 @@ impl Gs {
                         .bit_blit_buffer
                         .destination_pixel_storage_format
                     {
-                        PixelStorageFormat::Psmct32 => {
+                        PixelStorageFormat::Ct32 => {
                             for i in 0..2 {
                                 let data = data.bits(i * 32..(i + 1) * 32) as u32;
                                 let x = (destination_x + pixel % width) % 2048;
@@ -267,20 +267,20 @@ impl From<u64> for FrameBufferSettings {
 #[derive(FromPrimitive, Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum PixelStorageFormat {
     #[default]
-    Psmct32 = 0b000000,
-    Psmct24 = 0b000001,
-    Psmct16 = 0b000010,
-    Psmct16s = 0b001010,
-    Psgpu24 = 0b010010,
-    Psmt8 = 0b010011,
-    Psmt4 = 0b010100,
-    Psmt8h = 0b011011,
-    Psmt4hl = 0b100100,
-    Psmt4hh = 0b101100,
-    Psmz32 = 0b110000,
-    Psmz24 = 0b110001,
-    Psmz16 = 0b110010,
-    Psmz16s = 0b111010,
+    Ct32 = 0b000000,
+    Ct24 = 0b000001,
+    Ct16 = 0b000010,
+    Ct16s = 0b001010,
+    Gpu24 = 0b010010,
+    T8 = 0b010011,
+    T4 = 0b010100,
+    T8h = 0b011011,
+    T4hl = 0b100100,
+    T4hh = 0b101100,
+    Z32 = 0b110000,
+    Z24 = 0b110001,
+    Z16 = 0b110010,
+    Z16s = 0b111010,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
