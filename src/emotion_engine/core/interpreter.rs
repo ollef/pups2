@@ -1,6 +1,9 @@
 use crate::{
     bits::{Bits, SignExtend},
-    emotion_engine::{bus::Bus, core::register::Register},
+    emotion_engine::{
+        bus::Bus,
+        core::register::{AnyRegister, Register},
+    },
 };
 
 use super::{disassembler::disassemble, instruction::Instruction, Core};
@@ -24,7 +27,7 @@ impl Core {
         //     println!("{}={:#x}", reg, value);
         // }
         let mut next_program_counter = self.delayed_branch_target.take();
-        // println!("pc={:#010}: {instruction}", self.program_counter);
+        println!("pc={:#010}: {instruction}", self.program_counter);
         match instruction {
             Instruction::Unknown => {
                 println!("Unknown instruction at {:#010x}", self.program_counter)
@@ -502,10 +505,15 @@ impl Core {
                 bus.write(physical_address, self.get_register::<u64>(rt));
             }
         }
-        // for reg in instruction.definitions() {
-        //     let value = self.get_register::<u64>(reg);
-        //     println!("{}:={:#x}", reg, value);
-        // }
+        for reg in instruction.definitions() {
+            match reg {
+                AnyRegister::Core(reg) => {
+                    let value = self.get_register::<u64>(reg);
+                    println!("{}:={:#x}", reg, value);
+                }
+                AnyRegister::Fpu(_) => {}
+            }
+        }
         self.program_counter = next_program_counter.unwrap_or(self.program_counter + 4);
     }
 }
