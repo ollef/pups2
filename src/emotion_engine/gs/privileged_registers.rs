@@ -141,7 +141,15 @@ impl Gs {
             0x1200_00C0 => self.privileged_registers.write_data = value,
             0x1200_00D0 => self.privileged_registers.write_start = value,
             0x1200_00E0 => self.privileged_registers.background_color = value,
-            0x1200_1000 => self.privileged_registers.status = value,
+            0x1200_1000 => {
+                let value = if value.bit(3) {
+                    // VSINT
+                    value & !u64::mask(3..=3)
+                } else {
+                    value
+                };
+                self.privileged_registers.status = value;
+            }
             0x1200_1010 => self.privileged_registers.interrupt_mask = value,
             0x1200_1040 => self.privileged_registers.bus_direction = value,
             0x1200_1080 => self.privileged_registers.signal_label_id = value,
@@ -155,5 +163,9 @@ impl Gs {
             0x1200_1080 => self.privileged_registers.signal_label_id,
             _ => panic!("Invalid GS read64 from address: 0x{:08x}", address),
         }
+    }
+
+    pub fn vblank(&mut self) {
+        self.privileged_registers.status.set_bit(3, true);
     }
 }

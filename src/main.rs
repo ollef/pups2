@@ -112,6 +112,7 @@ fn execute(file: &str) -> std::io::Result<()> {
                 println!("VBlank start");
             }
             Event::GsVBlank => {
+                bus.gs.vblank();
                 println!("GS VBlank");
             }
             Event::VBlankEnd => {
