@@ -13,6 +13,7 @@ pub struct Registers {
     pub rgbaq: Rgbaq,                                  // RGBAQ
     pub xyz: Xyz,                                      // XYZ2
     pub uv: Uv,                                        // UV
+    pub fog: u8,                                       // FOG
     pub bit_blit_buffer: BitBlitBuffer,                // BITBLTBUF
     pub transmission_position: TransmissionPosition,   // TRXPOS
     pub transmission_size: TransmissionSize,           // TRXREG
@@ -107,7 +108,15 @@ impl Gs {
             Register::Rgbaq => self.registers.rgbaq = Rgbaq::from(data),
             Register::St => todo!(),
             Register::Uv => self.registers.uv = Uv::from(data),
-            Register::Xyzf2 => todo!(),
+            Register::Xyzf2 => {
+                self.registers.xyz = Xyz {
+                    x: Fix124::from_raw(data.bits(0..16) as u16),
+                    y: Fix124::from_raw(data.bits(16..32) as u16),
+                    z: data.bits(32..=55) as u32,
+                };
+                self.registers.fog = data.bits(56..=63) as u8;
+                self.vertex_kick(/* drawing_kick */ true);
+            }
             Register::Xyz2 => {
                 self.registers.xyz = Xyz::from(data);
                 self.vertex_kick(/* drawing_kick */ true);
