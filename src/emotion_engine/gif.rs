@@ -222,7 +222,11 @@ impl Gif {
                                 .command_queue
                                 .push_back((gs::Register::Primitive, data.bits(0..=10) as u64));
                         }
-                        Register::Rgbaq => todo!(),
+                        Register::Rgbaq => {
+                            bus.gs
+                                .command_queue
+                                .push_back((gs::Register::Rgbaq, data as u64));
+                        }
                         Register::St => todo!(),
                         Register::Uv => todo!(),
                         Register::Xyzf2 => {
