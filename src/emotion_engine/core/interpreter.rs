@@ -505,15 +505,15 @@ impl Core {
                 bus.write(physical_address, self.get_register::<u64>(rt));
             }
         }
-        for reg in instruction.definitions() {
-            match reg {
-                AnyRegister::Core(reg) => {
-                    let value = self.get_register::<u64>(reg);
-                    println!("{}:={:#x}", reg, value);
-                }
-                AnyRegister::Fpu(_) => {}
-            }
-        }
+        // for reg in instruction.definitions() {
+        //     match reg {
+        //         AnyRegister::Core(reg) => {
+        //             let value = self.get_register::<u64>(reg);
+        //             println!("{}:={:#x}", reg, value);
+        //         }
+        //         AnyRegister::Fpu(_) => {}
+        //     }
+        // }
         self.program_counter = next_program_counter.unwrap_or(self.program_counter + 4);
     }
 }
