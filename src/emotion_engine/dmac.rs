@@ -1,4 +1,6 @@
 use enum_map::{Enum, EnumMap};
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes};
 
@@ -358,20 +360,13 @@ struct ChannelControlRegister {
 
 impl ChannelControlRegister {
     pub fn direction(self) -> ChannelDirection {
-        match self.raw.bits(0..=0) {
-            0b0 => ChannelDirection::ToMemory,
-            0b1 => ChannelDirection::FromMemory,
-            _ => unreachable!(),
-        }
+        ChannelDirection::from_u32(self.raw.bits(0..=0))
+            .unwrap_or_else(|| panic!("Invalid DMAC channel direction: {}", self.raw.bits(0..=0)))
     }
 
     pub fn mode(self) -> ChannelMode {
-        match self.raw.bits(2..=3) {
-            0b00 => ChannelMode::Normal,
-            0b01 => ChannelMode::Chain,
-            0b10 => ChannelMode::Interleave,
-            _ => panic!("Invalid DMAC channel mode: {}", self.raw.bits(1..=2)),
-        }
+        ChannelMode::from_u32(self.raw.bits(2..=3))
+            .unwrap_or_else(|| panic!("Invalid DMAC channel mode: {}", self.raw.bits(2..=3)))
     }
 
     pub fn address_stack_pointer(self) -> u32 {
@@ -399,13 +394,15 @@ impl ChannelControlRegister {
     }
 }
 
+#[derive(Debug, Copy, Clone, FromPrimitive)]
 enum ChannelDirection {
-    ToMemory,
-    FromMemory,
+    ToMemory = 0b0,
+    FromMemory = 0b1,
 }
 
+#[derive(Debug, Copy, Clone, FromPrimitive)]
 enum ChannelMode {
-    Normal,
-    Chain,
-    Interleave,
+    Normal = 0b00,
+    Chain = 0b01,
+    Interleave = 0b10,
 }
