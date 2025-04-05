@@ -49,6 +49,23 @@ pub struct ChannelRegisters {
     tag_address_save_0: u32,         // ASR0
     tag_address_save_1: u32,         // ASR1
     scratchpad_memory_address: u32,  // SADR
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct MemoryOrScratchpadAddress(u32);
+
+pub enum MemoryOrScratchpadAddressView {
+    Memory(u32),
+    Scratchpad(u32),
+}
+
+impl MemoryOrScratchpadAddress {
+    pub fn view(&self) -> MemoryOrScratchpadAddressView {
+        if self.0.bit(31) {
+            MemoryOrScratchpadAddressView::Scratchpad(self.0.bits(0..31))
+        } else {
+            MemoryOrScratchpadAddressView::Memory(self.0.bits(0..31))
+        }
+    }
 }
 
 impl Dmac {
