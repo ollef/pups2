@@ -312,6 +312,11 @@ impl Core {
                     );
                 }
             }
+            Instruction::Addi(rt, rs, imm) => {
+                // TODO exception on overflow
+                let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
+                self.set_register::<u64>(rt, (temp as u32).sign_extend());
+            }
             Instruction::Addiu(rt, rs, imm) => {
                 let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
                 self.set_register::<u64>(rt, (temp as u32).sign_extend());
