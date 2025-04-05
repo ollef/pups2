@@ -170,12 +170,20 @@ impl Gs {
             Register::FrameBufferAlpha1 => todo!(),
             Register::FrameBufferAlpha2 => todo!(),
             Register::FrameBuffer1 => {
-                println!("Frame buffer 1: {:x?}", data);
-                self.registers.contextual[0].frame_buffer_settings = FrameBufferSettings::from(data)
+                self.registers.contextual[0].frame_buffer_settings =
+                    FrameBufferSettings::from(data);
+                println!(
+                    "Frame buffer 1: {:x?}",
+                    self.registers.contextual[0].frame_buffer_settings
+                );
             }
             Register::FrameBuffer2 => {
-                println!("Frame buffer 2: {:x?}", data);
-                self.registers.contextual[1].frame_buffer_settings = FrameBufferSettings::from(data)
+                self.registers.contextual[1].frame_buffer_settings =
+                    FrameBufferSettings::from(data);
+                println!(
+                    "Frame buffer 2: {:x?}",
+                    self.registers.contextual[1].frame_buffer_settings
+                );
             }
             Register::ZBuffer1 => {
                 println!("Z buffer 1: {:x?}", data);
