@@ -172,14 +172,26 @@ impl Core {
                 self.set_register::<u64>(Register::Lo, quotient.sign_extend());
                 self.set_register::<u64>(Register::Hi, remainder.sign_extend());
             }
-            Instruction::Add(_, _, _) => todo!(),
+            Instruction::Add(rd, rs, rt) => {
+                // TODO: Exception on overflow
+                let value = self
+                    .get_register::<u32>(rs)
+                    .wrapping_add(self.get_register::<u32>(rt));
+                self.set_register::<u64>(rd, value.sign_extend());
+            }
             Instruction::Addu(rd, rs, rt) => {
                 let value = self
                     .get_register::<u32>(rs)
                     .wrapping_add(self.get_register::<u32>(rt));
                 self.set_register::<u64>(rd, value.sign_extend());
             }
-            Instruction::Sub(_, _, _) => todo!(),
+            Instruction::Sub(rd, rs, rt) => {
+                // TODO: Exception on overflow
+                let value = self
+                    .get_register::<u32>(rs)
+                    .wrapping_sub(self.get_register::<u32>(rt));
+                self.set_register::<u64>(rd, value.sign_extend());
+            }
             Instruction::Subu(rd, rs, rt) => {
                 self.set_register::<u64>(
                     rd,
