@@ -83,9 +83,7 @@ impl Gs {
                 let existing = self.read_privileged64(aligned_address);
                 let value =
                     (u32::from_bytes(value.to_bytes().as_ref()) as u64) << (offset_bytes * 8);
-                let value = existing
-                    & !<u64 as Bits<usize>>::mask(offset_bytes * 8..offset_bytes * 8 + 32)
-                    | value;
+                let value = existing & !u64::mask(offset_bytes * 8..offset_bytes * 8 + 32) | value;
                 self.write_privileged64(aligned_address, value);
             }
             8 => self.write_privileged64(address, u64::from_bytes(value.to_bytes().as_ref())),
