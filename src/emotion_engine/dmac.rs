@@ -42,13 +42,15 @@ impl Channel {
 
 #[derive(Debug, Default)]
 pub struct ChannelRegisters {
-    control: ChannelControlRegister, // CHCR
-    memory_address: u32,             // MADR
-    quad_word_count: u32,            // QWC
-    tag_address: u32,                // TADR
-    tag_address_save_0: u32,         // ASR0
-    tag_address_save_1: u32,         // ASR1
-    scratchpad_memory_address: u32,  // SADR
+    control: ChannelControlRegister,           // CHCR
+    memory_address: MemoryOrScratchpadAddress, // MADR
+    quad_word_count: u32,                      // QWC
+    tag_address: MemoryOrScratchpadAddress,    // TADR
+    tag_address_save_0: u32,                   // ASR0
+    tag_address_save_1: u32,                   // ASR1
+    scratchpad_memory_address: u32,            // SADR
+    process_next_tag: bool,
+}
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct MemoryOrScratchpadAddress(u32);
@@ -131,10 +133,15 @@ impl Dmac {
             _ => panic!("Invalid DMAC write address: 0x{:08x}", address),
         };
         match address & 0xFF {
-            0x00 => self.channels[channel].control.raw = value,
-            0x10 => self.channels[channel].memory_address = value,
+            0x00 => {
+                self.channels[channel].control.raw = value;
+                if self.channels[channel].control.start() {
+                    self.channels[channel].process_next_tag = true;
+                }
+            }
+            0x10 => self.channels[channel].memory_address = MemoryOrScratchpadAddress(value),
             0x20 => self.channels[channel].quad_word_count = value,
-            0x30 => self.channels[channel].tag_address = value,
+            0x30 => self.channels[channel].tag_address = MemoryOrScratchpadAddress(value),
             0x40 => self.channels[channel].tag_address_save_0 = value,
             0x50 => self.channels[channel].tag_address_save_1 = value,
             0x80 => self.channels[channel].scratchpad_memory_address = value,
@@ -167,9 +174,9 @@ impl Dmac {
         };
         match address & 0xFF {
             0x00 => self.channels[channel].control.raw,
-            0x10 => self.channels[channel].memory_address,
+            0x10 => self.channels[channel].memory_address.0,
             0x20 => self.channels[channel].quad_word_count,
-            0x30 => self.channels[channel].tag_address,
+            0x30 => self.channels[channel].tag_address.0,
             0x40 => self.channels[channel].tag_address_save_0,
             0x50 => self.channels[channel].tag_address_save_1,
             0x80 => self.channels[channel].scratchpad_memory_address,
@@ -190,14 +197,14 @@ impl Dmac {
                             let memory_address = &mut registers.memory_address;
                             let quad_word_count = &mut registers.quad_word_count;
                             while *quad_word_count > 0 && !bus.gif.fifo.is_full() {
-                                let data = bus.read::<u128>(*memory_address);
+                                let data = bus.read_memory_or_scratchpad::<u128>(*memory_address);
                                 bus.gif.fifo.push_back(data);
                                 // println!(
                                 //     "Transferred quad word 0x{:08x} from 0x{:08x} to GIF FIFO (QWC={})",
                                 //     data,
                                 //     memory_address, quad_word_count
                                 // );
-                                *memory_address += 16;
+                                memory_address.0 += 16;
                                 *quad_word_count -= 1;
                             }
                             if *quad_word_count == 0 {
@@ -208,7 +215,57 @@ impl Dmac {
                                 // );
                             }
                         }
-                        ChannelMode::Chain => todo!(),
+                        ChannelMode::Chain => {
+                            let memory_address = &mut registers.memory_address;
+                            let quad_word_count = &mut registers.quad_word_count;
+                            while *quad_word_count > 0 && !bus.gif.fifo.is_full() {
+                                let data = bus.read_memory_or_scratchpad::<u128>(*memory_address);
+                                bus.gif.fifo.push_back(data);
+                                // println!(
+                                //     "Transferred quad word 0x{:08x} from 0x{:08x} to GIF FIFO (QWC={})",
+                                //     data,
+                                //     memory_address, quad_word_count
+                                // );
+                                memory_address.0 += 16;
+                                *quad_word_count -= 1;
+                            }
+                            if *quad_word_count == 0 && !registers.process_next_tag {
+                                registers.control.set_start(false);
+                                // println!(
+                                //     "GIF channel finished, control=0x{:08x}",
+                                //     registers.control.raw
+                                // );
+                            }
+                            if *quad_word_count == 0 {
+                                assert!(!registers.control.tag_transfer_enable());
+                                let source_chain_tag =
+                                    bus.read_memory_or_scratchpad::<u128>(registers.tag_address);
+                                registers
+                                    .control
+                                    .set_dma_tag(source_chain_tag.bits(16..32) as u16);
+                                let source_chain_tag =
+                                    SourceChainTag::from(source_chain_tag as u64);
+                                registers.quad_word_count = source_chain_tag.quad_word_count as u32;
+                                match source_chain_tag.tag_id {
+                                    TagId::ReferenceEnd => {
+                                        registers.memory_address = source_chain_tag.address;
+                                        registers.tag_address.0 += 16;
+                                        registers.process_next_tag = false;
+                                    }
+                                    TagId::Count => {
+                                        registers.memory_address = registers.tag_address;
+                                        registers.memory_address.0 += 16;
+                                        registers.tag_address = source_chain_tag.address;
+                                    }
+                                    TagId::Next => todo!(),
+                                    TagId::Reference => todo!(),
+                                    TagId::References => todo!(),
+                                    TagId::Call => todo!(),
+                                    TagId::Return => todo!(),
+                                    TagId::End => todo!(),
+                                }
+                            }
+                        }
                         ChannelMode::Interleave => todo!(),
                     },
                     Channel::FromIpu => todo!(),
@@ -409,6 +466,10 @@ impl ChannelControlRegister {
     pub fn dma_tag(self) -> u16 {
         self.raw.bits(16..) as u16
     }
+
+    pub fn set_dma_tag(&mut self, value: u16) {
+        self.raw.set_bits(16.., value as u32);
+    }
 }
 
 #[derive(Debug, Copy, Clone, FromPrimitive)]
@@ -422,4 +483,46 @@ enum ChannelMode {
     Normal = 0b00,
     Chain = 0b01,
     Interleave = 0b10,
+}
+
+struct SourceChainTag {
+    quad_word_count: u16,               // QWC
+    priority_control: PriorityControl,  // PCE
+    tag_id: TagId,                      // ID
+    interrupt_request: bool,            // IRQ
+    address: MemoryOrScratchpadAddress, // ADDR, SPR
+}
+
+impl From<u64> for SourceChainTag {
+    fn from(raw: u64) -> Self {
+        Self {
+            quad_word_count: raw.bits(0..=15) as u16,
+            priority_control: PriorityControl::from_u64(raw.bits(26..=27))
+                .unwrap_or_else(|| panic!("Invalid DMAC priority control: {}", raw.bits(26..=27))),
+            tag_id: TagId::from_u64(raw.bits(28..=30))
+                .unwrap_or_else(|| panic!("Invalid DMAC tag ID: {}", raw.bits(28..=30))),
+            interrupt_request: raw.bit(31),
+            address: MemoryOrScratchpadAddress(raw.bits(32..64) as u32),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, FromPrimitive)]
+enum PriorityControl {
+    Nothing = 0b00,
+    Reserved = 0b01,
+    Disabled = 0b10,
+    Enabled = 0b11,
+}
+
+#[derive(Debug, Copy, Clone, FromPrimitive)]
+enum TagId {
+    ReferenceEnd = 0b000, // refe
+    Count = 0b001,        // cnt
+    Next = 0b010,         // next
+    Reference = 0b011,    // ref
+    References = 0b100,   // refs
+    Call = 0b101,         // call
+    Return = 0b110,       // ret
+    End = 0b111,          // ret
 }
