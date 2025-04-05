@@ -6,7 +6,11 @@ mod fix;
 use argh::FromArgs;
 use bytes::Bytes;
 use elf::{endian::LittleEndian, ElfBytes};
-use emotion_engine::{dmac::Dmac, gif::Gif};
+use emotion_engine::{
+    dmac::Dmac,
+    gif::Gif,
+    scheduler::{self, Event},
+};
 use minifb::{Scale, ScaleMode, Window, WindowOptions};
 
 #[derive(FromArgs)]
@@ -91,56 +95,51 @@ fn execute(file: &str) -> std::io::Result<()> {
     .expect("Failed to create window");
     window.set_background_color(20, 20, 20);
     core.mmu.mmap(0, 0x2000_0000, 0);
-    let mut cycle = 0;
+    let mut scheduler = scheduler::Scheduler::new();
     loop {
-        core.step_interpreter(&mut bus);
-        Dmac::step(&mut bus);
-        Gif::step(&mut bus);
-        bus.gs.step();
-        bus.timer.step();
-        cycle += 1;
-        if cycle % 1_000_000 == 0 {
-            if let Some((frame_buffer_width, frame_buffer)) = bus.gs.frame_buffer() {
-                let frame_buffer = unsafe {
-                    std::slice::from_raw_parts(
-                        frame_buffer.as_ptr() as *const u32,
-                        frame_buffer.len() / 4,
-                    )
-                };
+        match scheduler.next_event() {
+            Event::Run(cycles) => {
+                for _ in 0..cycles {
+                    core.step_interpreter(&mut bus);
+                    Dmac::step(&mut bus);
+                    Gif::step(&mut bus);
+                    bus.gs.step();
+                    bus.timer.step();
+                }
+                scheduler.tick(cycles);
+            }
+            Event::VBlankStart => {
+                println!("VBlank start");
+            }
+            Event::GsVBlank => {
+                println!("GS VBlank");
+            }
+            Event::VBlankEnd => {
+                println!("VBlank end");
+                if let Some((frame_buffer_width, frame_buffer)) = bus.gs.frame_buffer() {
+                    let frame_buffer = unsafe {
+                        std::slice::from_raw_parts(
+                            frame_buffer.as_ptr() as *const u32,
+                            frame_buffer.len() / 4,
+                        )
+                    };
 
-                window
-                    .update_with_buffer(
-                        frame_buffer,
-                        frame_buffer_width as usize,
-                        frame_buffer.len() / frame_buffer_width as usize,
-                    )
-                    .expect("Failed to update window");
+                    window
+                        .update_with_buffer(
+                            frame_buffer,
+                            frame_buffer_width as usize,
+                            frame_buffer.len() / frame_buffer_width as usize,
+                        )
+                        .expect("Failed to update window");
+                } else {
+                    window.update();
+                }
                 if window.is_key_pressed(minifb::Key::Escape, minifb::KeyRepeat::No) {
                     break;
                 }
             }
         }
     }
-    // for program_header in elf.segments().expect("Failed to get program headers") {
-    //     println!("Disassembling segment at {:x?}", program_header.p_paddr);
-    //     for pc in
-    //         (program_header.p_paddr..program_header.p_paddr + program_header.p_filesz).step_by(4)
-    //     {
-    //         let instruction_data = u32::from_le_bytes([
-    //             memory.rd[pc as usize],
-    //             memory.rd[pc as usize + 1],
-    //             memory.rd[pc as usize + 2],
-    //             memory.rd[pc as usize + 3],
-    //         ]);
-    //         let instruction = emotion_engine::disassembler::disassemble(instruction_data);
-    //         print!("{:x?}: {}", pc, instruction);
-    //         if instruction.is_nop() {
-    //             println!(" (nop)");
-    //         } else {
-    //             println!();
-    //         }
-    //     }
-    // }
     Ok(())
 }
 
