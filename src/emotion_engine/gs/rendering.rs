@@ -212,11 +212,11 @@ impl Gs {
             let mut result = Vec::with_capacity(frame_buffer.width as usize * 4 * 480);
             for y in 0..480 {
                 for x in 0..frame_buffer.width {
-                    result.extend_from_slice(
-                        &self
-                            .read_psmct32(frame_buffer.base_pointer, x, y, frame_buffer.width)
-                            .to_bytes(),
-                    );
+                    let rgba = &self
+                        .read_psmct32(frame_buffer.base_pointer, x, y, frame_buffer.width)
+                        .to_bytes();
+                    let [r, g, b, _a] = rgba;
+                    result.extend_from_slice(&[*b, *g, *r, 0]);
                 }
             }
             return Some((frame_buffer.width, result));
