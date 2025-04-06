@@ -33,6 +33,7 @@ pub struct ContextualRegisters {
     pub pixel_test: PixelTest,                      // TEST_1, TEST_2
     pub texture: Texture,                           // TEX0_1, TEX0_2, TEX2_1, TEX2_2
     pub z_buffer_settings: ZBufferSettings,         // ZBUF_1, ZBUF_2
+    pub alpha: Alpha,                               // ALPHA_1, ALPHA_2
 }
 
 #[repr(u8)]
@@ -156,8 +157,8 @@ impl Gs {
             Register::TextureFlush => {}
             Register::Scissor1 => self.registers.contextual[0].scissor = Scissor::from(data),
             Register::Scissor2 => self.registers.contextual[1].scissor = Scissor::from(data),
-            Register::Alpha1 => todo!(),
-            Register::Alpha2 => todo!(),
+            Register::Alpha1 => self.registers.contextual[0].alpha = Alpha::from(data),
+            Register::Alpha2 => self.registers.contextual[1].alpha = Alpha::from(data),
             Register::DitherMatrix => todo!(),
             Register::DitherControl => self.registers.dither_control = DitherControl::from(data),
             Register::ColorClamp => self.registers.color_clamp = ColorClamp::from(data),
@@ -306,6 +307,49 @@ impl From<u64> for ZBufferSettings {
             no_update: raw.bit(32),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Alpha {
+    input_color_a: InputColor, // A
+    input_color_b: InputColor, // B
+    input_alpha_c: InputAlpha, // C
+    input_color_d: InputColor, // D
+    fixed: u8,                 // FIX
+}
+
+impl From<u64> for Alpha {
+    fn from(raw: u64) -> Self {
+        Alpha {
+            input_color_a: InputColor::from_u64(raw.bits(0..=1))
+                .unwrap_or_else(|| panic!("Invalid input color A {:b}", raw.bits(0..=1))),
+            input_color_b: InputColor::from_u64(raw.bits(2..=3))
+                .unwrap_or_else(|| panic!("Invalid input color B {:b}", raw.bits(2..=3))),
+            input_alpha_c: InputAlpha::from_u64(raw.bits(4..=5))
+                .unwrap_or_else(|| panic!("Invalid input alpha C {:b}", raw.bits(4..=5))),
+            input_color_d: InputColor::from_u64(raw.bits(6..=7))
+                .unwrap_or_else(|| panic!("Invalid input color D {:b}", raw.bits(6..=7))),
+            fixed: raw.bits(32..=39) as u8,
+        }
+    }
+}
+
+#[derive(FromPrimitive, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum InputColor {
+    #[default]
+    Source = 0b00, // Cs
+    Destination = 0b01, // Cd
+    Zero = 0b10,        // 0
+    Reserved = 0b11,
+}
+
+#[derive(FromPrimitive, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum InputAlpha {
+    #[default]
+    Source = 0b00, // As
+    Destination = 0b01, // Ad
+    Fixed = 0b10,       // FIX
+    Reserved = 0b11,
 }
 
 #[derive(FromPrimitive, Debug, Clone, Copy, Default, PartialEq, Eq)]
