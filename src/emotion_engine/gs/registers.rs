@@ -36,7 +36,7 @@ pub struct ContextualRegisters {
 }
 
 #[repr(u8)]
-#[derive(FromPrimitive, Debug)]
+#[derive(FromPrimitive, Debug, Clone, Copy)]
 pub enum Register {
     Primitive = 0x00,              // PRIM Drawing primitive setting
     Rgbaq = 0x01,                  // RGBAQ Vertex color setting
