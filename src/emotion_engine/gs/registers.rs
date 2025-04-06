@@ -421,14 +421,14 @@ impl From<u64> for Primitive {
 #[derive(FromPrimitive, Debug, Clone, Copy, Default)]
 pub enum PrimitiveType {
     #[default]
-    Point,
-    Line,
-    LineStrip,
-    Triangle,
-    TriangleStrip,
-    TriangleFan,
-    Sprite,
-    SpecificationProhibited,
+    Point = 0b000,
+    Line = 0b001,
+    LineStrip = 0b010,
+    Triangle = 0b011,
+    TriangleStrip = 0b100,
+    TriangleFan = 0b101,
+    Sprite = 0b110,
+    SpecificationProhibited = 0b111,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
