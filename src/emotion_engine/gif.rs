@@ -201,6 +201,9 @@ impl Gif {
                 // println!("register count: {:?}", tag.register_count());
                 if tag.prim_field_enable() {
                     // println!("GIF tag write to prim: {:?}", tag.prim_data());
+                    bus.gs
+                        .command_queue
+                        .push_back((gs::Register::Primitive, tag.prim_data() as u64));
                 }
                 // print!("Registers:");
                 for register in tag.registers() {
