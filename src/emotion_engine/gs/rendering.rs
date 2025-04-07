@@ -335,6 +335,7 @@ impl Gs {
         self.render_pixel(
             x,
             y,
+            vertex.y as u32,
             Rgba {
                 r: vertex.r as u8,
                 g: vertex.g as u8,
@@ -408,6 +409,7 @@ impl Gs {
             self.render_pixel(
                 v.x as u16,
                 v.y as u16,
+                v.z as u32,
                 Rgba {
                     r: v.r as u8,
                     g: v.g as u8,
@@ -511,6 +513,7 @@ impl Gs {
                     self.render_pixel(
                         x,
                         y,
+                        vertex.z as u32,
                         Rgba {
                             r: vertex.r as u8,
                             g: vertex.g as u8,
@@ -575,6 +578,7 @@ impl Gs {
                 self.render_pixel(
                     x,
                     y,
+                    vertex2.z as u32,
                     Rgba {
                         r: color.r,
                         g: color.g,
@@ -592,7 +596,7 @@ impl Gs {
         }
     }
 
-    pub fn render_pixel(&mut self, x: u16, y: u16, mut color: Rgba, uv: Uv) {
+    pub fn render_pixel(&mut self, x: u16, y: u16, z: u32, color: Rgba, uv: Uv) {
         // println!("Render pixel: ({x}, {y}) color={color:?} uv={uv:?}");
         let primitive = self.registers.primitive;
         if primitive.texture_mapping {
