@@ -764,12 +764,12 @@ pub enum PrimitiveModeControl {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PixelTest {
-    alpha_test: AlphaTest,        // ATE + ATST
-    alpha_reference: u8,          // AREF
-    alpha_fail: AlphaFail,        // AFAIL
-    destination_alpha_test: bool, // DATE
-    destination_alpha_mode: bool, // DATM
-    depth_test: DepthTest,        // ZTE + ZTST
+    pub alpha_test: AlphaTest,        // ATE + ATST
+    pub alpha_reference: u8,          // AREF
+    pub alpha_fail: AlphaFail,        // AFAIL
+    pub destination_alpha_test: bool, // DATE
+    pub destination_alpha_mode: bool, // DATM
+    pub depth_test: DepthTest,        // ZTE + ZTST
 }
 
 impl From<u64> for PixelTest {
