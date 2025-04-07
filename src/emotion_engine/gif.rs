@@ -226,9 +226,15 @@ impl Gif {
                                 .push_back((gs::Register::Primitive, data.bits(0..=10) as u64));
                         }
                         Register::Rgbaq => {
-                            bus.gs
-                                .command_queue
-                                .push_back((gs::Register::Rgbaq, data as u64));
+                            let r = data.bits(0..=7) as u64;
+                            let g = data.bits(32..=39) as u64;
+                            let b = data.bits(64..=71) as u64;
+                            let a = data.bits(96..=103) as u64;
+                            // TODO Q from ST
+                            bus.gs.command_queue.push_back((
+                                gs::Register::Rgbaq,
+                                r | (g << 8) | (b << 16) | (a << 24),
+                            ));
                         }
                         Register::St => todo!(),
                         Register::Uv => todo!(),
