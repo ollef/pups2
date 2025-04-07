@@ -1,7 +1,7 @@
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-use crate::{bits::Bits, fix::Fix};
+use crate::{bits::Bits, bytes::Bytes, fix::Fix};
 
 use super::Gs;
 
@@ -258,20 +258,25 @@ impl Gs {
                             self.registers.bit_blit_buffer.destination_base_pointer
                         );
                         let pixels = width * height;
+                        self.tmp_data.reserve(pixels as usize * 4);
+
                         for pixel in 0..pixels {
-                            let data = {
-                                let x = (source_x + pixel % width) % 2048;
-                                let y = (source_y + pixel / width) % 2048;
-                                match self.registers.bit_blit_buffer.source_pixel_storage_format {
-                                    PixelStorageFormat::Ct32 => self.read_psmct32(
+                            let x = (source_x + pixel % width) % 2048;
+                            let y = (source_y + pixel / width) % 2048;
+                            match self.registers.bit_blit_buffer.source_pixel_storage_format {
+                                PixelStorageFormat::Ct32 => {
+                                    let data = self.read_psmct32(
                                         self.registers.bit_blit_buffer.source_base_pointer,
                                         x as u16,
                                         y as u16,
                                         self.registers.bit_blit_buffer.source_width,
-                                    ),
-                                    _ => todo!(),
+                                    );
+                                    self.tmp_data.extend_from_slice(&data.to_bytes());
                                 }
-                            };
+                                _ => todo!(),
+                            }
+                        }
+                        for pixel in 0..pixels {
                             let x = (destination_x + pixel % width) % 2048;
                             let y = (destination_y + pixel / width) % 2048;
                             match self
@@ -280,6 +285,10 @@ impl Gs {
                                 .destination_pixel_storage_format
                             {
                                 PixelStorageFormat::Ct32 => {
+                                    let data = u32::from_bytes(
+                                        &self.tmp_data
+                                            [pixel as usize * 4..(pixel + 1) as usize * 4],
+                                    );
                                     self.write_psmct32(
                                         self.registers.bit_blit_buffer.destination_base_pointer,
                                         x as u16,
@@ -291,6 +300,7 @@ impl Gs {
                                 _ => todo!(),
                             }
                         }
+                        self.tmp_data.clear();
 
                         self.registers.transmission_direction = TransmissionDirection::Deactivated;
                     }

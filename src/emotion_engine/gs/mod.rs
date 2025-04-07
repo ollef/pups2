@@ -19,6 +19,7 @@ pub struct Gs {
     privileged_registers: PrivilegedRegisters,
     registers: Registers,
     vertex_queue: Fifo<Vertex>,
+    tmp_data: Vec<u8>,
 }
 
 impl Gs {
@@ -29,6 +30,7 @@ impl Gs {
             privileged_registers: PrivilegedRegisters::default(),
             registers: Registers::default(),
             vertex_queue: Fifo::with_capacity(2),
+            tmp_data: Vec::new(),
         }
     }
 
