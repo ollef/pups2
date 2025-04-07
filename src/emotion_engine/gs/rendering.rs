@@ -598,6 +598,9 @@ impl Gs {
 
     pub fn render_pixel(&mut self, x: u16, y: u16, z: u32, color: Rgba, uv: Uv) {
         // println!("Render pixel: ({x}, {y}) color={color:?} uv={uv:?}");
+        // TODO wrap
+        // TODo alpha test
+        // TODO scan mask
 
         let z_buffer = self.contextual_registers().z_buffer_settings;
         let frame = self.contextual_registers().frame_buffer_settings;
@@ -635,41 +638,88 @@ impl Gs {
         }
 
         let primitive = self.registers.primitive;
-        if primitive.texture_mapping {
+        let color = if primitive.texture_mapping {
             let uv = match primitive.texture_coordinate_method {
                 TextureCoordinateMethod::Stq => todo!(),
                 TextureCoordinateMethod::Uv => uv,
             };
 
-            // TODO wrap
-            // TODO scan mask
-            // TODO depth test
-            // TODO alpha
-            // TODO z update
-            // TODO drawing mask
             let texture = self.contextual_registers().texture;
-            match texture.pixel_storage_format {
-                PixelStorageFormat::Ct32 => {
-                    color = Rgba::from(self.read_psmct32(
-                        texture.base_pointer,
-                        uv.u.round(),
-                        uv.v.round(),
-                        texture.buffer_width,
-                    ));
-                }
+            let texture_color = match texture.pixel_storage_format {
+                PixelStorageFormat::Ct32 => Rgba::from(self.read_psmct32(
+                    texture.base_pointer,
+                    uv.u.round(),
+                    uv.v.round(),
+                    texture.buffer_width,
+                )),
                 _ => todo!(),
-            }
-        }
+            };
 
-        let frame = self.contextual_registers().frame_buffer_settings;
+            match texture.function {
+                TextureFunction::Modulate => todo!(),
+                TextureFunction::Decal => texture_color,
+                TextureFunction::Highlight => todo!(),
+                TextureFunction::Highlight2 => todo!(),
+            }
+        } else {
+            color
+        };
+
+        let destination = match frame.pixel_storage_format {
+            PixelStorageFormat::Ct32 => {
+                Rgba::from(self.read_psmct32(frame.base_pointer, x, y, frame.width))
+            }
+            _ => todo!(),
+        };
+
+        let color = if primitive.alpha_blending {
+            let alpha = self.contextual_registers().alpha;
+            let a = match alpha.input_color_a {
+                InputColor::Source => color,
+                InputColor::Destination => destination,
+                InputColor::Zero => Rgba::default(),
+                InputColor::Reserved => todo!(),
+            };
+            let b = match alpha.input_color_b {
+                InputColor::Source => color,
+                InputColor::Destination => destination,
+                InputColor::Zero => Rgba::default(),
+                InputColor::Reserved => todo!(),
+            };
+            let c = match alpha.input_alpha_c {
+                InputAlpha::Source => color.a,
+                InputAlpha::Destination => destination.a,
+                InputAlpha::Fixed => alpha.fixed,
+                InputAlpha::Reserved => todo!(),
+            };
+            let d = match alpha.input_color_d {
+                InputColor::Source => color,
+                InputColor::Destination => destination,
+                InputColor::Zero => Rgba::default(),
+                InputColor::Reserved => todo!(),
+            };
+
+            let r = (((a.r as i32 - b.r as i32) * c as i32) >> 7) + d.r as i32;
+            let g = (((a.g as i32 - b.g as i32) * c as i32) >> 7) + d.g as i32;
+            let b = (((a.b as i32 - b.b as i32) * c as i32) >> 7) + d.b as i32;
+            let (r, g, b) = match self.registers.color_clamp {
+                ColorClamp::Mask => (r.bits(0..8), g.bits(0..8), b.bits(0..8)),
+                ColorClamp::Clamp => (r.clamp(0, 255), g.clamp(0, 255), b.clamp(0, 255)),
+            };
+            let a = color.a;
+            u32::from_bytes(&[r as u8, g as u8, b as u8, a])
+        } else {
+            u32::from_bytes(&[color.r, color.g, color.b, color.a])
+        };
+
+        let color = color & !frame.drawing_mask
+            | u32::from_bytes(&[destination.r, destination.g, destination.b, destination.a])
+                & frame.drawing_mask;
+
         match frame.pixel_storage_format {
-            PixelStorageFormat::Ct32 => self.write_psmct32(
-                frame.base_pointer,
-                x,
-                y,
-                frame.width,
-                u32::from_bytes(&[color.r, color.g, color.b, color.a]),
-            ),
+            PixelStorageFormat::Ct32 => {
+                self.write_psmct32(frame.base_pointer, x, y, frame.width, color)
+            }
             _ => todo!(),
         }
     }
