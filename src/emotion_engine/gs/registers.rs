@@ -295,9 +295,9 @@ impl From<u64> for FrameBufferSettings {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ZBufferSettings {
-    pub base_pointer: u32,
-    pub storage_format: ZStorageFormat,
-    pub no_update: bool,
+    pub base_pointer: u32,              // ZBP
+    pub storage_format: ZStorageFormat, // PSM
+    pub no_update: bool,                // ZMSK
 }
 
 impl From<u64> for ZBufferSettings {
