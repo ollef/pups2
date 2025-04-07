@@ -196,12 +196,18 @@ impl Gs {
                 );
             }
             Register::ZBuffer1 => {
-                println!("Z buffer 1: {:x?}", data);
-                self.registers.contextual[0].z_buffer_settings = ZBufferSettings::from(data)
+                self.registers.contextual[0].z_buffer_settings = ZBufferSettings::from(data);
+                println!(
+                    "Z buffer 1: {:x?}",
+                    self.registers.contextual[0].z_buffer_settings
+                );
             }
             Register::ZBuffer2 => {
-                println!("Z buffer 2: {:x?}", data);
-                self.registers.contextual[1].z_buffer_settings = ZBufferSettings::from(data)
+                self.registers.contextual[1].z_buffer_settings = ZBufferSettings::from(data);
+                println!(
+                    "Z buffer 2: {:x?}",
+                    self.registers.contextual[1].z_buffer_settings
+                );
             }
             Register::BitBlitBuffer => self.registers.bit_blit_buffer = BitBlitBuffer::from(data),
             Register::TransmissionPosition => {
