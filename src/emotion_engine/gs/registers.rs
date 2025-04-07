@@ -339,7 +339,7 @@ impl Gs {
                     }
                 }
                 TransmissionDirection::LocalToHost => todo!(),
-                TransmissionDirection::LocalToLocal => todo!(),
+                TransmissionDirection::LocalToLocal => panic!("Can't happen"),
                 TransmissionDirection::Deactivated => todo!(),
             },
             Register::SignalSignal => todo!(),
