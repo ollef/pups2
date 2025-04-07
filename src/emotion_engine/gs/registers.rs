@@ -608,10 +608,10 @@ pub struct TransmissionPosition {
 #[derive(Debug, Clone, Copy, Default, FromPrimitive)]
 pub enum PixelTransmissionOrder {
     #[default]
-    UpperLeftToLowerRight,
-    LowerLeftToUpperRight,
-    UpperRightToLowerLeft,
-    LowerRightToUpperLeft,
+    UpperLeftToLowerRight = 0b00,
+    LowerLeftToUpperRight = 0b01,
+    UpperRightToLowerLeft = 0b10,
+    LowerRightToUpperLeft = 0b11,
 }
 
 impl From<u64> for TransmissionPosition {
