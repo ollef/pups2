@@ -1,3 +1,4 @@
+use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes};
@@ -6,7 +7,7 @@ use super::{registers::PixelStorageFormat, Gs};
 
 #[derive(Debug, Default)]
 pub struct PrivilegedRegisters {
-    pub pcrtc_mode: u64,                           // PMODE
+    pub pcrtc_mode: PcrtcMode,                     // PMODE
     pub sync_mode1: u64,                           // SMODE1
     pub sync_mode2: u64,                           // SMODE2
     pub dram_refresh: u64,                         // SRFSH
@@ -20,7 +21,7 @@ pub struct PrivilegedRegisters {
     pub write_buffer: u64,                         // EXTBUF
     pub write_data: u64,                           // EXTDATA
     pub write_start: u64,                          // EXTWRITE
-    pub background_color: u64,                     // BGCOLOR
+    pub background_color: Rgb,                     // BGCOLOR
     pub status: u64,                               // CSR
     pub interrupt_mask: u64,                       // IMR
     pub bus_direction: u64,                        // BUSDIR
@@ -45,31 +46,6 @@ impl From<u64> for DisplayFrameBuffer {
                 .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(24..=29))),
             offset_x: raw.bits(32..=42) as u16,
             offset_y: raw.bits(43..=53) as u16,
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Display {
-    x_position: u16,              // DX
-    y_position: u16,              // DX
-    horizontal_magnification: u8, // MAGH
-    vertical_magnification: u8,   // MAGV
-    width: u16,                   // DW
-    height: u16,                  // DH
-}
-
-impl From<u64> for Display {
-    fn from(raw: u64) -> Self {
-        let horizontal_magnification = raw.bits(23..=26) as u8 + 1;
-        let vertical_magnification = raw.bits(27..=28) as u8 + 1;
-        Display {
-            x_position: raw.bits(0..=11) as u16 / horizontal_magnification as u16,
-            y_position: raw.bits(12..=22) as u16 / vertical_magnification as u16,
-            horizontal_magnification,
-            vertical_magnification,
-            width: (raw.bits(32..=43) as u16 + 1) / horizontal_magnification as u16,
-            height: (raw.bits(44..=54) as u16 + 1) / vertical_magnification as u16,
         }
     }
 }
@@ -108,7 +84,10 @@ impl Gs {
 
     pub fn write_privileged64(&mut self, address: u32, value: u64) {
         match address {
-            0x1200_0000 => self.privileged_registers.pcrtc_mode = value,
+            0x1200_0000 => {
+                self.privileged_registers.pcrtc_mode = PcrtcMode::from(value);
+                println!("Pmode = {:?}", self.privileged_registers.pcrtc_mode);
+            }
             0x1200_0010 => self.privileged_registers.sync_mode1 = value,
             0x1200_0020 => self.privileged_registers.sync_mode2 = value,
             0x1200_0030 => self.privileged_registers.dram_refresh = value,
@@ -140,7 +119,7 @@ impl Gs {
             0x1200_00B0 => self.privileged_registers.write_buffer = value,
             0x1200_00C0 => self.privileged_registers.write_data = value,
             0x1200_00D0 => self.privileged_registers.write_start = value,
-            0x1200_00E0 => self.privileged_registers.background_color = value,
+            0x1200_00E0 => self.privileged_registers.background_color = Rgb::from(value as u32),
             0x1200_1000 => {
                 let value = if value.bit(3) {
                     // VSINT
@@ -167,5 +146,93 @@ impl Gs {
 
     pub fn vblank(&mut self) {
         self.privileged_registers.status.set_bit(3, true);
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone)]
+pub struct PcrtcMode {
+    enable_circuit1: bool,                        // EN1
+    enable_circuit2: bool,                        // EN2
+    alpha_value_selection: AlphaValueSelection,   // MMOD, ALP
+    alpha_output_selection: AlphaOutputSelection, // AMOD
+    alpha_blending_method: AlphaBlendingMethod,   // SLBG
+}
+
+impl From<u64> for PcrtcMode {
+    fn from(raw: u64) -> Self {
+        PcrtcMode {
+            enable_circuit1: raw.bit(0),
+            enable_circuit2: raw.bit(1),
+            alpha_value_selection: if raw.bit(1) {
+                AlphaValueSelection::Fixed(raw.bits(8..=15) as u8)
+            } else {
+                AlphaValueSelection::Circuit1
+            },
+            alpha_output_selection: AlphaOutputSelection::from_u64(raw.bits(6..=6)).unwrap(),
+            alpha_blending_method: AlphaBlendingMethod::from_u64(raw.bits(7..=7)).unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone)]
+pub enum AlphaValueSelection {
+    #[default]
+    Circuit1,
+    Fixed(u8), // ALP
+}
+
+#[derive(Debug, Default, Copy, Clone, FromPrimitive)]
+pub enum AlphaOutputSelection {
+    #[default]
+    Circuit1 = 0,
+    Circuit2 = 1,
+}
+
+#[derive(Debug, Default, Copy, Clone, FromPrimitive)]
+pub enum AlphaBlendingMethod {
+    #[default]
+    Circuit2 = 0,
+    BackgroundColor = 1,
+}
+
+#[derive(Debug, Default)]
+pub struct Display {
+    x_position: u16,              // DX
+    y_position: u16,              // DX
+    horizontal_magnification: u8, // MAGH
+    vertical_magnification: u8,   // MAGV
+    width: u16,                   // DW
+    height: u16,                  // DH
+}
+
+impl From<u64> for Display {
+    fn from(raw: u64) -> Self {
+        let horizontal_magnification = raw.bits(23..=26) as u8 + 1;
+        let vertical_magnification = raw.bits(27..=28) as u8 + 1;
+        Display {
+            x_position: raw.bits(0..=11) as u16 / horizontal_magnification as u16,
+            y_position: raw.bits(12..=22) as u16 / vertical_magnification as u16,
+            horizontal_magnification,
+            vertical_magnification,
+            width: (raw.bits(32..=43) as u16 + 1) / horizontal_magnification as u16,
+            height: (raw.bits(44..=54) as u16 + 1) / vertical_magnification as u16,
+        }
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone)]
+pub struct Rgb {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+impl From<u32> for Rgb {
+    fn from(raw: u32) -> Self {
+        Rgb {
+            r: raw.bits(0..=7) as u8,
+            g: raw.bits(8..=15) as u8,
+            b: raw.bits(16..=23) as u8,
+        }
     }
 }
