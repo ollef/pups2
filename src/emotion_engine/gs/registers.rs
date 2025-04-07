@@ -220,6 +220,82 @@ impl Gs {
                 self.registers.transmission_direction =
                     TransmissionDirection::from_u64(data.bits(0..=1)).expect("Invalid TRXDIR");
                 self.registers.transmission_pixel = 0;
+                match self.registers.transmission_direction {
+                    TransmissionDirection::HostToLocal => {}
+                    TransmissionDirection::LocalToHost => {
+                        todo!()
+                    }
+                    TransmissionDirection::LocalToLocal => {
+                        match self.registers.transmission_position.order {
+                            PixelTransmissionOrder::UpperLeftToLowerRight => {}
+                            _ => todo!(),
+                        }
+                        let source_x = self.registers.transmission_position.source_x as u32;
+                        let source_y = self.registers.transmission_position.source_y as u32;
+                        let destination_x =
+                            self.registers.transmission_position.destination_x as u32;
+                        let destination_y =
+                            self.registers.transmission_position.destination_y as u32;
+                        let width = self.registers.transmission_size.width as u32;
+                        let height = self.registers.transmission_size.height as u32;
+                        println!(
+                            "Local transmission of {width}x{height} pixels from ({source_x}, {source_y}) to ({destination_x}, {destination_y})"
+                        );
+                        println!(
+                            "Source width: {}",
+                            self.registers.bit_blit_buffer.source_width
+                        );
+                        println!(
+                            "Destination width: {}",
+                            self.registers.bit_blit_buffer.destination_width
+                        );
+                        println!(
+                            "Source base pointer: {:x?}",
+                            self.registers.bit_blit_buffer.source_base_pointer
+                        );
+                        println!(
+                            "Destination base pointer: {:x?}",
+                            self.registers.bit_blit_buffer.destination_base_pointer
+                        );
+                        let pixels = width * height;
+                        for pixel in 0..pixels {
+                            let data = {
+                                let x = (source_x + pixel % width) % 2048;
+                                let y = (source_y + pixel / width) % 2048;
+                                match self.registers.bit_blit_buffer.source_pixel_storage_format {
+                                    PixelStorageFormat::Ct32 => self.read_psmct32(
+                                        self.registers.bit_blit_buffer.source_base_pointer,
+                                        x as u16,
+                                        y as u16,
+                                        self.registers.bit_blit_buffer.source_width,
+                                    ),
+                                    _ => todo!(),
+                                }
+                            };
+                            let x = (destination_x + pixel % width) % 2048;
+                            let y = (destination_y + pixel / width) % 2048;
+                            match self
+                                .registers
+                                .bit_blit_buffer
+                                .destination_pixel_storage_format
+                            {
+                                PixelStorageFormat::Ct32 => {
+                                    self.write_psmct32(
+                                        self.registers.bit_blit_buffer.destination_base_pointer,
+                                        x as u16,
+                                        y as u16,
+                                        self.registers.bit_blit_buffer.destination_width,
+                                        data,
+                                    );
+                                }
+                                _ => todo!(),
+                            }
+                        }
+
+                        self.registers.transmission_direction = TransmissionDirection::Deactivated;
+                    }
+                    TransmissionDirection::Deactivated => {}
+                }
             }
             Register::TransmissionData => match self.registers.transmission_direction {
                 TransmissionDirection::HostToLocal => {
