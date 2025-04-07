@@ -5,7 +5,10 @@ use crate::{
 };
 
 use super::{
-    registers::{PrimitiveType, Rgbaq, TextureCoordinateMethod, Uv, Xyz},
+    registers::{
+        ColorClamp, DepthTest, InputAlpha, InputColor, PrimitiveType, Rgbaq,
+        TextureCoordinateMethod, TextureFunction, Uv, Xyz, ZStorageFormat,
+    },
     Gs,
 };
 
