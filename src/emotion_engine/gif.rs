@@ -282,8 +282,8 @@ impl Gif {
                                 .command_queue
                                 .push_back((register, data.bits(0..64) as u64));
                             // println!(
-                            //     "GIF write address data: {:08x}={:08x}",
-                            //     data.bits(64..=71),
+                            //     "GIF write address data: {:?}={:08x}",
+                            //     register,
                             //     data.bits(0..64)
                             // );
                         }
