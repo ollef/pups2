@@ -491,7 +491,7 @@ impl Gs {
         let w2_delta = delta(vertex3.xy(), vertex1.xy()) * inv_area;
         let w3_delta = delta(vertex1.xy(), vertex2.xy()) * inv_area;
         let bias = |p1: Xy, p2: Xy| {
-            if (p1.y, p2.x) < (p2.y, p1.x) {
+            if (p2.y, p1.x) < (p1.y, p2.x) {
                 1.0 / 16.0
             } else {
                 0.0
