@@ -223,10 +223,6 @@ impl Gs {
             }
             Register::TransmissionData => match self.registers.transmission_direction {
                 TransmissionDirection::HostToLocal => {
-                    match self.registers.transmission_position.direction {
-                        PixelTransmissionOrder::UpperLeftToLowerRight => {}
-                        _ => todo!(),
-                    }
                     let destination_x = self.registers.transmission_position.destination_x as u32;
                     let destination_y = self.registers.transmission_position.destination_y as u32;
                     let width = self.registers.transmission_size.width as u32;
