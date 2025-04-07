@@ -42,13 +42,13 @@ impl Channel {
 
 #[derive(Debug, Default)]
 pub struct ChannelRegisters {
-    control: ChannelControlRegister,           // CHCR
-    memory_address: MemoryOrScratchpadAddress, // MADR
-    quad_word_count: u32,                      // QWC
-    tag_address: MemoryOrScratchpadAddress,    // TADR
-    tag_address_save_0: u32,                   // ASR0
-    tag_address_save_1: u32,                   // ASR1
-    scratchpad_memory_address: u32,            // SADR
+    control: ChannelControlRegister,               // CHCR
+    memory_address: MemoryOrScratchpadAddress,     // MADR
+    quad_word_count: u32,                          // QWC
+    tag_address: MemoryOrScratchpadAddress,        // TADR
+    tag_address_save_0: MemoryOrScratchpadAddress, // ASR0
+    tag_address_save_1: MemoryOrScratchpadAddress, // ASR1
+    scratchpad_memory_address: u32,                // SADR
     process_next_tag: bool,
 }
 
@@ -142,9 +142,9 @@ impl Dmac {
             0x10 => self.channels[channel].memory_address = MemoryOrScratchpadAddress(value),
             0x20 => self.channels[channel].quad_word_count = value,
             0x30 => self.channels[channel].tag_address = MemoryOrScratchpadAddress(value),
-            0x40 => self.channels[channel].tag_address_save_0 = value,
-            0x50 => self.channels[channel].tag_address_save_1 = value,
-            0x80 => self.channels[channel].scratchpad_memory_address = value,
+            0x40 => self.channels[channel].tag_address_save_0 = MemoryOrScratchpadAddress(value),
+            0x50 => self.channels[channel].tag_address_save_1 = MemoryOrScratchpadAddress(value),
+            0x80 => self.channels[channel].scratchpad_memory_address = value.bits(0..=13),
             _ => panic!("Invalid write to DMAC: 0x{:08x} {}", address, value),
         }
     }
@@ -177,8 +177,8 @@ impl Dmac {
             0x10 => self.channels[channel].memory_address.0,
             0x20 => self.channels[channel].quad_word_count,
             0x30 => self.channels[channel].tag_address.0,
-            0x40 => self.channels[channel].tag_address_save_0,
-            0x50 => self.channels[channel].tag_address_save_1,
+            0x40 => self.channels[channel].tag_address_save_0.0,
+            0x50 => self.channels[channel].tag_address_save_1.0,
             0x80 => self.channels[channel].scratchpad_memory_address,
             _ => panic!("Invalid read from DMAC: 0x{:08x}", address),
         }
