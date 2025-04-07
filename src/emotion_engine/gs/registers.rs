@@ -360,7 +360,7 @@ pub struct FrameBufferSettings {
 impl From<u64> for FrameBufferSettings {
     fn from(raw: u64) -> Self {
         FrameBufferSettings {
-            base_pointer: raw.bits(0..=8) as u32 * 2048,
+            base_pointer: raw.bits(0..=8) as u32 * 2048 * 4,
             width: raw.bits(16..=21) as u16 * 64,
             pixel_storage_format: PixelStorageFormat::from_u64(raw.bits(24..=29))
                 .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(24..=29))),
@@ -379,7 +379,7 @@ pub struct ZBufferSettings {
 impl From<u64> for ZBufferSettings {
     fn from(raw: u64) -> Self {
         ZBufferSettings {
-            base_pointer: raw.bits(0..=8) as u32 * 2048,
+            base_pointer: raw.bits(0..=8) as u32 * 2048 * 4,
             storage_format: ZStorageFormat::from_u64(raw.bits(24..=27))
                 .unwrap_or_else(|| panic!("Invalid Z storage format {:b}", raw.bits(24..=27))),
             no_update: raw.bit(32),
@@ -656,13 +656,13 @@ pub struct BitBlitBuffer {
 impl From<u64> for BitBlitBuffer {
     fn from(value: u64) -> Self {
         BitBlitBuffer {
-            source_base_pointer: value.bits(0..=13) as u32 * 64,
+            source_base_pointer: value.bits(0..=13) as u32 * 64 * 4,
             source_width: value.bits(16..=21) as u16 * 64,
             source_pixel_storage_format: PixelStorageFormat::from_u64(value.bits(24..=29))
                 .unwrap_or_else(|| {
                     panic!("Invalid pixel storage format {:b}", value.bits(24..=29))
                 }),
-            destination_base_pointer: value.bits(32..=45) as u32 * 64,
+            destination_base_pointer: value.bits(32..=45) as u32 * 64 * 4,
             destination_width: value.bits(48..=53) as u16 * 64,
             destination_pixel_storage_format: PixelStorageFormat::from_u64(value.bits(56..=61))
                 .unwrap_or_else(|| {
@@ -855,7 +855,7 @@ impl Texture {
 impl From<u64> for Texture {
     fn from(raw: u64) -> Self {
         Texture {
-            base_pointer: raw.bits(0..=13) as u32 * 64,
+            base_pointer: raw.bits(0..=13) as u32 * 64 * 4,
             buffer_width: raw.bits(14..=19) as u16 * 64,
             pixel_storage_format: PixelStorageFormat::from_u64(raw.bits(20..=25))
                 .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(20..=25))),
@@ -864,7 +864,7 @@ impl From<u64> for Texture {
             has_alpha: raw.bit(34),
             function: TextureFunction::from_u64(raw.bits(35..=36))
                 .unwrap_or_else(|| panic!("Invalid texture function {:b}", raw.bits(35..=36))),
-            clut_buffer_base_pointer: raw.bits(37..=50) as u32 * 64,
+            clut_buffer_base_pointer: raw.bits(37..=50) as u32 * 64 * 4,
             clut_pixel_storage_format: PixelStorageFormat::from_u64(raw.bits(51..=54))
                 .unwrap_or_else(|| panic!("Invalid pixel storage format {:b}", raw.bits(51..=54))),
             clut_storage_mode: ClutStorageMode::from_u64(raw.bits(55..=55))
