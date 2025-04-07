@@ -313,11 +313,11 @@ impl From<u64> for ZBufferSettings {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Alpha {
-    input_color_a: InputColor, // A
-    input_color_b: InputColor, // B
-    input_alpha_c: InputAlpha, // C
-    input_color_d: InputColor, // D
-    fixed: u8,                 // FIX
+    pub input_color_a: InputColor, // A
+    pub input_color_b: InputColor, // B
+    pub input_alpha_c: InputAlpha, // C
+    pub input_color_d: InputColor, // D
+    pub fixed: u8,                 // FIX
 }
 
 impl From<u64> for Alpha {
