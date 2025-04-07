@@ -27,7 +27,7 @@ impl Core {
         //     println!("{}={:#x}", reg, value);
         // }
         let mut next_program_counter = self.delayed_branch_target.take();
-        println!("pc={:#010}: {instruction}", self.program_counter);
+        // println!("pc={:#010}: {instruction}", self.program_counter);
         match instruction {
             Instruction::Unknown => {
                 println!("Unknown instruction at {:#010x}", self.program_counter)
