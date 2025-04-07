@@ -722,10 +722,10 @@ impl From<u64> for TransmissionSize {
 #[derive(Debug, Clone, Copy, Default, FromPrimitive)]
 pub enum TransmissionDirection {
     #[default]
-    HostToLocal,
-    LocalToHost,
-    LocalToLocal,
-    Deactivated,
+    HostToLocal = 0b00,
+    LocalToHost = 0b01,
+    LocalToLocal = 0b10,
+    Deactivated = 0b11,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
