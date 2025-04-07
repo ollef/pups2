@@ -818,8 +818,8 @@ pub enum AlphaFail {
 
 #[derive(Debug, Clone, Copy, Default, FromPrimitive)]
 pub enum DepthTest {
-    #[default]
     Never = 0b00,
+    #[default]
     Always = 0b01,
     GreaterOrEqual = 0b10,
     Greater = 0b11,
