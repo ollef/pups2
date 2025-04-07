@@ -674,11 +674,11 @@ impl From<u64> for BitBlitBuffer {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TransmissionPosition {
-    source_x: u16,
-    source_y: u16,
-    destination_x: u16,
-    destination_y: u16,
-    order: PixelTransmissionOrder,
+    source_x: u16,                 // SSAX
+    source_y: u16,                 // SSAY
+    destination_x: u16,            // DSAX
+    destination_y: u16,            // DSAY
+    order: PixelTransmissionOrder, // DIR
 }
 
 #[derive(Debug, Clone, Copy, Default, FromPrimitive)]
