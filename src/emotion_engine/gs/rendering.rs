@@ -598,6 +598,42 @@ impl Gs {
 
     pub fn render_pixel(&mut self, x: u16, y: u16, z: u32, color: Rgba, uv: Uv) {
         // println!("Render pixel: ({x}, {y}) color={color:?} uv={uv:?}");
+
+        let z_buffer = self.contextual_registers().z_buffer_settings;
+        let frame = self.contextual_registers().frame_buffer_settings;
+
+        match self.contextual_registers().pixel_test.depth_test {
+            DepthTest::Never => return,
+            DepthTest::Always => {}
+            DepthTest::GreaterOrEqual => match z_buffer.storage_format {
+                ZStorageFormat::Z32 => {
+                    let value = self.read_psmct32(z_buffer.base_pointer, x, y, frame.width);
+                    if z < value {
+                        return;
+                    }
+                }
+                _ => todo!(),
+            },
+            DepthTest::Greater => match z_buffer.storage_format {
+                ZStorageFormat::Z32 => {
+                    let value = self.read_psmct32(z_buffer.base_pointer, x, y, frame.width);
+                    if z <= value {
+                        return;
+                    }
+                }
+                _ => todo!(),
+            },
+        };
+
+        if !z_buffer.no_update {
+            match z_buffer.storage_format {
+                ZStorageFormat::Z32 => {
+                    self.write_psmct32(z_buffer.base_pointer, x, y, frame.width, z);
+                }
+                _ => todo!(),
+            }
+        }
+
         let primitive = self.registers.primitive;
         if primitive.texture_mapping {
             let uv = match primitive.texture_coordinate_method {
