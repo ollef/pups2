@@ -16,7 +16,7 @@ pub struct PrivilegedRegisters {
     pub display_frame_buffer1: DisplayFrameBuffer, // DISPFB1
     pub display1: Display,                         // DISPLAY1
     pub display_frame_buffer2: DisplayFrameBuffer, // DISPFB1
-    pub display2: Display,                         // DISPLAY1
+    pub display2: Display,                         // DISPLAY2
     pub write_buffer: u64,                         // EXTBUF
     pub write_data: u64,                           // EXTDATA
     pub write_start: u64,                          // EXTWRITE
