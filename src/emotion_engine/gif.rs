@@ -209,7 +209,7 @@ impl Gif {
                 for register in tag.registers() {
                     // print!(" {:?}", register);
                 }
-                println!();
+                // println!();
                 bus.gif.transfer_status.set_loop_counter(tag.repeat_count());
                 bus.gif.tag = tag;
                 continue;
