@@ -33,11 +33,13 @@ impl Gs {
 
     pub fn read_psmct32(&self, base_pointer: u32, x: u16, y: u16, width: u16) -> u32 {
         let address = base_pointer + Self::psmct32_offset(x, y, width);
+        let address = address & (self.local_memory.len() as u32 - 1);
         u32::from_bytes(&self.local_memory[address as usize..address as usize + 4])
     }
 
     pub fn write_psmct32(&mut self, base_pointer: u32, x: u16, y: u16, width: u16, value: u32) {
         let address = base_pointer + Self::psmct32_offset(x, y, width);
+        let address = address & (self.local_memory.len() as u32 - 1);
         self.local_memory[address as usize..address as usize + 4]
             .copy_from_slice(&value.to_bytes());
     }
