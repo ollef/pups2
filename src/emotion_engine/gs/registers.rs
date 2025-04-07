@@ -602,7 +602,7 @@ pub struct TransmissionPosition {
     source_y: u16,
     destination_x: u16,
     destination_y: u16,
-    direction: PixelTransmissionOrder,
+    order: PixelTransmissionOrder,
 }
 
 #[derive(Debug, Clone, Copy, Default, FromPrimitive)]
@@ -621,7 +621,7 @@ impl From<u64> for TransmissionPosition {
             source_y: raw.bits(16..=26) as u16,
             destination_x: raw.bits(32..=42) as u16,
             destination_y: raw.bits(48..=58) as u16,
-            direction: PixelTransmissionOrder::from_u64(raw.bits(59..=60)).unwrap_or_else(|| {
+            order: PixelTransmissionOrder::from_u64(raw.bits(59..=60)).unwrap_or_else(|| {
                 panic!("Invalid pixel transmission order {:b}", raw.bits(59..=60))
             }),
         }
