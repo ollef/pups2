@@ -99,11 +99,13 @@ fn execute(file: &str) -> std::io::Result<()> {
     loop {
         match scheduler.next_event() {
             Event::Run(cycles) => {
-                for _ in 0..cycles {
+                for i in 0..cycles {
                     core.step_interpreter(&mut bus);
-                    Dmac::step(&mut bus);
-                    Gif::step(&mut bus);
-                    bus.gs.step();
+                    if (scheduler.cycle + i) % 2 == 0 {
+                        Dmac::step(&mut bus);
+                        Gif::step(&mut bus);
+                        bus.gs.step();
+                    }
                     bus.timer.step();
                 }
                 scheduler.tick(cycles);

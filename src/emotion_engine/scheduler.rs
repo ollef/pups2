@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 
 pub struct Scheduler {
-    cycle: u64,
+    pub cycle: u64,
     pending: BinaryHeap<PendingEvent>,
 }
 
