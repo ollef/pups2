@@ -2,6 +2,7 @@ use crate::bits::Bits;
 
 use super::{fpu, instruction::Instruction, register::Register};
 
+#[inline(always)]
 pub fn disassemble(data: u32) -> Instruction {
     let opcode = data.bits(26..32);
     let s = data.bits(21..26);
