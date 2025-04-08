@@ -186,18 +186,18 @@ impl Dmac {
 
     pub fn step(bus: &mut Bus) {
         // TODO arbitration
-        let mut channels = std::mem::take(&mut bus.dmac.channels);
-        for (channel, registers) in &mut channels {
+        for channel in Channel::all() {
+            let registers = &bus.dmac.channels[channel];
             if registers.control.start() {
                 match channel {
                     Channel::Vif0 => todo!(),
                     Channel::Vif1 => todo!(),
                     Channel::Gif => match registers.control.mode() {
                         ChannelMode::Normal => {
-                            let memory_address = &mut registers.memory_address;
-                            let quad_word_count = &mut registers.quad_word_count;
-                            while *quad_word_count > 0 && !bus.gif.fifo.is_full() {
-                                let data = bus.read_memory_or_scratchpad::<u128>(*memory_address);
+                            let mut memory_address = registers.memory_address;
+                            let mut quad_word_count = registers.quad_word_count;
+                            while quad_word_count > 0 && !bus.gif.fifo.is_full() {
+                                let data = bus.read_memory_or_scratchpad::<u128>(memory_address);
                                 bus.gif.fifo.push_back(data);
                                 // println!(
                                 //     "Transferred quad word 0x{:08x} from 0x{:08x} to GIF FIFO (QWC={})",
@@ -205,21 +205,24 @@ impl Dmac {
                                 //     memory_address, quad_word_count
                                 // );
                                 memory_address.0 += 16;
-                                *quad_word_count -= 1;
+                                quad_word_count -= 1;
                             }
-                            if *quad_word_count == 0 {
+                            let registers = &mut bus.dmac.channels[channel];
+                            if quad_word_count == 0 {
                                 registers.control.set_start(false);
                                 // println!(
                                 //     "GIF channel finished, control=0x{:08x}",
                                 //     registers.control.raw
                                 // );
                             }
+                            registers.memory_address = memory_address;
+                            registers.quad_word_count = quad_word_count;
                         }
                         ChannelMode::Chain => {
-                            let memory_address = &mut registers.memory_address;
-                            let quad_word_count = &mut registers.quad_word_count;
-                            while *quad_word_count > 0 && !bus.gif.fifo.is_full() {
-                                let data = bus.read_memory_or_scratchpad::<u128>(*memory_address);
+                            let mut memory_address = registers.memory_address;
+                            let mut quad_word_count = registers.quad_word_count;
+                            while quad_word_count > 0 && !bus.gif.fifo.is_full() {
+                                let data = bus.read_memory_or_scratchpad::<u128>(memory_address);
                                 bus.gif.fifo.push_back(data);
                                 // println!(
                                 //     "Transferred quad word 0x{:08x} from 0x{:08x} to GIF FIFO (QWC={})",
@@ -227,44 +230,50 @@ impl Dmac {
                                 //     memory_address, quad_word_count
                                 // );
                                 memory_address.0 += 16;
-                                *quad_word_count -= 1;
+                                quad_word_count -= 1;
                             }
-                            if *quad_word_count == 0 && !registers.process_next_tag {
-                                registers.control.set_start(false);
-                                // println!(
-                                //     "GIF channel finished, control=0x{:08x}",
-                                //     registers.control.raw
-                                // );
-                            }
-                            if *quad_word_count == 0 {
-                                assert!(!registers.control.tag_transfer_enable());
-                                let source_chain_tag =
-                                    bus.read_memory_or_scratchpad::<u128>(registers.tag_address);
-                                registers
-                                    .control
-                                    .set_dma_tag(source_chain_tag.bits(16..32) as u16);
-                                let source_chain_tag =
-                                    SourceChainTag::from(source_chain_tag as u64);
-                                registers.quad_word_count = source_chain_tag.quad_word_count as u32;
-                                match source_chain_tag.tag_id {
-                                    TagId::ReferenceEnd => {
-                                        registers.memory_address = source_chain_tag.address;
-                                        registers.tag_address.0 += 16;
-                                        registers.process_next_tag = false;
+                            if quad_word_count == 0 {
+                                if registers.process_next_tag {
+                                    assert!(!registers.control.tag_transfer_enable());
+                                    let source_chain_tag = bus
+                                        .read_memory_or_scratchpad::<u128>(registers.tag_address);
+                                    let registers = &mut bus.dmac.channels[channel];
+                                    registers
+                                        .control
+                                        .set_dma_tag(source_chain_tag.bits(16..32) as u16);
+                                    let source_chain_tag =
+                                        SourceChainTag::from(source_chain_tag as u64);
+                                    quad_word_count = source_chain_tag.quad_word_count as u32;
+                                    match source_chain_tag.tag_id {
+                                        TagId::ReferenceEnd => {
+                                            memory_address = source_chain_tag.address;
+                                            registers.tag_address.0 += 16;
+                                            registers.process_next_tag = false;
+                                        }
+                                        TagId::Count => {
+                                            memory_address = registers.tag_address;
+                                            memory_address.0 += 16;
+                                            registers.tag_address = source_chain_tag.address;
+                                        }
+                                        TagId::Next => todo!(),
+                                        TagId::Reference => todo!(),
+                                        TagId::References => todo!(),
+                                        TagId::Call => todo!(),
+                                        TagId::Return => todo!(),
+                                        TagId::End => todo!(),
                                     }
-                                    TagId::Count => {
-                                        registers.memory_address = registers.tag_address;
-                                        registers.memory_address.0 += 16;
-                                        registers.tag_address = source_chain_tag.address;
-                                    }
-                                    TagId::Next => todo!(),
-                                    TagId::Reference => todo!(),
-                                    TagId::References => todo!(),
-                                    TagId::Call => todo!(),
-                                    TagId::Return => todo!(),
-                                    TagId::End => todo!(),
+                                } else {
+                                    let registers = &mut bus.dmac.channels[channel];
+                                    registers.control.set_start(false);
+                                    // println!(
+                                    //     "GIF channel finished, control=0x{:08x}",
+                                    //     registers.control.raw
+                                    // );
                                 }
                             }
+                            let registers = &mut bus.dmac.channels[channel];
+                            registers.memory_address = memory_address;
+                            registers.quad_word_count = quad_word_count;
                         }
                         ChannelMode::Interleave => todo!(),
                     },
@@ -278,7 +287,6 @@ impl Dmac {
                 }
             }
         }
-        bus.dmac.channels = channels;
     }
 }
 
