@@ -3,6 +3,8 @@ mod bytes;
 mod emotion_engine;
 mod fifo;
 mod fix;
+use std::time::Instant;
+
 use argh::FromArgs;
 use bytes::Bytes;
 use elf::{endian::LittleEndian, ElfBytes};
@@ -96,6 +98,7 @@ fn execute(file: &str) -> std::io::Result<()> {
     window.set_background_color(20, 20, 20);
     core.mmu.mmap(0, 0x2000_0000, 0);
     let mut scheduler = scheduler::Scheduler::new();
+    let mut frame_start = Instant::now();
     loop {
         match scheduler.next_event() {
             Event::Run(cycles) => {
@@ -118,7 +121,13 @@ fn execute(file: &str) -> std::io::Result<()> {
                 println!("GS VBlank");
             }
             Event::VBlankEnd => {
+                let frame_duration = frame_start.elapsed();
+                frame_start = Instant::now();
                 println!("VBlank end");
+                println!(
+                    "Frame duration: {} ms",
+                    frame_duration.as_secs_f64() * 1000.0
+                );
                 if let Some((frame_buffer_width, frame_buffer)) = bus.gs.frame_buffer() {
                     let frame_buffer = unsafe {
                         std::slice::from_raw_parts(
