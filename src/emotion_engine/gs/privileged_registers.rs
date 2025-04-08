@@ -3,7 +3,7 @@ use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes};
 
-use super::{registers::PixelStorageFormat, Gs};
+use super::{registers::PixelStorageFormat, rendering::Rect, Gs};
 
 #[derive(Debug, Default)]
 pub struct PrivilegedRegisters {
@@ -28,7 +28,7 @@ pub struct PrivilegedRegisters {
     pub signal_label_id: u64,                      // SIGLBLID
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct DisplayFrameBuffer {
     pub base_pointer: u32,
     pub width: u16,
@@ -151,11 +151,11 @@ impl Gs {
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct PcrtcMode {
-    enable_circuit1: bool,                        // EN1
-    enable_circuit2: bool,                        // EN2
-    alpha_value_selection: AlphaValueSelection,   // MMOD, ALP
-    alpha_output_selection: AlphaOutputSelection, // AMOD
-    alpha_blending_method: AlphaBlendingMethod,   // SLBG
+    pub enable_circuit1: bool,                        // EN1
+    pub enable_circuit2: bool,                        // EN2
+    pub alpha_value_selection: AlphaValueSelection,   // MMOD, ALP
+    pub alpha_output_selection: AlphaOutputSelection, // AMOD
+    pub alpha_blending_method: AlphaBlendingMethod,   // SLBG
 }
 
 impl From<u64> for PcrtcMode {
@@ -195,14 +195,25 @@ pub enum AlphaBlendingMethod {
     BackgroundColor = 1,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Display {
-    x_position: u16,              // DX
-    y_position: u16,              // DX
-    horizontal_magnification: u8, // MAGH
-    vertical_magnification: u8,   // MAGV
-    width: u16,                   // DW
-    height: u16,                  // DH
+    pub x_position: u16,              // DX
+    pub y_position: u16,              // DX
+    pub horizontal_magnification: u8, // MAGH
+    pub vertical_magnification: u8,   // MAGV
+    pub width: u16,                   // DW
+    pub height: u16,                  // DH
+}
+
+impl Display {
+    pub fn rect(&self) -> Rect<u16> {
+        Rect {
+            x_start: self.x_position,
+            y_start: self.y_position,
+            x_end: self.x_position + self.width,
+            y_end: self.y_position + self.height,
+        }
+    }
 }
 
 impl From<u64> for Display {

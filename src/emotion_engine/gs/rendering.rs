@@ -1,7 +1,13 @@
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
 use crate::{
-    bits::Bits, bytes::Bytes, emotion_engine::gs::registers::PixelStorageFormat, fix::Fix,
+    bits::Bits,
+    bytes::Bytes,
+    emotion_engine::gs::{
+        privileged_registers::{AlphaBlendingMethod, AlphaValueSelection, Rgb},
+        registers::PixelStorageFormat,
+    },
+    fix::Fix,
 };
 
 use super::{
@@ -201,30 +207,137 @@ impl Mul<f32> for Xy {
     }
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct Rect<T> {
+    pub x_start: T,
+    pub y_start: T,
+    pub x_end: T,
+    pub y_end: T,
+}
+
+impl<T: Copy> Rect<T> {
+    pub fn is_empty(&self) -> bool
+    where
+        T: PartialOrd,
+    {
+        self.x_start >= self.x_end || self.y_start >= self.y_end
+    }
+
+    pub fn contains(&self, x: T, y: T) -> bool
+    where
+        T: PartialOrd,
+    {
+        self.x_start <= x && x < self.x_end && self.y_start <= y && y < self.y_end
+    }
+
+    pub fn width(&self) -> T
+    where
+        T: Sub<Output = T>,
+    {
+        self.x_end - self.x_start
+    }
+
+    pub fn height(&self) -> T
+    where
+        T: Sub<Output = T>,
+    {
+        self.y_end - self.y_start
+    }
+
+    pub fn area(&self) -> T
+    where
+        T: Sub<Output = T> + Mul<Output = T>,
+    {
+        self.width() * self.height()
+    }
+
+    pub fn union(&self, other: &Self) -> Self
+    where
+        T: Ord,
+    {
+        Rect {
+            x_start: self.x_start.min(other.x_start),
+            y_start: self.y_start.min(other.y_start),
+            x_end: self.x_end.max(other.x_end),
+            y_end: self.y_end.max(other.y_end),
+        }
+    }
+}
+
 impl Gs {
     pub fn frame_buffer(&self) -> Option<(u16, Vec<u8>)> {
-        for frame_buffer in [
-            &self.privileged_registers.display_frame_buffer1,
-            &self.privileged_registers.display_frame_buffer2,
-        ] {
-            if frame_buffer.width == 0 {
-                continue;
-            }
-            assert!(frame_buffer.offset_x == 0 && frame_buffer.offset_y == 0);
-            assert!(frame_buffer.pixel_storage_format == PixelStorageFormat::Ct32);
-            let mut result = Vec::with_capacity(frame_buffer.width as usize * 4 * 480);
-            for y in 0..480 {
-                for x in 0..frame_buffer.width {
-                    let rgba = &self
-                        .read_psmct32(frame_buffer.base_pointer, x, y, frame_buffer.width)
-                        .to_bytes();
-                    let [r, g, b, _a] = rgba;
-                    result.extend_from_slice(&[*b, *g, *r, 0]);
-                }
-            }
-            return Some((frame_buffer.width, result));
+        let pcrtc = self.privileged_registers.pcrtc_mode;
+        let display1 = self.privileged_registers.display1;
+        let display2 = self.privileged_registers.display2;
+        let rect1 = pcrtc.enable_circuit1.then_some(display1.rect());
+        let rect2 = pcrtc.enable_circuit2.then_some(display2.rect());
+        let rect = match (&rect1, &rect2) {
+            (Some(r1), Some(r2)) => r1.union(r2),
+            (Some(r), None) | (None, Some(r)) => r.clone(),
+            (None, None) => return None,
+        };
+        let rect1 = rect1.unwrap_or_default();
+        let rect2 = rect2.unwrap_or_default();
+
+        let fb1 = self.privileged_registers.display_frame_buffer1;
+        let fb2 = self.privileged_registers.display_frame_buffer2;
+        assert!(!pcrtc.enable_circuit1 || fb1.pixel_storage_format == PixelStorageFormat::Ct32);
+        assert!(!pcrtc.enable_circuit2 || fb2.pixel_storage_format == PixelStorageFormat::Ct32);
+        if rect.is_empty() {
+            return None;
         }
-        None
+
+        let mut result = Vec::with_capacity(rect.area() as usize * 4);
+        for y in rect.y_start..rect.y_end {
+            for x in rect.x_start..rect.x_end {
+                let in_rect1 = rect1.contains(x, y);
+                let out1 = if pcrtc.enable_circuit1 && in_rect1 {
+                    Rgba::from(self.read_psmct32(
+                        fb1.base_pointer,
+                        x + fb1.offset_x - rect1.x_start,
+                        y + fb1.offset_y - rect1.y_start,
+                        fb1.width,
+                    ))
+                } else {
+                    Rgba::default()
+                };
+                let out2 = match pcrtc.alpha_blending_method {
+                    AlphaBlendingMethod::Circuit2 => {
+                        if pcrtc.enable_circuit2 && rect2.contains(x, y) {
+                            Rgb::from(self.read_psmct32(
+                                fb2.base_pointer,
+                                x + fb2.offset_x - rect2.x_start,
+                                y + fb2.offset_y - rect2.y_start,
+                                fb2.width,
+                            ))
+                        } else {
+                            self.privileged_registers.background_color
+                        }
+                    }
+                    AlphaBlendingMethod::BackgroundColor => {
+                        self.privileged_registers.background_color
+                    }
+                };
+
+                let a = match pcrtc.alpha_value_selection {
+                    AlphaValueSelection::Circuit1 => (out1.a as u32 * 2).min(255),
+                    AlphaValueSelection::Fixed(a) => {
+                        if in_rect1 {
+                            a as u32
+                        } else {
+                            0
+                        }
+                    }
+                };
+
+                let r = ((out1.r as u32 * a + out2.r as u32 * (255 - a)) >> 8).min(255) as u8;
+                let g = ((out1.g as u32 * a + out2.g as u32 * (255 - a)) >> 8).min(255) as u8;
+                let b = ((out1.b as u32 * a + out2.b as u32 * (255 - a)) >> 8).min(255) as u8;
+                result.extend_from_slice(&[b, g, r, 0]);
+            }
+        }
+
+        Some((rect.width(), result))
     }
 
     pub fn vertex_kick(&mut self, drawing_kick: bool) {
