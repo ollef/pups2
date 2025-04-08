@@ -45,6 +45,7 @@ impl Core {
         }
     }
 
+    #[inline(always)]
     pub fn get_register<T>(&self, register: Register) -> T
     where
         u128: GetRegister<T>,
@@ -52,6 +53,7 @@ impl Core {
         self.registers[register].get_register()
     }
 
+    #[inline(always)]
     pub fn set_register<T>(&mut self, register: Register, value: T)
     where
         u128: SetRegister<T>,

@@ -168,42 +168,49 @@ pub trait GetRegister<T> {
 }
 
 impl SetRegister<u64> for u128 {
+    #[inline(always)]
     fn set_register(&mut self, value: u64) {
         *self = value as u128 | (*self & 0xFFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000);
     }
 }
 
 impl SetRegister<u128> for u128 {
+    #[inline(always)]
     fn set_register(&mut self, value: u128) {
         *self = value;
     }
 }
 
 impl GetRegister<u8> for u128 {
+    #[inline(always)]
     fn get_register(&self) -> u8 {
         *self as u8
     }
 }
 
 impl GetRegister<u16> for u128 {
+    #[inline(always)]
     fn get_register(&self) -> u16 {
         *self as u16
     }
 }
 
 impl GetRegister<u32> for u128 {
+    #[inline(always)]
     fn get_register(&self) -> u32 {
         *self as u32
     }
 }
 
 impl GetRegister<u64> for u128 {
+    #[inline(always)]
     fn get_register(&self) -> u64 {
         *self as u64
     }
 }
 
 impl GetRegister<u128> for u128 {
+    #[inline(always)]
     fn get_register(&self) -> u128 {
         *self
     }
