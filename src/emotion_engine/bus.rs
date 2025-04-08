@@ -65,7 +65,7 @@ impl Bus {
             }
             0x1000_8000..0x1000_F000 => {
                 let result = self.dmac.read(address);
-                println!("Read from DMAC: 0x{:08x}==0x{:08x}", address, result);
+                // println!("Read from DMAC: 0x{:08x}==0x{:08x}", address, result);
                 result
             }
             0x1200_0000..0x1201_0000 => {
