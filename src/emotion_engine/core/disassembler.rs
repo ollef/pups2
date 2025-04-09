@@ -97,6 +97,7 @@ pub fn disassemble(data: u32) -> Instruction {
         0b000110 => Instruction::Blez(rs(), imm16()),
         0b001000 => Instruction::Addi(rt(), rs(), imm16()),
         0b001001 => Instruction::Addiu(rt(), rs(), imm16()),
+        0b001010 => Instruction::Slti(rt(), rs(), imm16()),
         0b001011 => Instruction::Sltiu(rt(), rs(), imm16()),
         0b001100 => Instruction::Andi(rt(), rs(), imm16()),
         0b001101 => Instruction::Ori(rt(), rs(), imm16()),

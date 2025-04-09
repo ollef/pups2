@@ -326,6 +326,15 @@ impl Core {
                 let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
                 self.set_register::<u64>(rt, (temp as u32).sign_extend());
             }
+            Instruction::Slti(rt, rs, imm) => {
+                let imm: u64 = imm.sign_extend();
+                let value = if (self.get_register::<u64>(rs) as i64) < imm as i64 {
+                    1
+                } else {
+                    0
+                };
+                self.set_register::<u64>(rt, value);
+            }
             Instruction::Sltiu(rt, rs, imm) => {
                 let imm: u64 = imm.sign_extend();
                 let value = if self.get_register::<u64>(rs) < imm {
