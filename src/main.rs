@@ -149,6 +149,9 @@ fn execute(file: &str) -> std::io::Result<()> {
                 if window.is_key_pressed(minifb::Key::Escape, minifb::KeyRepeat::No) {
                     break;
                 }
+                if !window.is_open() {
+                    break;
+                }
             }
         }
     }
