@@ -9,9 +9,9 @@ use super::{
     timer::Timer,
 };
 
-const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
-const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
-const SCRATCHPAD_SIZE: usize = 4 * 1024 * 1024;
+pub const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
+pub const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
+pub const SCRATCHPAD_SIZE: usize = 16 * 1024;
 
 pub struct Bus {
     pub main_memory: Box<[u8]>,
