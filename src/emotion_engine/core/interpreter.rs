@@ -411,6 +411,22 @@ impl Core {
                     next_program_counter = Some(self.program_counter + 8);
                 }
             }
+            Instruction::Mult1(rd, rs, rt) => {
+                let a: u64 = self.get_register::<u32>(rs).sign_extend();
+                let b: u64 = self.get_register::<u32>(rt).sign_extend();
+                let prod = a.wrapping_mul(b);
+                let lo: u64 = (prod as u32).sign_extend();
+                let hi: u64 = ((prod >> 32) as u32).sign_extend();
+                self.set_register(rd, lo);
+                self.set_register::<u128>(
+                    Register::Lo,
+                    (lo as u128) << 64 | self.get_register::<u64>(Register::Lo) as u128,
+                );
+                self.set_register::<u128>(
+                    Register::Hi,
+                    (hi as u128) << 64 | self.get_register::<u64>(Register::Hi) as u128,
+                );
+            }
             Instruction::Sq(rt, base, offset) => {
                 let mut address = self
                     .get_register::<u32>(base)
