@@ -126,6 +126,7 @@ pub fn disassemble(data: u32) -> Instruction {
             ),
         },
         0b010100 => Instruction::Beql(rs(), rt(), imm16()),
+        0b010101 => Instruction::Bnel(rs(), rt(), imm16()),
         0b011111 => Instruction::Sq(rt(), rs(), imm16()),
         0b100000 => Instruction::Lb(rt(), rs(), imm16()),
         0b100001 => Instruction::Lh(rt(), rs(), imm16()),

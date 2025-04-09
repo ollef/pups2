@@ -400,6 +400,17 @@ impl Core {
                     next_program_counter = Some(self.program_counter + 8);
                 }
             }
+            Instruction::Bnel(rs, rt, offset) => {
+                if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
+                    let offset: u32 = offset.sign_extend();
+                    self.set_delayed_branch_target(
+                        self.program_counter.wrapping_add((offset << 2) + 4),
+                    );
+                } else {
+                    assert!(next_program_counter.is_none());
+                    next_program_counter = Some(self.program_counter + 8);
+                }
+            }
             Instruction::Sq(rt, base, offset) => {
                 let mut address = self
                     .get_register::<u32>(base)
