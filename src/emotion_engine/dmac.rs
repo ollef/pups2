@@ -74,14 +74,24 @@ impl Dmac {
     pub fn write<T: Bytes>(&mut self, address: u32, value: T) {
         match std::mem::size_of::<T>() {
             4 => self.write32(address, u32::from_bytes(value.to_bytes().as_ref())),
-            _ => panic!("Invalid write size {}", std::mem::size_of::<T>()),
+            8 => self.write32(address, u32::from_bytes(&value.to_bytes().as_ref()[0..4])),
+            _ => panic!(
+                "Invalid write size {} to {:08x}",
+                std::mem::size_of::<T>(),
+                address
+            ),
         }
     }
 
     pub fn read<T: Bytes>(&self, address: u32) -> T {
         match std::mem::size_of::<T>() {
             4 => T::from_bytes(self.read32(address).to_bytes().as_ref()),
-            _ => panic!("Invalid read size {}", std::mem::size_of::<T>()),
+            8 => T::from_bytes((self.read32(address) as u64).to_bytes().as_ref()),
+            _ => panic!(
+                "Invalid read size {} to {:08x}",
+                std::mem::size_of::<T>(),
+                address
+            ),
         }
     }
 
