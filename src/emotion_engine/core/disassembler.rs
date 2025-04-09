@@ -101,6 +101,7 @@ pub fn disassemble(data: u32) -> Instruction {
         0b001011 => Instruction::Sltiu(rt(), rs(), imm16()),
         0b001100 => Instruction::Andi(rt(), rs(), imm16()),
         0b001101 => Instruction::Ori(rt(), rs(), imm16()),
+        0b001110 => Instruction::Xori(rt(), rs(), imm16()),
         0b001111 => Instruction::Lui(rt(), imm16()),
         0b010000 => match s() {
             0b10000 => match data.bits(0..6) {

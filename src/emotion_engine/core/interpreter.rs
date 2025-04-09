@@ -350,6 +350,9 @@ impl Core {
             Instruction::Ori(rt, rs, imm) => {
                 self.set_register::<u64>(rt, self.get_register::<u64>(rs) | (imm as u64));
             }
+            Instruction::Xori(rt, rs, imm) => {
+                self.set_register::<u64>(rt, self.get_register::<u64>(rs) ^ (imm as u64));
+            }
             Instruction::Lui(rt, imm) => {
                 self.set_register::<u64>(rt, ((imm as u32) << 16).sign_extend());
             }
