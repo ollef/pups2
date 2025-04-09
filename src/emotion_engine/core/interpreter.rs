@@ -262,7 +262,12 @@ impl Core {
             Instruction::Dsrl32(rd, rt, shamt) => {
                 self.set_register(rd, self.get_register::<u64>(rt) >> (shamt + 32));
             }
-            Instruction::Dsra32(_, _, _) => todo!(),
+            Instruction::Dsra32(rd, rt, shamt) => {
+                self.set_register(
+                    rd,
+                    ((self.get_register::<u64>(rt) as i64) >> (shamt + 32)) as u64,
+                );
+            }
             Instruction::Bltz(rs, offset) => {
                 if (self.get_register::<u64>(rs) as i64) < 0 {
                     let offset: u32 = offset.sign_extend();
