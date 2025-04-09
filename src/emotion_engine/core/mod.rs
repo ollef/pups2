@@ -2,6 +2,7 @@ pub mod disassembler;
 pub mod fpu;
 pub mod instruction;
 pub mod interpreter;
+pub mod jit;
 pub mod mmu;
 pub mod register;
 
