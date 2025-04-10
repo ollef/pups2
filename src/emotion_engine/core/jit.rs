@@ -22,6 +22,7 @@ struct Jit {
 #[derive(Clone, Copy)]
 struct CacheIndex(u16);
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum CacheIndexView {
     NotCached,
     Cached(u16),
@@ -69,7 +70,9 @@ impl Jit {
                 let code = self.compile_from(address);
                 let cache_index = CacheIndex::from(CacheIndexView::Cached(self.cache.len() as u16));
                 for i in code.address_index_range.start.0..code.address_index_range.end.0 {
-                    self.address_cache_index[i as usize] = cache_index;
+                    let slot = &mut self.address_cache_index[i as usize];
+                    assert!(slot.view() == CacheIndexView::NotCached);
+                    *slot = cache_index;
                 }
                 self.cache.push(code);
                 &self.cache[self.cache.len() - 1]
