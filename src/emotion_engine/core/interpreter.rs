@@ -26,7 +26,10 @@ impl Core {
         //     let value = self.get_register::<u64>(reg);
         //     println!("{}={:#x}", reg, value);
         // }
-        let mut next_program_counter = self.delayed_branch_target.take();
+        let mut next_program_counter = self
+            .delayed_branch_target
+            .take()
+            .unwrap_or(self.program_counter + 4);
         // println!("pc={:#010}: {instruction}", self.program_counter);
         match instruction {
             Instruction::Unknown => {
@@ -271,50 +274,40 @@ impl Core {
             Instruction::Bltz(rs, offset) => {
                 if (self.get_register::<u64>(rs) as i64) < 0 {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(
-                        self.program_counter.wrapping_add((offset << 2) + 4),
-                    );
+                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Bgez(rs, offset) => {
                 if self.get_register::<u64>(rs) as i64 >= 0 {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(
-                        self.program_counter.wrapping_add((offset << 2) + 4),
-                    );
+                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::J(target) => self.set_delayed_branch_target(
-                ((self.program_counter + 4) & 0xF000_0000).wrapping_add(target << 2),
+                (next_program_counter & 0xF000_0000).wrapping_add(target << 2),
             ),
             Instruction::Jal(target) => {
-                self.set_register(Register::Ra, (self.program_counter + 8) as u64);
+                self.set_register(Register::Ra, (next_program_counter + 4) as u64);
                 self.set_delayed_branch_target(
-                    ((self.program_counter + 4) & 0xF000_0000).wrapping_add(target << 2),
+                    (next_program_counter & 0xF000_0000).wrapping_add(target << 2),
                 );
             }
             Instruction::Beq(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(
-                        self.program_counter.wrapping_add((offset << 2) + 4),
-                    );
+                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Bne(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(
-                        self.program_counter.wrapping_add((offset << 2) + 4),
-                    );
+                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Blez(rs, offset) => {
                 if (self.get_register::<u64>(rs) as i64) <= 0 {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(
-                        self.program_counter.wrapping_add((offset << 2) + 4),
-                    );
+                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Addi(rt, rs, imm) => {
@@ -392,23 +385,17 @@ impl Core {
             Instruction::Beql(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(
-                        self.program_counter.wrapping_add((offset << 2) + 4),
-                    );
+                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 } else {
-                    assert!(next_program_counter.is_none());
-                    next_program_counter = Some(self.program_counter + 8);
+                    next_program_counter += 4;
                 }
             }
             Instruction::Bnel(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(
-                        self.program_counter.wrapping_add((offset << 2) + 4),
-                    );
+                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 } else {
-                    assert!(next_program_counter.is_none());
-                    next_program_counter = Some(self.program_counter + 8);
+                    next_program_counter += 4;
                 }
             }
             Instruction::Mult1(rd, rs, rt) => {
@@ -420,11 +407,11 @@ impl Core {
                 self.set_register(rd, lo);
                 self.set_register::<u128>(
                     Register::Lo,
-                    (lo as u128) << 64 | self.get_register::<u64>(Register::Lo) as u128,
+                    ((lo as u128) << 64) | self.get_register::<u64>(Register::Lo) as u128,
                 );
                 self.set_register::<u128>(
                     Register::Hi,
-                    (hi as u128) << 64 | self.get_register::<u64>(Register::Hi) as u128,
+                    ((hi as u128) << 64) | self.get_register::<u64>(Register::Hi) as u128,
                 );
             }
             Instruction::Sq(rt, base, offset) => {
@@ -575,6 +562,6 @@ impl Core {
         //         AnyRegister::Fpu(_) => {}
         //     }
         // }
-        self.program_counter = next_program_counter.unwrap_or(self.program_counter + 4);
+        self.program_counter = next_program_counter;
     }
 }
