@@ -5,9 +5,13 @@ edition = "2021"
 
 [dependencies]
 argh = "0.1.13"
+cranelift-codegen = "0.118.0"
+cranelift-frontend = "0.118.0"
+cranelift-native = "0.118.0"
 derive_more = { version = "2.0.1", features = ["display"] }
 elf = "0.7.4"
 enum-map = "2.7.3"
+memmap2 = "0.9.5"
 minifb = "0.28.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"

@@ -3,6 +3,7 @@ mod bytes;
 mod emotion_engine;
 mod fifo;
 mod fix;
+mod jit_builder;
 use std::time::Instant;
 
 use argh::FromArgs;
