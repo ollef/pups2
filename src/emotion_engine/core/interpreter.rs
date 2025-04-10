@@ -61,8 +61,8 @@ impl Core {
                 self.set_delayed_branch_target(self.get_register::<u32>(rs));
             }
             Instruction::Jalr(rd, rs) => {
-                self.set_register(rd, self.program_counter as u64 + 8);
                 let branch_target = self.get_register::<u32>(rs);
+                self.set_register(rd, (next_program_counter + 4) as u64);
                 self.set_delayed_branch_target(branch_target);
             }
             Instruction::Movz(rd, rs, rt) => {
