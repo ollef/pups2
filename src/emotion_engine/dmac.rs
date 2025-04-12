@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes};
 
-use super::bus::{Bus, MemoryOrScratchpadAddress};
+use super::bus::{Bus, PhysicalAddress};
 
 #[derive(Debug, Default)]
 pub struct Dmac {
@@ -42,13 +42,13 @@ impl Channel {
 
 #[derive(Debug, Default)]
 pub struct ChannelRegisters {
-    control: ChannelControlRegister,               // CHCR
-    memory_address: MemoryOrScratchpadAddress,     // MADR
-    quad_word_count: u32,                          // QWC
-    tag_address: MemoryOrScratchpadAddress,        // TADR
-    tag_address_save_0: MemoryOrScratchpadAddress, // ASR0
-    tag_address_save_1: MemoryOrScratchpadAddress, // ASR1
-    scratchpad_memory_address: u32,                // SADR
+    control: ChannelControlRegister,     // CHCR
+    memory_address: PhysicalAddress,     // MADR
+    quad_word_count: u32,                // QWC
+    tag_address: PhysicalAddress,        // TADR
+    tag_address_save_0: PhysicalAddress, // ASR0
+    tag_address_save_1: PhysicalAddress, // ASR1
+    scratchpad_memory_address: u32,      // SADR
     process_next_tag: bool,
 }
 
@@ -131,11 +131,11 @@ impl Dmac {
                     self.channels[channel].process_next_tag = true;
                 }
             }
-            0x10 => self.channels[channel].memory_address = MemoryOrScratchpadAddress(value),
+            0x10 => self.channels[channel].memory_address = PhysicalAddress(value),
             0x20 => self.channels[channel].quad_word_count = value,
-            0x30 => self.channels[channel].tag_address = MemoryOrScratchpadAddress(value),
-            0x40 => self.channels[channel].tag_address_save_0 = MemoryOrScratchpadAddress(value),
-            0x50 => self.channels[channel].tag_address_save_1 = MemoryOrScratchpadAddress(value),
+            0x30 => self.channels[channel].tag_address = PhysicalAddress(value),
+            0x40 => self.channels[channel].tag_address_save_0 = PhysicalAddress(value),
+            0x50 => self.channels[channel].tag_address_save_1 = PhysicalAddress(value),
             0x80 => self.channels[channel].scratchpad_memory_address = value.bits(0..=13),
             _ => panic!("Invalid write to DMAC: 0x{:08x} {}", address, value),
         }
@@ -486,11 +486,11 @@ enum ChannelMode {
 }
 
 struct SourceChainTag {
-    quad_word_count: u16,               // QWC
-    priority_control: PriorityControl,  // PCE
-    tag_id: TagId,                      // ID
-    interrupt_request: bool,            // IRQ
-    address: MemoryOrScratchpadAddress, // ADDR, SPR
+    quad_word_count: u16,              // QWC
+    priority_control: PriorityControl, // PCE
+    tag_id: TagId,                     // ID
+    interrupt_request: bool,           // IRQ
+    address: PhysicalAddress,          // ADDR, SPR
 }
 
 impl From<u64> for SourceChainTag {
@@ -502,7 +502,7 @@ impl From<u64> for SourceChainTag {
             tag_id: TagId::from_u64(raw.bits(28..=30))
                 .unwrap_or_else(|| panic!("Invalid DMAC tag ID: {}", raw.bits(28..=30))),
             interrupt_request: raw.bit(31),
-            address: MemoryOrScratchpadAddress(raw.bits(32..64) as u32),
+            address: PhysicalAddress(raw.bits(32..64) as u32),
         }
     }
 }

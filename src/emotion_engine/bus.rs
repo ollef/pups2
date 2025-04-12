@@ -19,30 +19,30 @@ pub struct Bus {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct MemoryOrScratchpadAddress(pub u32);
+pub struct PhysicalAddress(pub u32);
 
-pub enum MemoryOrScratchpadAddressView {
+pub enum PhysicalAddressView {
     Memory(u32),
     Scratchpad(u32),
 }
 
-impl From<MemoryOrScratchpadAddressView> for MemoryOrScratchpadAddress {
-    fn from(value: MemoryOrScratchpadAddressView) -> Self {
+impl From<PhysicalAddressView> for PhysicalAddress {
+    fn from(value: PhysicalAddressView) -> Self {
         match value {
-            MemoryOrScratchpadAddressView::Memory(address) => MemoryOrScratchpadAddress(address),
-            MemoryOrScratchpadAddressView::Scratchpad(address) => {
-                MemoryOrScratchpadAddress(address | u32::mask(31..=31))
+            PhysicalAddressView::Memory(address) => PhysicalAddress(address),
+            PhysicalAddressView::Scratchpad(address) => {
+                PhysicalAddress(address | u32::mask(31..=31))
             }
         }
     }
 }
 
-impl MemoryOrScratchpadAddress {
-    pub fn view(&self) -> MemoryOrScratchpadAddressView {
+impl PhysicalAddress {
+    pub fn view(&self) -> PhysicalAddressView {
         if self.0.bit(31) {
-            MemoryOrScratchpadAddressView::Scratchpad(self.0.bits(0..31))
+            PhysicalAddressView::Scratchpad(self.0.bits(0..31))
         } else {
-            MemoryOrScratchpadAddressView::Memory(self.0.bits(0..31))
+            PhysicalAddressView::Memory(self.0.bits(0..31))
         }
     }
 }
@@ -60,13 +60,10 @@ impl Bus {
         }
     }
 
-    pub fn read_memory_or_scratchpad<T: Bytes + LowerHex>(
-        &self,
-        address: MemoryOrScratchpadAddress,
-    ) -> T {
+    pub fn read_memory_or_scratchpad<T: Bytes + LowerHex>(&self, address: PhysicalAddress) -> T {
         match address.view() {
-            MemoryOrScratchpadAddressView::Memory(address) => self.read(address),
-            MemoryOrScratchpadAddressView::Scratchpad(address) => self.read_scratchpad(address),
+            PhysicalAddressView::Memory(address) => self.read(address),
+            PhysicalAddressView::Scratchpad(address) => self.read_scratchpad(address),
         }
     }
 
@@ -162,14 +159,12 @@ impl Bus {
 
     pub fn write_memory_or_scratchpad<T: Bytes + LowerHex>(
         &mut self,
-        address: MemoryOrScratchpadAddress,
+        address: PhysicalAddress,
         value: T,
     ) {
         match address.view() {
-            MemoryOrScratchpadAddressView::Memory(address) => self.write(address, value),
-            MemoryOrScratchpadAddressView::Scratchpad(address) => {
-                self.write_scratchpad(address, value)
-            }
+            PhysicalAddressView::Memory(address) => self.write(address, value),
+            PhysicalAddressView::Scratchpad(address) => self.write_scratchpad(address, value),
         }
     }
 }
