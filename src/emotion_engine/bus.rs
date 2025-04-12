@@ -1,13 +1,8 @@
 use std::fmt::LowerHex;
 
-use crate::bytes::Bytes;
+use crate::{bits::Bits, bytes::Bytes};
 
-use super::{
-    dmac::{Dmac, MemoryOrScratchpadAddress, MemoryOrScratchpadAddressView},
-    gif::Gif,
-    gs::Gs,
-    timer::Timer,
-};
+use super::{dmac::Dmac, gif::Gif, gs::Gs, timer::Timer};
 
 pub const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 pub const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
@@ -21,6 +16,35 @@ pub struct Bus {
     pub gif: Gif,
     pub dmac: Dmac,
     pub gs: Gs,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct MemoryOrScratchpadAddress(pub u32);
+
+pub enum MemoryOrScratchpadAddressView {
+    Memory(u32),
+    Scratchpad(u32),
+}
+
+impl From<MemoryOrScratchpadAddressView> for MemoryOrScratchpadAddress {
+    fn from(value: MemoryOrScratchpadAddressView) -> Self {
+        match value {
+            MemoryOrScratchpadAddressView::Memory(address) => MemoryOrScratchpadAddress(address),
+            MemoryOrScratchpadAddressView::Scratchpad(address) => {
+                MemoryOrScratchpadAddress(address | u32::mask(31..=31))
+            }
+        }
+    }
+}
+
+impl MemoryOrScratchpadAddress {
+    pub fn view(&self) -> MemoryOrScratchpadAddressView {
+        if self.0.bit(31) {
+            MemoryOrScratchpadAddressView::Scratchpad(self.0.bits(0..31))
+        } else {
+            MemoryOrScratchpadAddressView::Memory(self.0.bits(0..31))
+        }
+    }
 }
 
 impl Bus {

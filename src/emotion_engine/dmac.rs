@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes};
 
-use super::bus::Bus;
+use super::bus::{Bus, MemoryOrScratchpadAddress};
 
 #[derive(Debug, Default)]
 pub struct Dmac {
@@ -50,24 +50,6 @@ pub struct ChannelRegisters {
     tag_address_save_1: MemoryOrScratchpadAddress, // ASR1
     scratchpad_memory_address: u32,                // SADR
     process_next_tag: bool,
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-pub struct MemoryOrScratchpadAddress(u32);
-
-pub enum MemoryOrScratchpadAddressView {
-    Memory(u32),
-    Scratchpad(u32),
-}
-
-impl MemoryOrScratchpadAddress {
-    pub fn view(&self) -> MemoryOrScratchpadAddressView {
-        if self.0.bit(31) {
-            MemoryOrScratchpadAddressView::Scratchpad(self.0.bits(0..31))
-        } else {
-            MemoryOrScratchpadAddressView::Memory(self.0.bits(0..31))
-        }
-    }
 }
 
 impl Dmac {
