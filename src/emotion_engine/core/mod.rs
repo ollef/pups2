@@ -1,4 +1,4 @@
-pub mod disassembler;
+pub mod decoder;
 pub mod fpu;
 pub mod instruction;
 pub mod interpreter;

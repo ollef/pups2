@@ -6,7 +6,7 @@ use crate::{
     },
 };
 
-use super::{disassembler::disassemble, instruction::Instruction, Core};
+use super::{decoder::decode, instruction::Instruction, Core};
 
 impl Core {
     pub fn set_delayed_branch_target(&mut self, target: u32) {
@@ -18,7 +18,7 @@ impl Core {
 
     pub fn step_interpreter(&mut self, bus: &mut Bus) {
         let raw_instruction = self.read_virtual(bus, self.program_counter);
-        let instruction = disassemble(raw_instruction);
+        let instruction = decode(raw_instruction);
         // for reg in instruction.uses() {
         //     let value = self.get_register::<u64>(reg);
         //     println!("{}={:#x}", reg, value);
