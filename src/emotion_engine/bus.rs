@@ -1,4 +1,7 @@
-use std::fmt::LowerHex;
+use std::{
+    fmt::LowerHex,
+    ops::{Add, AddAssign},
+};
 
 use crate::{bits::Bits, bytes::Bytes};
 
@@ -26,14 +29,27 @@ pub enum PhysicalAddressView {
     Scratchpad(u32),
 }
 
-impl From<PhysicalAddressView> for PhysicalAddress {
-    fn from(value: PhysicalAddressView) -> Self {
-        match value {
-            PhysicalAddressView::Memory(address) => PhysicalAddress(address),
-            PhysicalAddressView::Scratchpad(address) => {
-                PhysicalAddress(address | u32::mask(31..=31))
-            }
-        }
+impl PhysicalAddress {
+    pub fn memory(address: u32) -> Self {
+        PhysicalAddress(address)
+    }
+
+    pub fn scratchpad(address: u32) -> Self {
+        PhysicalAddress(address | u32::mask(31..=31))
+    }
+}
+
+impl Add<u32> for PhysicalAddress {
+    type Output = Self;
+
+    fn add(self, rhs: u32) -> Self::Output {
+        PhysicalAddress(self.0 + rhs)
+    }
+}
+
+impl AddAssign<u32> for PhysicalAddress {
+    fn add_assign(&mut self, rhs: u32) {
+        self.0 += rhs;
     }
 }
 
@@ -60,111 +76,104 @@ impl Bus {
         }
     }
 
-    pub fn read_memory_or_scratchpad<T: Bytes + LowerHex>(&self, address: PhysicalAddress) -> T {
+    pub fn read<T: Bytes + LowerHex>(&self, address: PhysicalAddress) -> T {
         match address.view() {
-            PhysicalAddressView::Memory(address) => self.read(address),
-            PhysicalAddressView::Scratchpad(address) => self.read_scratchpad(address),
+            PhysicalAddressView::Memory(address) => {
+                assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
+                match address {
+                    0x0000_0000..0x1000_0000 => {
+                        let address = address as usize & (MAIN_MEMORY_SIZE - 1);
+                        T::from_bytes(
+                            &self.main_memory[address..address + std::mem::size_of::<T>()],
+                        )
+                    }
+                    0x1000_0000..0x1000_2000 => {
+                        let result = self.timer.read(address);
+                        println!("Read from TIMER: 0x{:08x}==0x{:08x}", address, result);
+                        result
+                    }
+                    0x1000_3000..0x1000_3800 => {
+                        let result = self.gif.read(address);
+                        println!("Read from GIF: 0x{:08x}==0x{:08x}", address, result);
+                        result
+                    }
+                    0x1000_8000..0x1000_F000 => {
+                        let result = self.dmac.read(address);
+                        // println!("Read from DMAC: 0x{:08x}==0x{:08x}", address, result);
+                        result
+                    }
+                    0x1200_0000..0x1201_0000 => {
+                        let result = self.gs.read_privileged(address);
+                        // println!("Read from GS: 0x{:08x}==0x{:08x}", address, result);
+                        result
+                    }
+                    0x1FC0_0000..0x2000_0000 => {
+                        let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+                        let result = T::from_bytes(
+                            &self.boot_memory[address..address + std::mem::size_of::<T>()],
+                        );
+                        println!("Read from Boot memory: 0x{:08x}==0x{:08x}", address, result);
+                        result
+                    }
+                    _ => {
+                        panic!("Invalid read at address: 0x{:08x}", address);
+                    }
+                }
+            }
+            PhysicalAddressView::Scratchpad(address) => {
+                assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
+                let address = address as usize & (SCRATCHPAD_SIZE - 1);
+                // println!("Read from scratchpad: 0x{:08x}==0x{:08x}", address, value);
+                T::from_bytes(&self.scratchpad[address..address + std::mem::size_of::<T>()])
+            }
         }
     }
 
-    pub fn read<T: Bytes + LowerHex>(&self, address: u32) -> T {
-        assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
-        match address {
-            0x0000_0000..0x1000_0000 => {
-                let address = address as usize & (MAIN_MEMORY_SIZE - 1);
-                T::from_bytes(&self.main_memory[address..address + std::mem::size_of::<T>()])
+    pub fn write<T: Bytes + LowerHex>(&mut self, address: PhysicalAddress, value: T) {
+        match address.view() {
+            PhysicalAddressView::Memory(address) => {
+                assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
+                match address {
+                    0x0000_0000..0x1000_0000 => {
+                        let address = address as usize & (MAIN_MEMORY_SIZE - 1);
+                        // println!("Write to main memory: 0x{:08x}:=0x{:08x}", address, value);
+                        self.main_memory[address..address + std::mem::size_of::<T>()]
+                            .copy_from_slice(value.to_bytes().as_ref());
+                    }
+                    0x1000_0000..0x1000_2000 => {
+                        println!("Write to TIMER: 0x{:08x}:=0x{:08x}", address, value);
+                        self.timer.write(address, value)
+                    }
+                    0x1000_3000..0x1000_3800 => {
+                        println!("Write to GIF: 0x{:08x}:=0x{:08x}", address, value);
+                        self.gif.write(address, value)
+                    }
+                    0x1000_8000..0x1000_F000 => {
+                        // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
+                        self.dmac.write(address, value)
+                    }
+                    0x1200_0000..0x1201_0000 => {
+                        println!("Write to GS: 0x{:08x}:=0x{:08x}", address, value);
+                        self.gs.write_privileged(address, value)
+                    }
+                    0x1FC0_0000..0x2000_0000 => {
+                        let address = address as usize & (BOOT_MEMORY_SIZE - 1);
+                        println!("Write to boot memory: 0x{:08x}:=0x{:08x}", address, value);
+                        self.main_memory[address..address + std::mem::size_of::<T>()]
+                            .copy_from_slice(value.to_bytes().as_ref());
+                    }
+                    _ => {
+                        panic!("Invalid write at address: 0x{:08x}", address);
+                    }
+                }
             }
-            0x1000_0000..0x1000_2000 => {
-                let result = self.timer.read(address);
-                println!("Read from TIMER: 0x{:08x}==0x{:08x}", address, result);
-                result
-            }
-            0x1000_3000..0x1000_3800 => {
-                let result = self.gif.read(address);
-                println!("Read from GIF: 0x{:08x}==0x{:08x}", address, result);
-                result
-            }
-            0x1000_8000..0x1000_F000 => {
-                let result = self.dmac.read(address);
-                // println!("Read from DMAC: 0x{:08x}==0x{:08x}", address, result);
-                result
-            }
-            0x1200_0000..0x1201_0000 => {
-                let result = self.gs.read_privileged(address);
-                // println!("Read from GS: 0x{:08x}==0x{:08x}", address, result);
-                result
-            }
-            0x1FC0_0000..0x2000_0000 => {
-                let address = address as usize & (BOOT_MEMORY_SIZE - 1);
-                let result =
-                    T::from_bytes(&self.boot_memory[address..address + std::mem::size_of::<T>()]);
-                println!("Read from Boot memory: 0x{:08x}==0x{:08x}", address, result);
-                result
-            }
-            _ => {
-                panic!("Invalid read at address: 0x{:08x}", address);
-            }
-        }
-    }
-
-    pub fn read_scratchpad<T: Bytes + LowerHex>(&self, address: u32) -> T {
-        assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
-        let address = address as usize & (SCRATCHPAD_SIZE - 1);
-        T::from_bytes(&self.scratchpad[address..address + std::mem::size_of::<T>()])
-    }
-
-    pub fn write<T: Bytes + LowerHex>(&mut self, address: u32, value: T) {
-        assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
-        match address {
-            0x0000_0000..0x1000_0000 => {
-                let address = address as usize & (MAIN_MEMORY_SIZE - 1);
-                // println!("Write to main memory: 0x{:08x}:=0x{:08x}", address, value);
-                self.main_memory[address..address + std::mem::size_of::<T>()]
+            PhysicalAddressView::Scratchpad(address) => {
+                assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
+                let address = address as usize & (SCRATCHPAD_SIZE - 1);
+                // println!("Write to scratchpad: 0x{:08x}:=0x{:08x}", address, value);
+                self.scratchpad[address..address + std::mem::size_of::<T>()]
                     .copy_from_slice(value.to_bytes().as_ref());
             }
-            0x1000_0000..0x1000_2000 => {
-                println!("Write to TIMER: 0x{:08x}:=0x{:08x}", address, value);
-                self.timer.write(address, value)
-            }
-            0x1000_3000..0x1000_3800 => {
-                println!("Write to GIF: 0x{:08x}:=0x{:08x}", address, value);
-                self.gif.write(address, value)
-            }
-            0x1000_8000..0x1000_F000 => {
-                // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
-                self.dmac.write(address, value)
-            }
-            0x1200_0000..0x1201_0000 => {
-                println!("Write to GS: 0x{:08x}:=0x{:08x}", address, value);
-                self.gs.write_privileged(address, value)
-            }
-            0x1FC0_0000..0x2000_0000 => {
-                let address = address as usize & (BOOT_MEMORY_SIZE - 1);
-                println!("Write to boot memory: 0x{:08x}:=0x{:08x}", address, value);
-                self.main_memory[address..address + std::mem::size_of::<T>()]
-                    .copy_from_slice(value.to_bytes().as_ref());
-            }
-            _ => {
-                panic!("Invalid write at address: 0x{:08x}", address);
-            }
-        }
-    }
-
-    pub fn write_scratchpad<T: Bytes + LowerHex>(&mut self, address: u32, value: T) {
-        assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
-        let address = address as usize & (SCRATCHPAD_SIZE - 1);
-        self.scratchpad[address..address + std::mem::size_of::<T>()]
-            .copy_from_slice(value.to_bytes().as_ref());
-    }
-
-    pub fn write_memory_or_scratchpad<T: Bytes + LowerHex>(
-        &mut self,
-        address: PhysicalAddress,
-        value: T,
-    ) {
-        match address.view() {
-            PhysicalAddressView::Memory(address) => self.write(address, value),
-            PhysicalAddressView::Scratchpad(address) => self.write_scratchpad(address, value),
         }
     }
 }

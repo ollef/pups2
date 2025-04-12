@@ -189,7 +189,7 @@ impl Dmac {
                             let mut memory_address = registers.memory_address;
                             let mut quad_word_count = registers.quad_word_count;
                             while quad_word_count > 0 && !bus.gif.fifo.is_full() {
-                                let data = bus.read_memory_or_scratchpad::<u128>(memory_address);
+                                let data = bus.read::<u128>(memory_address);
                                 bus.gif.fifo.push_back(data);
                                 // println!(
                                 //     "Transferred quad word 0x{:08x} from 0x{:08x} to GIF FIFO (QWC={})",
@@ -214,7 +214,7 @@ impl Dmac {
                             let mut memory_address = registers.memory_address;
                             let mut quad_word_count = registers.quad_word_count;
                             while quad_word_count > 0 && !bus.gif.fifo.is_full() {
-                                let data = bus.read_memory_or_scratchpad::<u128>(memory_address);
+                                let data = bus.read::<u128>(memory_address);
                                 bus.gif.fifo.push_back(data);
                                 // println!(
                                 //     "Transferred quad word 0x{:08x} from 0x{:08x} to GIF FIFO (QWC={})",
@@ -227,8 +227,7 @@ impl Dmac {
                             if quad_word_count == 0 {
                                 if registers.process_next_tag {
                                     assert!(!registers.control.tag_transfer_enable());
-                                    let source_chain_tag = bus
-                                        .read_memory_or_scratchpad::<u128>(registers.tag_address);
+                                    let source_chain_tag = bus.read::<u128>(registers.tag_address);
                                     let registers = &mut bus.dmac.channels[channel];
                                     registers
                                         .control
@@ -239,12 +238,12 @@ impl Dmac {
                                     match source_chain_tag.tag_id {
                                         TagId::ReferenceEnd => {
                                             memory_address = source_chain_tag.address;
-                                            registers.tag_address.0 += 16;
+                                            registers.tag_address += 16;
                                             registers.process_next_tag = false;
                                         }
                                         TagId::Count => {
                                             memory_address = registers.tag_address;
-                                            memory_address.0 += 16;
+                                            memory_address += 16;
                                             registers.tag_address = source_chain_tag.address;
                                         }
                                         TagId::Next => todo!(),
