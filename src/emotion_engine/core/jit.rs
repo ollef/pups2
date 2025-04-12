@@ -26,18 +26,20 @@ enum Entry {
     Occupied(Box<Code>),
 }
 
-impl From<CacheIndexView> for CacheIndex {
-    fn from(value: CacheIndexView) -> Self {
-        match value {
-            CacheIndexView::NotCached => CacheIndex(0),
-            CacheIndexView::Cached(index) => CacheIndex(index + 1),
-            CacheIndexView::NotJittable => CacheIndex(u16::MAX),
-        }
-    }
-}
-
 impl CacheIndex {
-    fn view(self) -> CacheIndexView {
+    pub fn not_cached() -> Self {
+        CacheIndex(0)
+    }
+
+    pub fn not_jittable() -> Self {
+        CacheIndex(u16::MAX)
+    }
+
+    pub fn cached(index: u16) -> Self {
+        CacheIndex(index + 1)
+    }
+
+    pub fn view(self) -> CacheIndexView {
         match self.0 {
             0 => CacheIndexView::NotCached,
             u16::MAX => CacheIndexView::NotJittable,
@@ -63,7 +65,9 @@ impl Jit {
                     / (std::mem::size_of::<usize>() * 8)
             ]),
             jitted_starts_map: BTreeMap::new(),
-            jitted_starts: Box::new([CacheIndex(0); VIRTUAL_MEMORY_SIZE / INSTRUCTION_SIZE]),
+            jitted_starts: Box::new(
+                [CacheIndex::not_cached(); VIRTUAL_MEMORY_SIZE / INSTRUCTION_SIZE],
+            ),
             cache: Vec::new(),
         }
     }
@@ -76,10 +80,10 @@ impl Jit {
                 .insert(moved_code.address_range.start, moved_index)
                 .unwrap();
             self.jitted_starts[moved_code.address_range.start as usize / INSTRUCTION_SIZE] =
-                CacheIndex::from(CacheIndexView::Cached(moved_index));
+                CacheIndex::cached(moved_index);
         }
         self.jitted_starts[code.address_range.start as usize / INSTRUCTION_SIZE] =
-            CacheIndex::from(CacheIndexView::NotCached);
+            CacheIndex::not_cached();
         self.jitted_starts_map
             .remove(&code.address_range.start)
             .unwrap();
@@ -113,7 +117,7 @@ impl Jit {
         }
         let cache_index = self.cache.len() as u16;
         self.jitted_starts[code.address_range.start as usize / INSTRUCTION_SIZE] =
-            CacheIndex::from(CacheIndexView::Cached(cache_index));
+            CacheIndex::cached(cache_index);
         self.jitted_starts_map
             .insert(code.address_range.start, cache_index);
         self.jitted_instructions[code.address_range.start as usize / INSTRUCTION_SIZE
