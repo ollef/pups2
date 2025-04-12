@@ -1,10 +1,10 @@
 mod bits;
 mod bytes;
 mod emotion_engine;
+mod executable_memory_allocator;
 mod fifo;
 mod fix;
 mod jit_builder;
-use std::time::Instant;
 
 use argh::FromArgs;
 use bytes::Bytes;
@@ -15,6 +15,7 @@ use emotion_engine::{
     scheduler::{self, Event},
 };
 use minifb::{Scale, ScaleMode, Window, WindowOptions};
+use std::time::Instant;
 
 #[derive(FromArgs)]
 #[argh(description = "Perpetually Unfinished PS2 emulator")]
