@@ -1,21 +1,17 @@
-use std::{
-    collections::{btree_map::Entry, BTreeMap},
-    rc::Rc,
-};
+use std::collections::{btree_map::Entry, BTreeMap};
 
 use cranelift_codegen::{
     control::ControlPlane,
-    ir::{types, AbiParam, InstBuilder, Signature, UserFuncName},
+    ir::{types, AbiParam, InstBuilder, Signature},
     isa::OwnedTargetIsa,
     settings, Context,
 };
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
-use memmap2::{Mmap, MmapOptions, RemapOptions};
+use mmap_rs::{MmapMut, MmapOptions, UnsafeMmapFlags};
 
 pub struct JitBuilder {
     isa: OwnedTargetIsa,
     context: Context,
-    // declarations: ModuleDeclarations,
 }
 
 impl JitBuilder {
@@ -53,12 +49,27 @@ impl JitBuilder {
         println!("Result : {:?}", result);
         let compiled_code = jit_builder.context.compiled_code().unwrap();
         println!("Compiled code: {:?}", compiled_code);
-        let mut exe_allocator = ExecutableMemoryAllocator::new();
+        let mut exe_allocator = ExecutableMemoryAllocator::default();
         let mem = exe_allocator.allocate(compiled_code.code_buffer());
+        let mut mems = Vec::new();
+        for _ in 0..100000 {
+            let mem = exe_allocator.allocate(compiled_code.code_buffer());
+            mems.push(mem);
+        }
+        for i in 200..300 {
+            exe_allocator.free(mems[i]);
+        }
+        for i in 0..200 {
+            exe_allocator.free(mems[i]);
+        }
+        for i in 300..100000 {
+            exe_allocator.free(mems[i]);
+        }
 
         let function = unsafe { std::mem::transmute::<*const u8, extern "C" fn(i32) -> i32>(mem) };
         let result = function(10);
-        exe_allocator.deallocate(mem);
+        exe_allocator.free(mem);
+        println!("Exe allocator: {:?}", exe_allocator);
         println!("Result of function call: {}", result);
 
         jit_builder
@@ -71,11 +82,8 @@ impl JitBuilder {
     }
 }
 
-const MINIMUM_MMAP_SIZE: usize = 4096;
-
 #[derive(Debug, Clone)]
 struct Block {
-    mmap: u32,
     address: *const u8,
     len: u32,
 }
@@ -86,138 +94,141 @@ impl Block {
     }
 }
 
+extern "C" {
+    /// This function is provided by LLVM to clear the instruction cache for the specified range.
+    fn __clear_cache(start: *mut core::ffi::c_void, end: *mut core::ffi::c_void);
+}
+
+#[derive(Debug, Default)]
 struct ExecutableMemoryAllocator {
-    mmaps: Vec<Mmap>,
-    free_by_len: BTreeMap<u32, Vec<Block>>,
-    free_by_address: BTreeMap<*const u8, Block>,
-    used_by_address: BTreeMap<*const u8, Block>,
+    mmaps: Vec<MmapMut>,
+    free_by_len: BTreeMap<u32, Vec<*const u8>>,
+    free_by_address: BTreeMap<*const u8, u32>,
 }
 
 impl ExecutableMemoryAllocator {
-    fn new() -> Self {
-        ExecutableMemoryAllocator {
-            mmaps: Vec::new(),
-            free_by_len: BTreeMap::new(),
-            free_by_address: BTreeMap::new(),
-            used_by_address: BTreeMap::new(),
-        }
-    }
-
     fn insert_free_block(&mut self, mut block: Block) {
         if block.len == 0 {
             return;
         }
-        if let Some((_, prev_block)) = self.free_by_address.range_mut(..block.address).next_back() {
-            if prev_block.end() == block.address && prev_block.mmap == block.mmap {
-                match self.free_by_len.entry(prev_block.len) {
-                    Entry::Vacant(_) => panic!("Block not found"),
-                    Entry::Occupied(mut occupied_entry) => {
-                        let blocks = occupied_entry.get_mut();
-                        blocks.retain(|b| b.address != prev_block.address);
-                        if blocks.is_empty() {
-                            occupied_entry.remove();
-                        }
+        if let Some((next_block_address, next_block_len)) =
+            self.free_by_address.remove_entry(&block.end())
+        {
+            block.len += next_block_len;
+            match self.free_by_len.entry(next_block_len) {
+                Entry::Vacant(_) => panic!("Block not found"),
+                Entry::Occupied(mut occupied_entry) => {
+                    let blocks = occupied_entry.get_mut();
+                    blocks.retain(|address| *address != next_block_address);
+                    if blocks.is_empty() {
+                        occupied_entry.remove();
                     }
                 }
-                prev_block.len += block.len;
-                self.free_by_len
-                    .entry(prev_block.len)
-                    .or_default()
-                    .push(prev_block.clone());
-                return;
             }
         }
-        if let Some((_, next_block)) = self.free_by_address.range_mut(block.address..).next() {
-            if block.end() == next_block.address && next_block.mmap == block.mmap {
-                block.len += next_block.len;
-                let next_block_address = next_block.address;
-                let next_block_len = next_block.len;
-                self.free_by_address.remove(&next_block_address);
-                match self.free_by_len.entry(next_block_len) {
+        if let Some((prev_block_address, prev_block_len)) =
+            self.free_by_address.range_mut(..block.address).next_back()
+        {
+            if unsafe { prev_block_address.add(*prev_block_len as usize) } == block.address {
+                match self.free_by_len.entry(*prev_block_len) {
                     Entry::Vacant(_) => panic!("Block not found"),
                     Entry::Occupied(mut occupied_entry) => {
                         let blocks = occupied_entry.get_mut();
-                        blocks.retain(|b| b.address != next_block_address);
+                        blocks.retain(|address| *address != *prev_block_address);
                         if blocks.is_empty() {
                             occupied_entry.remove();
                         }
                     }
                 }
+                *prev_block_len += block.len;
+                self.free_by_len
+                    .entry(*prev_block_len)
+                    .or_default()
+                    .push(*prev_block_address);
+                return;
             }
         }
         self.free_by_len
             .entry(block.len)
             .or_default()
-            .push(block.clone());
-        self.free_by_address.insert(block.address, block);
+            .push(block.address);
+        self.free_by_address.insert(block.address, block.len);
     }
 
-    pub fn allocate(&mut self, data: &[u8]) -> *const u8 {
-        if let Some((_, blocks)) = self.free_by_len.range_mut(data.len() as u32..).next() {
-            let block = blocks.pop().unwrap();
+    fn try_allocate(&mut self, data: &[u8]) -> Option<*const u8> {
+        let len_including_size = data.len() as u32 + std::mem::size_of::<u32>() as u32;
+        if let Some((block_len, blocks)) = self.free_by_len.range_mut(len_including_size..).next() {
+            let block_len = *block_len;
+            let block_address = blocks.pop().unwrap();
             if blocks.is_empty() {
-                self.free_by_len.remove(&block.len);
+                self.free_by_len.remove(&block_len);
             }
+            self.free_by_address.remove(&block_address).unwrap();
             let allocated_block = Block {
-                mmap: block.mmap,
-                address: block.address,
-                len: data.len() as u32,
+                address: block_address,
+                len: len_including_size,
             };
-            let address = allocated_block.address;
-            let mmap = self
-                .mmaps
-                .swap_remove(block.mmap as usize)
-                .make_mut()
-                .unwrap();
+            let after_len = unsafe { block_address.add(std::mem::size_of::<u32>()) };
             unsafe {
-                std::ptr::copy_nonoverlapping(data.as_ptr(), address as *mut u8, data.len());
+                std::ptr::copy_nonoverlapping(
+                    &len_including_size as *const u32,
+                    block_address as *mut u32,
+                    1,
+                );
+                std::ptr::copy_nonoverlapping(data.as_ptr(), after_len as *mut u8, data.len());
             }
-            let mmap = mmap.make_exec().unwrap();
-            self.mmaps.push(mmap);
-            let last_index = self.mmaps.len() - 1;
-            self.mmaps.swap(block.mmap as usize, last_index);
-
+            unsafe {
+                __clear_cache(
+                    after_len as *mut std::ffi::c_void,
+                    after_len.add(data.len()) as *mut std::ffi::c_void,
+                )
+            };
             let free_block = Block {
-                mmap: block.mmap,
                 address: allocated_block.end(),
-                len: block.len - data.len() as u32,
+                len: block_len - allocated_block.len,
             };
             self.insert_free_block(free_block);
-            self.free_by_address
-                .remove(&allocated_block.address)
-                .unwrap();
-            self.used_by_address
-                .insert(allocated_block.address, allocated_block);
-            address
+            Some(after_len)
         } else {
-            let len = data.len().max(MINIMUM_MMAP_SIZE);
-            let mut mmap = MmapOptions::new().len(len).map_anon().unwrap();
-            unsafe {
-                std::ptr::copy_nonoverlapping(data.as_ptr(), mmap.as_mut_ptr(), data.len());
-            }
-            let address = mmap.as_mut_ptr();
-            let mmap = mmap.make_exec().unwrap();
-            let mmap_index = self.mmaps.len() as u32;
-            self.mmaps.push(mmap);
-            let allocated_block = Block {
-                mmap: mmap_index,
-                address,
-                len: data.len() as u32,
-            };
-            let free_block = Block {
-                mmap: mmap_index,
-                address: allocated_block.end(),
-                len: len as u32 - data.len() as u32,
-            };
-            self.used_by_address
-                .insert(allocated_block.address, allocated_block);
-            self.insert_free_block(free_block);
-            address
+            None
         }
     }
 
-    fn deallocate(&mut self, ptr: *const u8) {
-        let block = self.used_by_address.remove(&ptr).unwrap();
-        self.insert_free_block(block)
+    pub fn allocate(&mut self, data: &[u8]) -> *const u8 {
+        if let Some(address) = self.try_allocate(data) {
+            return address;
+        }
+        let len_including_size = data.len() + std::mem::size_of::<u32>();
+        let mmap_len = len_including_size
+            .max(
+                self.mmaps
+                    .last()
+                    .map(|mmap| mmap.len() * 2)
+                    .unwrap_or_default(),
+            )
+            .div_ceil(MmapOptions::page_size())
+            * MmapOptions::page_size();
+        let mmap = unsafe {
+            MmapOptions::new(mmap_len)
+                .unwrap()
+                .with_unsafe_flags(UnsafeMmapFlags::JIT)
+                .map_exec_mut()
+                .unwrap()
+        };
+        self.insert_free_block(Block {
+            address: mmap.as_ptr(),
+            len: mmap.len() as u32,
+        });
+        self.mmaps.push(mmap);
+        self.try_allocate(data).unwrap()
+    }
+
+    pub fn free(&mut self, address: *const u8) {
+        let block_address = unsafe { address.sub(std::mem::size_of::<u32>()) };
+        let len = unsafe { *(block_address as *const u32) };
+        self.insert_free_block(Block {
+            address: block_address,
+            len,
+        });
     }
 }
