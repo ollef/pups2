@@ -17,10 +17,7 @@ impl Core {
     }
 
     pub fn step_interpreter(&mut self, bus: &mut Bus) {
-        let physical_program_counter = self
-            .mmu
-            .virtual_to_physical(self.program_counter, self.mode);
-        let raw_instruction = bus.read(physical_program_counter);
+        let raw_instruction = self.read_virtual(bus, self.program_counter);
         let instruction = disassemble(raw_instruction);
         // for reg in instruction.uses() {
         //     let value = self.get_register::<u64>(reg);
@@ -419,15 +416,13 @@ impl Core {
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 address &= !0b1111;
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                bus.write(physical_address, self.get_register::<u128>(rt));
+                self.write_virtual(bus, address, self.get_register::<u128>(rt));
             }
             Instruction::Lb(rt, base, offset) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                let value = bus.read::<u8>(physical_address);
+                let value = self.read_virtual::<u8>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
             Instruction::Lh(rt, base, offset) => {
@@ -437,8 +432,7 @@ impl Core {
                 if address.bits(0..1) != 0 {
                     panic!("Unaligned load at {:#010x}", address);
                 }
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                let value = bus.read::<u16>(physical_address);
+                let value = self.read_virtual::<u16>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
             Instruction::Lw(rt, base, offset) => {
@@ -448,33 +442,29 @@ impl Core {
                 if address.bits(0..2) != 0 {
                     panic!("Unaligned load at {:#010x}", address);
                 }
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                let value = bus.read::<u32>(physical_address);
+                let value = self.read_virtual::<u32>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
             Instruction::Lbu(rt, base, offset) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                let value = bus.read::<u8>(physical_address);
+                let value = self.read_virtual::<u8>(bus, address);
                 self.set_register(rt, value as u64);
             }
             Instruction::Lhu(rt, base, offset) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                let value = bus.read::<u16>(physical_address);
+                let value = self.read_virtual::<u16>(bus, address);
                 self.set_register(rt, value as u64);
             }
             Instruction::Lwr(rt, base, offset) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
                 let byte = address & 0b11;
-                let memory_word = bus.read::<u32>(physical_address & !0b11);
+                let memory_word = self.read_virtual::<u32>(bus, address & !0b11);
                 let value = if byte == 0 {
                     memory_word.sign_extend()
                 } else {
@@ -487,8 +477,7 @@ impl Core {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                bus.write(physical_address, self.get_register::<u8>(rt));
+                self.write_virtual(bus, address, self.get_register::<u8>(rt));
             }
             Instruction::Sh(rt, base, offset) => {
                 let address = self
@@ -497,8 +486,7 @@ impl Core {
                 if address.bits(0..1) != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                bus.write(physical_address, self.get_register::<u16>(rt));
+                self.write_virtual(bus, address, self.get_register::<u16>(rt));
             }
             Instruction::Sw(rt, base, offset) => {
                 let address = self
@@ -507,8 +495,7 @@ impl Core {
                 if address.bits(0..2) != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                bus.write(physical_address, self.get_register::<u32>(rt));
+                self.write_virtual(bus, address, self.get_register::<u32>(rt));
             }
             Instruction::Lwc1(ft, base, offset) => {
                 let address = self
@@ -517,8 +504,7 @@ impl Core {
                 if address.bits(0..2) != 0 {
                     panic!("Unaligned load at {:#010x}", address);
                 }
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                let value = bus.read::<u32>(physical_address);
+                let value = self.read_virtual::<u32>(bus, address);
                 self.fpu.set_register(ft, value);
             }
             Instruction::Ld(rt, base, offset) => {
@@ -528,8 +514,7 @@ impl Core {
                 if address.bits(0..3) != 0 {
                     panic!("Unaligned load at {:#010x}", address);
                 }
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                let value = bus.read(physical_address);
+                let value = self.read_virtual(bus, address);
                 self.set_register::<u64>(rt, value);
             }
             Instruction::Swc1(ft, base, offset) => {
@@ -539,8 +524,7 @@ impl Core {
                 if address.bits(0..2) != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                bus.write(physical_address, self.fpu.get_register::<u32>(ft));
+                self.write_virtual(bus, address, self.fpu.get_register::<u32>(ft));
             }
             Instruction::Sd(rt, base, offset) => {
                 let address = self
@@ -549,8 +533,7 @@ impl Core {
                 if address.bits(0..3) != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
-                let physical_address = self.mmu.virtual_to_physical(address, self.mode);
-                bus.write(physical_address, self.get_register::<u64>(rt));
+                self.write_virtual(bus, address, self.get_register::<u64>(rt));
             }
         }
         // for reg in instruction.definitions() {

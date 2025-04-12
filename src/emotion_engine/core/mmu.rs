@@ -1,8 +1,10 @@
+use std::fmt::LowerHex;
+
 use enum_map::EnumMap;
 
-use crate::bits::Bits;
+use crate::{bits::Bits, bytes::Bytes, emotion_engine::bus::Bus};
 
-use super::Mode;
+use super::{Core, Mode};
 
 const PAGE_BITS: u32 = 20;
 const OFFSET_BITS: u32 = 32 - PAGE_BITS;
@@ -110,5 +112,17 @@ impl TlbEntry {
 
     pub fn valid_odd(&self) -> bool {
         self.raw.bit(1)
+    }
+}
+
+impl Core {
+    pub fn write_virtual<T: Bytes + LowerHex>(&self, bus: &mut Bus, address: u32, value: T) {
+        let physical_address = self.mmu.virtual_to_physical(address, self.mode);
+        bus.write(physical_address, value);
+    }
+
+    pub fn read_virtual<T: Bytes + LowerHex>(&self, bus: &mut Bus, address: u32) -> T {
+        let physical_address = self.mmu.virtual_to_physical(address, self.mode);
+        bus.read(physical_address)
     }
 }
