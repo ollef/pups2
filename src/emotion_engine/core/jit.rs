@@ -1,38 +1,36 @@
 use std::{collections::BTreeMap, ops::Range};
 
 use bitvec::vec::BitVec;
+use cranelift_codegen::{isa::OwnedTargetIsa, settings};
+
+use crate::{emotion_engine::bus::Bus, executable_memory_allocator::ExecutableMemoryAllocator};
+
+use super::{decoder::decode, instruction::Instruction, mmu::Mmu, Mode};
 
 pub struct Jit {
     jitted_instructions: BitVec<usize>,
     jitted_starts_map: BTreeMap<u32, u16>,
     jitted_starts: Box<[CacheIndex]>,
-    cache: Vec<Code>,
+    cache: Vec<CacheEntry>,
+    isa: OwnedTargetIsa,
+    codegen_context: cranelift_codegen::Context,
+    executable_memory: ExecutableMemoryAllocator,
 }
 
 #[derive(Clone, Copy)]
 struct CacheIndex(u16);
 
-const CODE_CACHE_MAX_SIZE: u16 = u16::MAX - 2;
+const CODE_CACHE_MAX_SIZE: u16 = u16::MAX - 1;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum CacheIndexView {
     NotCached,
     Cached(u16),
-    NotJittable,
-}
-
-enum Entry {
-    Vacant,
-    Occupied(Box<Code>),
 }
 
 impl CacheIndex {
     pub fn not_cached() -> Self {
         CacheIndex(0)
-    }
-
-    pub fn not_jittable() -> Self {
-        CacheIndex(u16::MAX)
     }
 
     pub fn cached(index: u16) -> Self {
@@ -42,14 +40,19 @@ impl CacheIndex {
     pub fn view(self) -> CacheIndexView {
         match self.0 {
             0 => CacheIndexView::NotCached,
-            u16::MAX => CacheIndexView::NotJittable,
             _ => CacheIndexView::Cached(self.0 - 1),
         }
     }
 }
 
-struct Code {
-    address_range: Range<u32>,
+pub struct CacheEntry {
+    pub address_range: Range<u32>,
+    pub code: Code,
+}
+
+pub enum Code {
+    Jitted(extern "C" fn()),
+    Interpreted(Instruction),
 }
 
 const VIRTUAL_MEMORY_SIZE: usize = 0x1_0000_0000;
@@ -69,6 +72,12 @@ impl Jit {
                 [CacheIndex::not_cached(); VIRTUAL_MEMORY_SIZE / INSTRUCTION_SIZE],
             ),
             cache: Vec::new(),
+            isa: cranelift_native::builder()
+                .unwrap()
+                .finish(settings::Flags::new(settings::builder()))
+                .unwrap(),
+            codegen_context: cranelift_codegen::Context::new(),
+            executable_memory: ExecutableMemoryAllocator::default(),
         }
     }
 
@@ -111,7 +120,7 @@ impl Jit {
         }
     }
 
-    fn add(&mut self, code: Code) {
+    fn add(&mut self, code: CacheEntry) -> u16 {
         if self.cache.len() as u16 == CODE_CACHE_MAX_SIZE {
             self.remove(0);
         }
@@ -124,6 +133,7 @@ impl Jit {
             ..code.address_range.end as usize / INSTRUCTION_SIZE]
             .fill(true);
         self.cache.push(code);
+        cache_index
     }
 
     #[inline(always)]
@@ -153,5 +163,25 @@ impl Jit {
         for index in to_remove {
             self.remove(index);
         }
+    }
+
+    pub fn cache_entry(&mut self, address: u32, mmu: &Mmu, bus: &Bus, mode: Mode) -> &CacheEntry {
+        let cache_index = self
+            .jitted_starts
+            .get(address as usize / INSTRUCTION_SIZE)
+            .unwrap()
+            .view();
+        let index = match cache_index {
+            CacheIndexView::NotCached => {
+                let physical_address = mmu.virtual_to_physical(address, mode);
+                let entry = CacheEntry {
+                    address_range: address..address + INSTRUCTION_SIZE as u32,
+                    code: Code::Interpreted(decode(bus.read(physical_address))),
+                };
+                self.add(entry)
+            }
+            CacheIndexView::Cached(index) => index,
+        };
+        &self.cache[index as usize]
     }
 }

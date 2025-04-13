@@ -104,8 +104,8 @@ fn execute(file: &str) -> std::io::Result<()> {
     loop {
         match scheduler.next_event() {
             Event::Run(cycles) => {
+                core.step(cycles, &mut bus);
                 for i in 0..cycles {
-                    core.step_interpreter(&mut bus);
                     if (scheduler.cycle + i) % 2 == 0 {
                         Dmac::step(&mut bus);
                         Gif::step(&mut bus);

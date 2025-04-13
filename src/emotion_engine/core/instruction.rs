@@ -7,7 +7,7 @@ use super::{
     register::{AnyRegister, Register},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Instruction {
     Unknown,
     Sll(Register, Register, u8),

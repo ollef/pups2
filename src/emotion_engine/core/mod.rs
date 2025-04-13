@@ -1,4 +1,5 @@
 pub mod decoder;
+pub mod execution;
 pub mod fpu;
 pub mod instruction;
 pub mod interpreter;
@@ -8,6 +9,7 @@ pub mod register;
 
 use enum_map::{enum_map, Enum, EnumMap};
 use fpu::Fpu;
+use jit::Jit;
 
 use {
     mmu::Mmu,
@@ -30,6 +32,7 @@ pub struct Core {
     pub fpu: Fpu,
     pub mmu: Mmu,
     pub main_thread_stack_pointer: u32, // TODO: This should be in the thread state
+    pub jit: Jit,
 }
 
 impl Core {
@@ -43,6 +46,7 @@ impl Core {
             fpu: Fpu::new(),
             mmu: Mmu::new(),
             main_thread_stack_pointer: 0,
+            jit: Jit::new(),
         }
     }
 
