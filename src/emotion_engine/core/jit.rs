@@ -792,9 +792,9 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Xori(rt, rs, imm) => {
-                    // self.set_register::<u64>(rt, self.get_register::<u64>(rs) ^ (imm as u64));
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let value = self.function_builder.ins().bxor_imm(rs_value, imm as i64);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lui(rt, imm) => {
                     let value: u64 = ((imm as u32) << 16).sign_extend();
