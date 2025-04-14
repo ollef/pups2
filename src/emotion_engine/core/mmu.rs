@@ -1,4 +1,4 @@
-use std::fmt::LowerHex;
+use std::{fmt::LowerHex, ops::Range};
 
 use enum_map::EnumMap;
 
@@ -46,6 +46,19 @@ impl Mmu {
         let page = virtual_address >> OFFSET_BITS;
         let physical_frame_start = self.pages[mode][page as usize];
         physical_frame_start + (virtual_address & OFFSET_MASK)
+    }
+
+    pub fn physically_consecutive(&self, virtual_range: Range<u32>, mode: Mode) -> bool {
+        let start_page = virtual_range.start >> OFFSET_BITS;
+        let end_page = (virtual_range.end - 1) >> OFFSET_BITS;
+        let mut physical_frame = self.pages[mode][start_page as usize];
+        for page in start_page..=end_page {
+            if self.pages[mode][page as usize] != physical_frame {
+                return false;
+            }
+            physical_frame += PAGE_SIZE;
+        }
+        true
     }
 
     // TODO: This is for testing
