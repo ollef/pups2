@@ -1055,16 +1055,13 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lh(rt, base, offset) => {
-                    // let address = self
-                    //     .get_register::<u32>(base)
-                    //     .wrapping_add(offset.sign_extend());
-                    // if address.bits(0..1) != 0 {
-                    //     panic!("Unaligned load at {:#010x}", address);
-                    // }
-                    // let value = self.read_virtual::<u16>(bus, address);
-                    // self.set_register::<u64>(rt, value.sign_extend());
-                    unhandled();
-                    break;
+                    let base_value = self.get_register(base, Size::S32);
+                    let value = self.load(base_value, offset, Size::S16);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lw(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
