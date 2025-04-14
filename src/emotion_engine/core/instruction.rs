@@ -431,6 +431,23 @@ impl Instruction {
         }
     }
 
+    pub fn is_branch(&self) -> bool {
+        matches!(
+            self,
+            Instruction::Bltz(_, _)
+                | Instruction::Bgez(_, _)
+                | Instruction::Beq(_, _, _)
+                | Instruction::Bne(_, _, _)
+                | Instruction::Blez(_, _)
+                | Instruction::Beql(_, _, _)
+                | Instruction::Bnel(_, _, _)
+                | Instruction::J(_)
+                | Instruction::Jal(_)
+                | Instruction::Jr(_)
+                | Instruction::Jalr(_, _)
+        )
+    }
+
     pub fn branch_target(&self, address: u32) -> Option<u32> {
         match self {
             Instruction::Bltz(_, offset)
