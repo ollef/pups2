@@ -545,11 +545,14 @@ impl<'a> JitCompiler<'a> {
         println!("Compiling at {:#010x}", address.0);
         let start_address = address;
         let mut program_counter = self.load_program_counter();
-        let mut next_program_counter = self
-            .function_builder
-            .ins()
-            .iadd_imm(program_counter, INSTRUCTION_SIZE as i64);
+        let mut delayed_branch_target = None;
         loop {
+            let next_program_counter = delayed_branch_target.unwrap_or_else(|| {
+                self.function_builder
+                    .ins()
+                    .iadd_imm(program_counter, INSTRUCTION_SIZE as i64)
+            });
+            let delay_slot = delayed_branch_target.is_some();
             let instruction = decode(self.bus.read(address));
             println!("Instruction: {:#010x} {}", address.0, instruction);
             if instruction.is_branch() {
@@ -561,6 +564,9 @@ impl<'a> JitCompiler<'a> {
             let unhandled = || {
                 println!("Unhandled instruction at {:#010x}", address.0);
                 println!("{}", instruction);
+                if delay_slot {
+                    panic!("Delay slot not handled");
+                }
             };
             match instruction {
                 _ if instruction.is_nop() => {}
@@ -907,11 +913,15 @@ impl<'a> JitCompiler<'a> {
                     break;
                 }
                 Instruction::J(target) => {
-                    //     self.set_delayed_branch_target(
-                    //     (next_program_counter & 0xF000_0000).wrapping_add(target << 2),
-                    // )
-                    unhandled();
-                    break;
+                    let upper_next_pc = self
+                        .function_builder
+                        .ins()
+                        .band_imm(next_program_counter, 0xF000_0000);
+                    let target = self
+                        .function_builder
+                        .ins()
+                        .iadd_imm(upper_next_pc, (target << 2) as i64);
+                    delayed_branch_target = Some(target);
                 }
                 Instruction::Jal(target) => {
                     // self.set_register(Register::Ra, (next_program_counter + 4) as u64);
@@ -1231,10 +1241,9 @@ impl<'a> JitCompiler<'a> {
             }
             address += INSTRUCTION_SIZE as u32;
             program_counter = next_program_counter;
-            next_program_counter = self
-                .function_builder
-                .ins()
-                .iadd_imm(program_counter, INSTRUCTION_SIZE as i64);
+            if delay_slot {
+                break;
+            }
         }
         for register in Register::all() {
             self.writeback_register(register);
