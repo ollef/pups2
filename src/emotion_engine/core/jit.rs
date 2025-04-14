@@ -224,11 +224,10 @@ impl Jit {
                             code: Code::Jitted(function),
                         }
                     } else {
-                        let physical_address = mmu.virtual_to_physical(state.program_counter, mode);
                         CacheEntry {
                             address_range: physical_program_counter
                                 ..physical_program_counter + INSTRUCTION_SIZE as u32,
-                            code: Code::Interpreted(decode(bus.read(physical_address))),
+                            code: Code::Interpreted(decode(bus.read(physical_program_counter))),
                         }
                     };
                 self.add(entry)
