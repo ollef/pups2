@@ -91,11 +91,7 @@ impl ExecutableMemoryAllocator {
             };
             let after_len = unsafe { block_address.add(std::mem::size_of::<u32>()) };
             unsafe {
-                std::ptr::copy_nonoverlapping(
-                    &len_including_size as *const u32,
-                    block_address as *mut u32,
-                    1,
-                );
+                *(block_address as *mut u32) = len_including_size;
                 std::ptr::copy_nonoverlapping(data.as_ptr(), after_len as *mut u8, data.len());
             }
             unsafe {
