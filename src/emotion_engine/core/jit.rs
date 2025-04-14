@@ -1150,15 +1150,9 @@ impl<'a> JitCompiler<'a> {
                     break;
                 }
                 Instruction::Sd(rt, base, offset) => {
-                    // let address = self
-                    //     .get_register::<u32>(base)
-                    //     .wrapping_add(offset.sign_extend());
-                    // if address.bits(0..3) != 0 {
-                    //     panic!("Unaligned store at {:#010x}", address);
-                    // }
-                    // self.write_virtual(bus, address, self.get_register::<u64>(rt));
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let base_value = self.get_register(base, Size::S32);
+                    self.store(rt_value, base_value, offset, Size::S64);
                 }
             }
             address += INSTRUCTION_SIZE as u32;
