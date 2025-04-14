@@ -1,5 +1,7 @@
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
+use num_traits::AsPrimitive;
+
 use crate::{
     bits::Bits,
     bytes::Bytes,
@@ -262,6 +264,19 @@ impl<T: Copy> Rect<T> {
             y_end: self.y_end.max(other.y_end),
         }
     }
+
+    pub fn as_<T2>(&self) -> Rect<T2>
+    where
+        T: AsPrimitive<T2>,
+        T2: Copy + 'static,
+    {
+        Rect {
+            x_start: self.x_start.as_(),
+            y_start: self.y_start.as_(),
+            x_end: self.x_end.as_(),
+            y_end: self.y_end.as_(),
+        }
+    }
 }
 
 impl Gs {
@@ -287,7 +302,7 @@ impl Gs {
             return None;
         }
 
-        let mut result = Vec::with_capacity(rect.area() as usize * 4);
+        let mut result = Vec::with_capacity(rect.as_::<usize>().area() * 4);
         for y in rect.y_start..rect.y_end {
             for x in rect.x_start..rect.x_end {
                 let in_rect1 = rect1.contains(x, y);
