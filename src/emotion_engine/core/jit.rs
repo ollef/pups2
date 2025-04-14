@@ -5,7 +5,7 @@ use cranelift_codegen::{
     control::ControlPlane,
     ir::{InstBuilder, Signature},
     isa::OwnedTargetIsa,
-    settings,
+    settings::{self, Configurable},
 };
 use enum_map::EnumMap;
 
@@ -16,9 +16,7 @@ use crate::{
     executable_memory_allocator::ExecutableMemoryAllocator,
 };
 
-use super::{
-    decoder::decode, instruction::Instruction, mmu::Mmu, register::Register, Core, Mode, State,
-};
+use super::{decoder::decode, instruction::Instruction, mmu::Mmu, register::Register, Mode, State};
 
 pub struct Jit {
     jitted_instructions: BitVec<usize>,
@@ -200,7 +198,7 @@ impl Jit {
             .view();
         let index = match cache_index {
             CacheIndexView::NotCached => {
-                let mut jit_compiler = JitCompiler::new(
+                let jit_compiler = JitCompiler::new(
                     state,
                     &self.isa,
                     &mut self.codegen_context,
@@ -212,16 +210,15 @@ impl Jit {
 
                 let entry =
                     if let Some(end_address) = jit_compiler.compile(physical_program_counter) {
-                        jit_compiler.function_builder.seal_all_blocks();
-                        jit_compiler.function_builder.finalize();
+                        // println!("Compiling {}", &self.codegen_context.func);
                         self.codegen_context
                             .compile(self.isa.as_ref(), &mut ControlPlane::default())
                             .unwrap();
+                        // println!("Compiled {}", &self.codegen_context.func);
                         let compiled_code = self.codegen_context.compiled_code().unwrap();
                         let pointer = self.executable_memory.allocate(compiled_code.code_buffer());
                         let function =
                             unsafe { std::mem::transmute::<*const u8, extern "C" fn()>(pointer) };
-                        self.codegen_context.clear();
                         CacheEntry {
                             address_range: physical_program_counter..end_address,
                             code: Code::Jitted(function),
@@ -299,13 +296,12 @@ impl<'a> JitCompiler<'a> {
         bus: &'a Bus,
         mode: Mode,
     ) -> Self {
-        codegen_context.func.signature = Signature::new(isa.default_call_conv());
-        let mut function_builder = cranelift_frontend::FunctionBuilder::new(
+        codegen_context.clear();
+        let function_builder = cranelift_frontend::FunctionBuilder::new(
             &mut codegen_context.func,
             function_builder_context,
         );
-        let block = function_builder.create_block();
-        function_builder.switch_to_block(block);
+        function_builder.func.signature = Signature::new(isa.default_call_conv());
         JitCompiler {
             function_builder,
             state,
@@ -393,7 +389,21 @@ impl<'a> JitCompiler<'a> {
         });
     }
 
-    fn writeback_program_counter(&mut self, value: cranelift_codegen::ir::Value) {
+    fn load_program_counter(&mut self) -> cranelift_codegen::ir::Value {
+        let address = &self.state.program_counter as *const u32;
+        let address = self
+            .function_builder
+            .ins()
+            .iconst(cranelift_codegen::ir::types::I64, address as i64);
+        self.function_builder.ins().load(
+            cranelift_codegen::ir::types::I32,
+            cranelift_codegen::ir::MemFlags::trusted(),
+            address,
+            0,
+        )
+    }
+
+    fn store_program_counter(&mut self, value: cranelift_codegen::ir::Value) {
         let address = &self.state.program_counter as *const u32;
         let address = self
             .function_builder
@@ -528,13 +538,22 @@ impl<'a> JitCompiler<'a> {
         );
     }
 
-    pub fn compile(&mut self, mut address: PhysicalAddress) -> Option<PhysicalAddress> {
+    pub fn compile(mut self, mut address: PhysicalAddress) -> Option<PhysicalAddress> {
         if self.state.delayed_branch_target.is_some() {
             return None;
         }
+        let block = self.function_builder.create_block();
+        self.function_builder.switch_to_block(block);
+        println!("Compiling at {:#010x}", address.0);
         let start_address = address;
+        let mut program_counter = self.load_program_counter();
+        let mut next_program_counter = self
+            .function_builder
+            .ins()
+            .iadd_imm(program_counter, INSTRUCTION_SIZE as i64);
         loop {
             let instruction = decode(self.bus.read(address));
+            println!("Instruction: {:#010x} {}", address.0, instruction);
             if instruction.is_branch() {
                 let next_instruction = decode(self.bus.read(address + INSTRUCTION_SIZE as u32));
                 if next_instruction.is_branch() {
@@ -1213,19 +1232,23 @@ impl<'a> JitCompiler<'a> {
                 }
             }
             address += INSTRUCTION_SIZE as u32;
-        }
-        if address == start_address {
-            return None;
+            program_counter = next_program_counter;
+            next_program_counter = self
+                .function_builder
+                .ins()
+                .iadd_imm(program_counter, INSTRUCTION_SIZE as i64);
         }
         for register in Register::all() {
             self.writeback_register(register);
         }
-        let final_program_counter = self.function_builder.ins().iconst(
-            cranelift_codegen::ir::types::I32,
-            (self.state.program_counter + (address - start_address)) as i64,
-        );
-        self.writeback_program_counter(final_program_counter);
+        self.store_program_counter(program_counter);
         self.function_builder.ins().return_(&[]);
+        self.function_builder.seal_all_blocks();
+        self.function_builder.finalize();
+
+        if address == start_address {
+            return None;
+        }
 
         Some(address)
     }
