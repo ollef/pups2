@@ -600,12 +600,10 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Or(rd, rs, rt) => {
-                    // self.set_register(
-                    //     rd,
-                    //     self.get_register::<u64>(rs) | self.get_register::<u64>(rt),
-                    // );
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self.function_builder.ins().bor(rs_value, rt_value);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Xor(_, _, _) => todo!(),
                 Instruction::Nor(_, _, _) => todo!(),
