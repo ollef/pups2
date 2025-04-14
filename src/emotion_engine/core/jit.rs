@@ -1110,23 +1110,14 @@ impl<'a> JitCompiler<'a> {
                     break;
                 }
                 Instruction::Sb(rt, base, offset) => {
-                    // let address = self
-                    //     .get_register::<u32>(base)
-                    //     .wrapping_add(offset.sign_extend());
-                    // self.write_virtual(bus, address, self.get_register::<u8>(rt));
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S8);
+                    let base_value = self.get_register(base, Size::S32);
+                    self.store(rt_value, base_value, offset, Size::S8);
                 }
                 Instruction::Sh(rt, base, offset) => {
-                    // let address = self
-                    //     .get_register::<u32>(base)
-                    //     .wrapping_add(offset.sign_extend());
-                    // if address.bits(0..1) != 0 {
-                    //     panic!("Unaligned store at {:#010x}", address);
-                    // }
-                    // self.write_virtual(bus, address, self.get_register::<u16>(rt));
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S16);
+                    let base_value = self.get_register(base, Size::S32);
+                    self.store(rt_value, base_value, offset, Size::S16);
                 }
                 Instruction::Sw(rt, base, offset) => {
                     let rt_value = self.get_register(rt, Size::S32);
