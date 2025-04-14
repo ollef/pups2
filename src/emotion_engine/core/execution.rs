@@ -14,7 +14,12 @@ impl Core {
                     self.interpret_instruction(instruction, bus);
                 }
                 Code::Jitted(function) => {
-                    cycles = cycles.saturating_sub(cache_entry.address_range.len() as u64 / 4);
+                    let bytes = cache_entry.address_range.end - cache_entry.address_range.start;
+                    assert!(self.mmu.physically_consecutive(
+                        self.state.program_counter..self.state.program_counter + bytes,
+                        self.mode
+                    ));
+                    cycles = cycles.saturating_sub(bytes as u64 / 4);
                     function();
                 }
                 Code::Interpreted(instruction) => {

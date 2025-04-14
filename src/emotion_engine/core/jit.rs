@@ -10,15 +10,18 @@ use cranelift_codegen::{
 use enum_map::EnumMap;
 
 use crate::{
-    bits::SignExtend, emotion_engine::bus::Bus,
+    bits::SignExtend,
+    emotion_engine::bus::{Bus, PhysicalAddress},
     executable_memory_allocator::ExecutableMemoryAllocator,
 };
 
-use super::{decoder::decode, instruction::Instruction, mmu::Mmu, register::Register, Mode, State};
+use super::{
+    decoder::decode, instruction::Instruction, mmu::Mmu, register::Register, Core, Mode, State,
+};
 
 pub struct Jit {
     jitted_instructions: BitVec<usize>,
-    jitted_starts_map: BTreeMap<u32, u16>,
+    jitted_starts_map: BTreeMap<PhysicalAddress, u16>,
     jitted_starts: Box<[CacheIndex]>,
     cache: Vec<CacheEntry>,
     next_to_remove: u16,
@@ -57,7 +60,7 @@ impl CacheIndex {
 }
 
 pub struct CacheEntry {
-    pub address_range: Range<u32>,
+    pub address_range: Range<PhysicalAddress>,
     pub code: Code,
 }
 
@@ -66,7 +69,7 @@ pub enum Code {
     Interpreted(Instruction),
 }
 
-const VIRTUAL_MEMORY_SIZE: usize = 0x1_0000_0000;
+const PHYSICAL_MEMORY_SIZE: usize = 0x1_0000_0000;
 const INSTRUCTION_SIZE: usize = std::mem::size_of::<u32>();
 
 impl Jit {
@@ -74,13 +77,13 @@ impl Jit {
         Jit {
             jitted_instructions: BitVec::from_vec(vec![
                 0;
-                VIRTUAL_MEMORY_SIZE
+                PHYSICAL_MEMORY_SIZE
                     / INSTRUCTION_SIZE
                     / (std::mem::size_of::<usize>() * 8)
             ]),
             jitted_starts_map: BTreeMap::new(),
             jitted_starts: Box::new(
-                [CacheIndex::not_cached(); VIRTUAL_MEMORY_SIZE / INSTRUCTION_SIZE],
+                [CacheIndex::not_cached(); PHYSICAL_MEMORY_SIZE / INSTRUCTION_SIZE],
             ),
             cache: Vec::new(),
             next_to_remove: 0,
@@ -101,10 +104,10 @@ impl Jit {
             self.jitted_starts_map
                 .insert(moved_code.address_range.start, moved_index)
                 .unwrap();
-            self.jitted_starts[moved_code.address_range.start as usize / INSTRUCTION_SIZE] =
+            self.jitted_starts[moved_code.address_range.start.0 as usize / INSTRUCTION_SIZE] =
                 CacheIndex::cached(moved_index);
         }
-        self.jitted_starts[entry.address_range.start as usize / INSTRUCTION_SIZE] =
+        self.jitted_starts[entry.address_range.start.0 as usize / INSTRUCTION_SIZE] =
             CacheIndex::not_cached();
         self.jitted_starts_map
             .remove(&entry.address_range.start)
@@ -128,7 +131,7 @@ impl Jit {
             .unwrap_or(entry.address_range.end);
         if start < end {
             self.jitted_instructions
-                [start as usize / INSTRUCTION_SIZE..end as usize / INSTRUCTION_SIZE]
+                [start.0 as usize / INSTRUCTION_SIZE..end.0 as usize / INSTRUCTION_SIZE]
                 .fill(false);
         }
         match entry.code {
@@ -146,21 +149,21 @@ impl Jit {
             }
         }
         let cache_index = self.cache.len() as u16;
-        self.jitted_starts[code.address_range.start as usize / INSTRUCTION_SIZE] =
+        self.jitted_starts[code.address_range.start.0 as usize / INSTRUCTION_SIZE] =
             CacheIndex::cached(cache_index);
         self.jitted_starts_map
             .insert(code.address_range.start, cache_index);
-        self.jitted_instructions[code.address_range.start as usize / INSTRUCTION_SIZE
-            ..code.address_range.end as usize / INSTRUCTION_SIZE]
+        self.jitted_instructions[code.address_range.start.0 as usize / INSTRUCTION_SIZE
+            ..code.address_range.end.0 as usize / INSTRUCTION_SIZE]
             .fill(true);
         self.cache.push(code);
         cache_index
     }
 
     #[inline(always)]
-    pub fn invalidate_range(&mut self, range: Range<u32>) {
-        if self.jitted_instructions[range.start as usize / INSTRUCTION_SIZE
-            ..(range.end as usize).div_ceil(INSTRUCTION_SIZE)]
+    pub fn invalidate_range(&mut self, range: Range<PhysicalAddress>) {
+        if self.jitted_instructions[range.start.0 as usize / INSTRUCTION_SIZE
+            ..(range.end.0 as usize).div_ceil(INSTRUCTION_SIZE)]
             .not_any()
         {
             return;
@@ -169,7 +172,7 @@ impl Jit {
         self.invalidate_range_slow(range);
     }
 
-    fn invalidate_range_slow(&mut self, range: Range<u32>) {
+    fn invalidate_range_slow(&mut self, range: Range<PhysicalAddress>) {
         let to_remove = self
             .jitted_starts_map
             .range(..range.end)
@@ -187,9 +190,10 @@ impl Jit {
     }
 
     pub fn cache_entry(&mut self, state: &State, mmu: &Mmu, bus: &Bus, mode: Mode) -> &CacheEntry {
+        let physical_program_counter = mmu.virtual_to_physical(state.program_counter, mode);
         let cache_index = self
             .jitted_starts
-            .get(state.program_counter as usize / INSTRUCTION_SIZE)
+            .get(physical_program_counter.0 as usize / INSTRUCTION_SIZE)
             .unwrap()
             .view();
         let index = match cache_index {
@@ -204,29 +208,30 @@ impl Jit {
                     mode,
                 );
 
-                let entry = if let Some(end_address) = jit_compiler.compile(state.program_counter) {
-                    jit_compiler.function_builder.seal_all_blocks();
-                    jit_compiler.function_builder.finalize();
-                    self.codegen_context
-                        .compile(self.isa.as_ref(), &mut ControlPlane::default())
-                        .unwrap();
-                    let compiled_code = self.codegen_context.compiled_code().unwrap();
-                    let pointer = self.executable_memory.allocate(compiled_code.code_buffer());
-                    let function =
-                        unsafe { std::mem::transmute::<*const u8, extern "C" fn()>(pointer) };
-                    self.codegen_context.clear();
-                    CacheEntry {
-                        address_range: state.program_counter..end_address,
-                        code: Code::Jitted(function),
-                    }
-                } else {
-                    let physical_address = mmu.virtual_to_physical(state.program_counter, mode);
-                    CacheEntry {
-                        address_range: state.program_counter
-                            ..state.program_counter + INSTRUCTION_SIZE as u32,
-                        code: Code::Interpreted(decode(bus.read(physical_address))),
-                    }
-                };
+                let entry =
+                    if let Some(end_address) = jit_compiler.compile(physical_program_counter) {
+                        jit_compiler.function_builder.seal_all_blocks();
+                        jit_compiler.function_builder.finalize();
+                        self.codegen_context
+                            .compile(self.isa.as_ref(), &mut ControlPlane::default())
+                            .unwrap();
+                        let compiled_code = self.codegen_context.compiled_code().unwrap();
+                        let pointer = self.executable_memory.allocate(compiled_code.code_buffer());
+                        let function =
+                            unsafe { std::mem::transmute::<*const u8, extern "C" fn()>(pointer) };
+                        self.codegen_context.clear();
+                        CacheEntry {
+                            address_range: physical_program_counter..end_address,
+                            code: Code::Jitted(function),
+                        }
+                    } else {
+                        let physical_address = mmu.virtual_to_physical(state.program_counter, mode);
+                        CacheEntry {
+                            address_range: physical_program_counter
+                                ..physical_program_counter + INSTRUCTION_SIZE as u32,
+                            code: Code::Interpreted(decode(bus.read(physical_address))),
+                        }
+                    };
                 self.add(entry)
             }
             CacheIndexView::Cached(index) => index,
@@ -398,35 +403,27 @@ impl<'a> JitCompiler<'a> {
         );
     }
 
-    pub fn compile(&mut self, mut address: u32) -> Option<u32> {
+    pub fn compile(&mut self, mut address: PhysicalAddress) -> Option<PhysicalAddress> {
         if self.state.delayed_branch_target.is_some() {
             return None;
         }
         let start_address = address;
         loop {
-            let instruction = decode(
-                self.bus
-                    .read(self.mmu.virtual_to_physical(address, self.mode)),
-            );
+            let instruction = decode(self.bus.read(address));
             if instruction.is_branch() {
-                let next_instruction = decode(
-                    self.bus.read(
-                        self.mmu
-                            .virtual_to_physical(address + INSTRUCTION_SIZE as u32, self.mode),
-                    ),
-                );
+                let next_instruction = decode(self.bus.read(address + INSTRUCTION_SIZE as u32));
                 if next_instruction.is_branch() {
                     break;
                 }
             }
             let unhandled = || {
-                println!("Unhandled instruction at {:#010x}", address);
+                println!("Unhandled instruction at {:#010x}", address.0);
                 println!("{}", instruction);
             };
             match instruction {
                 _ if instruction.is_nop() => {}
                 Instruction::Unknown => {
-                    println!("Unknown instruction at {:#010x}", address)
+                    println!("Unknown instruction at {:#010x}", address.0)
                 }
                 Instruction::Sll(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S32);
@@ -1058,10 +1055,10 @@ impl<'a> JitCompiler<'a> {
         for register in Register::all() {
             self.writeback_register(register);
         }
-        let final_program_counter = self
-            .function_builder
-            .ins()
-            .iconst(cranelift_codegen::ir::types::I32, address as i64);
+        let final_program_counter = self.function_builder.ins().iconst(
+            cranelift_codegen::ir::types::I32,
+            (self.state.program_counter + (address - start_address)) as i64,
+        );
         self.writeback_program_counter(final_program_counter);
         self.function_builder.ins().return_(&[]);
 

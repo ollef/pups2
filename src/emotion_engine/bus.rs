@@ -1,6 +1,6 @@
 use std::{
     fmt::LowerHex,
-    ops::{Add, AddAssign},
+    ops::{Add, AddAssign, Sub, SubAssign},
 };
 
 use crate::{bits::Bits, bytes::Bytes};
@@ -21,7 +21,7 @@ pub struct Bus {
     pub gs: Gs,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysicalAddress(pub u32);
 
 pub enum PhysicalAddressView {
@@ -50,6 +50,28 @@ impl Add<u32> for PhysicalAddress {
 impl AddAssign<u32> for PhysicalAddress {
     fn add_assign(&mut self, rhs: u32) {
         self.0 += rhs;
+    }
+}
+
+impl Sub<u32> for PhysicalAddress {
+    type Output = Self;
+
+    fn sub(self, rhs: u32) -> Self::Output {
+        PhysicalAddress(self.0 - rhs)
+    }
+}
+
+impl SubAssign<u32> for PhysicalAddress {
+    fn sub_assign(&mut self, rhs: u32) {
+        self.0 -= rhs;
+    }
+}
+
+impl Sub<PhysicalAddress> for PhysicalAddress {
+    type Output = u32;
+
+    fn sub(self, rhs: PhysicalAddress) -> Self::Output {
+        self.0 - rhs.0
     }
 }
 
