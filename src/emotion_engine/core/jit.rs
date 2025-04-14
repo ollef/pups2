@@ -623,11 +623,18 @@ impl<'a> JitCompiler<'a> {
                     delayed_branch_target = Some(target);
                 }
                 Instruction::Jalr(rd, rs) => {
-                    // let branch_target = self.get_register::<u32>(rs);
-                    // self.set_register(rd, (next_program_counter + 4) as u64);
-                    // self.set_delayed_branch_target(branch_target);
-                    unhandled();
-                    break;
+                    let target = self.get_register(rs, Size::S32);
+                    delayed_branch_target = Some(target);
+
+                    let next_next_pc = self
+                        .function_builder
+                        .ins()
+                        .iadd_imm(next_program_counter, 4);
+                    let next_next_pc = self
+                        .function_builder
+                        .ins()
+                        .uextend(cranelift_codegen::ir::types::I64, next_next_pc);
+                    self.set_register(rd, next_next_pc, Size::S64);
                 }
                 Instruction::Movz(rd, rs, rt) => {
                     // if self.get_register::<u64>(rt) == 0 {
