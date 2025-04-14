@@ -98,6 +98,10 @@ impl Register {
             _ => Some(self),
         }
     }
+
+    pub fn all() -> impl ExactSizeIterator<Item = Register> {
+        (0..Register::LENGTH).map(Register::from_usize)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
