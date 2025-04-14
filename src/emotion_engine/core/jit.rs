@@ -1082,13 +1082,13 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lhu(rt, base, offset) => {
-                    // let address = self
-                    //     .get_register::<u32>(base)
-                    //     .wrapping_add(offset.sign_extend());
-                    // let value = self.read_virtual::<u16>(bus, address);
-                    // self.set_register(rt, value as u64);
-                    unhandled();
-                    break;
+                    let base_value = self.get_register(base, Size::S32);
+                    let value = self.load(base_value, offset, Size::S16);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .uextend(cranelift_codegen::ir::types::I64, value);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lwr(rt, base, offset) => {
                     // let address = self
