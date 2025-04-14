@@ -1123,16 +1123,39 @@ impl<'a> JitCompiler<'a> {
                     // TODO: Set status register
                 }
                 Instruction::Beql(rs, rt, offset) => {
-                    // if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
-                    //     let offset: u32 = offset.sign_extend();
-                    //     self.set_delayed_branch_target(
-                    //         next_program_counter.wrapping_add(offset << 2),
-                    //     );
-                    // } else {
-                    //     next_program_counter += 4;
-                    // }
-                    unhandled();
-                    break;
+                    let offset: u32 = offset.sign_extend();
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let conditional = self.function_builder.ins().icmp(
+                        cranelift_codegen::ir::condcodes::IntCC::Equal,
+                        rs_value,
+                        rt_value,
+                    );
+                    let taken = self
+                        .function_builder
+                        .ins()
+                        .iadd_imm(next_program_counter, (offset << 2) as i64);
+                    let not_taken = self
+                        .function_builder
+                        .ins()
+                        .iadd_imm(next_program_counter, INSTRUCTION_SIZE as i64);
+                    delayed_branch_target = Some(taken);
+                    let not_taken_block = self.function_builder.create_block();
+                    let taken_block = self.function_builder.create_block();
+                    for register in Register::all() {
+                        self.writeback_register(register);
+                    }
+                    self.function_builder.ins().brif(
+                        conditional,
+                        taken_block,
+                        &[],
+                        not_taken_block,
+                        &[],
+                    );
+                    self.function_builder.switch_to_block(not_taken_block);
+                    self.store_program_counter(not_taken);
+                    self.function_builder.ins().return_(&[]);
+                    self.function_builder.switch_to_block(taken_block);
                 }
                 Instruction::Bnel(rs, rt, offset) => {
                     // if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
