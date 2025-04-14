@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, ops::Range};
+use std::{collections::BTreeMap, fmt::LowerHex, ops::Range};
 
 use bitvec::vec::BitVec;
 use cranelift_codegen::{
@@ -11,6 +11,7 @@ use enum_map::EnumMap;
 
 use crate::{
     bits::SignExtend,
+    bytes::Bytes,
     emotion_engine::bus::{Bus, PhysicalAddress},
     executable_memory_allocator::ExecutableMemoryAllocator,
 };
@@ -243,6 +244,7 @@ impl Jit {
 struct JitCompiler<'a> {
     function_builder: cranelift_frontend::FunctionBuilder<'a>,
     state: &'a State,
+    isa: &'a OwnedTargetIsa,
     mmu: &'a Mmu,
     bus: &'a Bus,
     mode: Mode,
@@ -304,8 +306,9 @@ impl<'a> JitCompiler<'a> {
         let block = function_builder.create_block();
         function_builder.switch_to_block(block);
         JitCompiler {
-            state,
             function_builder,
+            state,
+            isa,
             mmu,
             bus,
             mode,
@@ -400,6 +403,127 @@ impl<'a> JitCompiler<'a> {
             value,
             address,
             0,
+        );
+    }
+
+    pub extern "C" fn jit_write_virtual<T: Bytes + LowerHex>(
+        mmu: &Mmu,
+        bus: &mut Bus,
+        address: u32,
+        value: T,
+        mode: Mode,
+    ) {
+        let physical_address = mmu.virtual_to_physical(address, mode);
+        bus.write(physical_address, value)
+    }
+
+    pub extern "C" fn jit_read_virtual<T: Bytes + LowerHex>(
+        mmu: &Mmu,
+        bus: &mut Bus,
+        address: u32,
+        mode: Mode,
+    ) -> T {
+        let physical_address = mmu.virtual_to_physical(address, mode);
+        bus.read(physical_address)
+    }
+
+    fn load(
+        &mut self,
+        address: cranelift_codegen::ir::Value,
+        offset: u16,
+        size: Size,
+    ) -> cranelift_codegen::ir::Value {
+        let offset: u64 = offset.sign_extend();
+        let address = self.function_builder.ins().iadd_imm(address, offset as i64);
+        let mut signature = Signature::new(self.isa.default_call_conv());
+        signature.params.extend_from_slice(&[
+            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I64),
+            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I64),
+            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I32),
+            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I8),
+        ]);
+        signature
+            .returns
+            .push(cranelift_codegen::ir::AbiParam::new(size.type_()));
+        let signature_ref = self.function_builder.import_signature(signature);
+
+        let function_ptr = match size {
+            Size::S8 => Self::jit_read_virtual::<u8> as *const u8,
+            Size::S16 => Self::jit_read_virtual::<u16> as *const u8,
+            Size::S32 => Self::jit_read_virtual::<u32> as *const u8,
+            Size::S64 => Self::jit_read_virtual::<u64> as *const u8,
+            Size::S128 => Self::jit_read_virtual::<u128> as *const u8,
+        };
+        let function_ptr = self
+            .function_builder
+            .ins()
+            .iconst(cranelift_codegen::ir::types::I64, function_ptr as i64);
+        let mmu_ptr = self.function_builder.ins().iconst(
+            cranelift_codegen::ir::types::I64,
+            self.mmu as *const Mmu as i64,
+        );
+        let bus_ptr = self.function_builder.ins().iconst(
+            cranelift_codegen::ir::types::I64,
+            self.bus as *const Bus as i64,
+        );
+        let mode_value = self
+            .function_builder
+            .ins()
+            .iconst(cranelift_codegen::ir::types::I8, self.mode as u8 as i64);
+        let call = self.function_builder.ins().call_indirect(
+            signature_ref,
+            function_ptr,
+            &[mmu_ptr, bus_ptr, address, mode_value],
+        );
+        self.function_builder.inst_results(call)[0]
+    }
+
+    fn store(
+        &mut self,
+        value: cranelift_codegen::ir::Value,
+        address: cranelift_codegen::ir::Value,
+        offset: u16,
+        size: Size,
+    ) {
+        let offset: u64 = offset.sign_extend();
+        let address = self.function_builder.ins().iadd_imm(address, offset as i64);
+        let mut signature = Signature::new(self.isa.default_call_conv());
+        signature.params.extend_from_slice(&[
+            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I64),
+            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I64),
+            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I32),
+            cranelift_codegen::ir::AbiParam::new(size.type_()),
+            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I8),
+        ]);
+        let signature_ref = self.function_builder.import_signature(signature);
+
+        let function_ptr = match size {
+            Size::S8 => Self::jit_write_virtual::<u8> as *const u8,
+            Size::S16 => Self::jit_write_virtual::<u16> as *const u8,
+            Size::S32 => Self::jit_write_virtual::<u32> as *const u8,
+            Size::S64 => Self::jit_write_virtual::<u64> as *const u8,
+            Size::S128 => Self::jit_write_virtual::<u128> as *const u8,
+        };
+        let function_ptr = self
+            .function_builder
+            .ins()
+            .iconst(cranelift_codegen::ir::types::I64, function_ptr as i64);
+        let mmu_ptr = self.function_builder.ins().iconst(
+            cranelift_codegen::ir::types::I64,
+            self.mmu as *const Mmu as i64,
+        );
+        let bus_ptr = self.function_builder.ins().iconst(
+            cranelift_codegen::ir::types::I64,
+            self.bus as *const Bus as i64,
+        );
+        let mode_value = self
+            .function_builder
+            .ins()
+            .iconst(cranelift_codegen::ir::types::I8, self.mode as u8 as i64);
+        self.function_builder.ins().call_indirect(
+            signature_ref,
+            function_ptr,
+            &[mmu_ptr, bus_ptr, address, value, mode_value],
         );
     }
 
@@ -943,16 +1067,13 @@ impl<'a> JitCompiler<'a> {
                     break;
                 }
                 Instruction::Lw(rt, base, offset) => {
-                    // let address = self
-                    //     .get_register::<u32>(base)
-                    //     .wrapping_add(offset.sign_extend());
-                    // if address.bits(0..2) != 0 {
-                    //     panic!("Unaligned load at {:#010x}", address);
-                    // }
-                    // let value = self.read_virtual::<u32>(bus, address);
-                    // self.set_register::<u64>(rt, value.sign_extend());
-                    unhandled();
-                    break;
+                    let base_value = self.get_register(base, Size::S32);
+                    let value = self.load(base_value, offset, Size::S32);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lbu(rt, base, offset) => {
                     // let address = self
@@ -1008,15 +1129,9 @@ impl<'a> JitCompiler<'a> {
                     break;
                 }
                 Instruction::Sw(rt, base, offset) => {
-                    // let address = self
-                    //     .get_register::<u32>(base)
-                    //     .wrapping_add(offset.sign_extend());
-                    // if address.bits(0..2) != 0 {
-                    //     panic!("Unaligned store at {:#010x}", address);
-                    // }
-                    // self.write_virtual(bus, address, self.get_register::<u32>(rt));
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let base_value = self.get_register(base, Size::S32);
+                    self.store(rt_value, base_value, offset, Size::S32);
                 }
                 Instruction::Lwc1(ft, base, offset) => {
                     // let address = self

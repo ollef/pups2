@@ -144,36 +144,4 @@ impl Core {
         let physical_address = self.mmu.virtual_to_physical(address, self.mode);
         bus.read(physical_address)
     }
-
-    pub extern "C" fn jit_write_virtual8(&self, bus: &mut Bus, address: u32, value: u8) {
-        self.write_virtual(bus, address, value)
-    }
-
-    pub extern "C" fn jit_write_virtual16(&self, bus: &mut Bus, address: u32, value: u16) {
-        self.write_virtual(bus, address, value)
-    }
-
-    pub extern "C" fn jit_write_virtual32(&self, bus: &mut Bus, address: u32, value: u32) {
-        self.write_virtual(bus, address, value)
-    }
-
-    pub extern "C" fn jit_write_virtual64(&self, bus: &mut Bus, address: u32, value: u64) {
-        self.write_virtual(bus, address, value)
-    }
-
-    pub extern "C" fn jit_read_virtual8(&self, bus: &mut Bus, address: u32) -> u8 {
-        self.read_virtual(bus, address)
-    }
-
-    pub extern "C" fn jit_read_virtual16(&self, bus: &mut Bus, address: u32) -> u16 {
-        self.read_virtual(bus, address)
-    }
-
-    pub extern "C" fn jit_read_virtual32(&self, bus: &mut Bus, address: u32) -> u32 {
-        self.read_virtual(bus, address)
-    }
-
-    pub extern "C" fn jit_read_virtual64(&self, bus: &mut Bus, address: u32) -> u64 {
-        self.read_virtual(bus, address)
-    }
 }
