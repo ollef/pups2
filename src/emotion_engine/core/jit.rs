@@ -435,10 +435,13 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Srl(rd, rt, shamt) => {
-                    // let value = self.get_register::<u32>(rt) >> shamt;
-                    // self.set_register::<u64>(rd, value.sign_extend());
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let value = self.function_builder.ins().ushr_imm(rt_value, shamt as i64);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Sra(rd, rt, shamt) => {
                     // let value = (self.get_register::<u32>(rt) as i32) >> shamt;
