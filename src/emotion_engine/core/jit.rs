@@ -9,7 +9,10 @@ use cranelift_codegen::{
 };
 use enum_map::EnumMap;
 
-use crate::{emotion_engine::bus::Bus, executable_memory_allocator::ExecutableMemoryAllocator};
+use crate::{
+    bits::SignExtend, emotion_engine::bus::Bus,
+    executable_memory_allocator::ExecutableMemoryAllocator,
+};
 
 use super::{decoder::decode, instruction::Instruction, mmu::Mmu, register::Register, Mode, State};
 
@@ -794,9 +797,12 @@ impl<'a> JitCompiler<'a> {
                     break;
                 }
                 Instruction::Lui(rt, imm) => {
-                    // self.set_register::<u64>(rt, ((imm as u32) << 16).sign_extend());
-                    unhandled();
-                    break;
+                    let value: u64 = ((imm as u32) << 16).sign_extend();
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .iconst(cranelift_codegen::ir::types::I64, value as i64);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Mfc1(rt, fs) => {
                     // let value = self.fpu.get_register::<u32>(fs);
