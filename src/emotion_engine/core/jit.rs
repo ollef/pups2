@@ -644,28 +644,70 @@ impl<'a> JitCompiler<'a> {
                 Instruction::Dsrav(_, _, _) => todo!(),
                 Instruction::Dsrlv(_, _, _) => todo!(),
                 Instruction::Mult(rd, rs, rt) => {
-                    // let a: u64 = self.get_register::<u32>(rs).sign_extend();
-                    // let b: u64 = self.get_register::<u32>(rt).sign_extend();
-                    // let prod = a.wrapping_mul(b);
-                    // let lo: u64 = (prod as u32).sign_extend();
-                    // let hi: u64 = ((prod >> 32) as u32).sign_extend();
-                    // self.set_register(rd, lo);
-                    // self.set_register(Register::Lo, lo);
-                    // self.set_register(Register::Hi, hi);
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S32);
+                    let rs_value = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, rs_value);
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let rt_value = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, rt_value);
+                    let prod = self.function_builder.ins().imul(rs_value, rt_value);
+                    let lo = self
+                        .function_builder
+                        .ins()
+                        .ireduce(cranelift_codegen::ir::types::I32, prod);
+                    let lo = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, lo);
+                    let hi = self.function_builder.ins().ushr_imm(prod, 32);
+                    let hi = self
+                        .function_builder
+                        .ins()
+                        .ireduce(cranelift_codegen::ir::types::I32, hi);
+                    let hi = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, hi);
+                    self.set_register(rd, lo, Size::S64);
+                    self.set_register(Register::Lo, lo, Size::S64);
+                    self.set_register(Register::Hi, hi, Size::S64);
                 }
                 Instruction::Multu(rd, rs, rt) => {
-                    // let a = self.get_register::<u32>(rs) as u64;
-                    // let b = self.get_register::<u32>(rt) as u64;
-                    // let prod = a * b;
-                    // let lo: u64 = (prod as u32).sign_extend();
-                    // let hi: u64 = ((prod >> 32) as u32).sign_extend();
-                    // self.set_register(rd, lo);
-                    // self.set_register(Register::Lo, lo);
-                    // self.set_register(Register::Hi, hi);
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S32);
+                    let rs_value = self
+                        .function_builder
+                        .ins()
+                        .uextend(cranelift_codegen::ir::types::I64, rs_value);
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let rt_value = self
+                        .function_builder
+                        .ins()
+                        .uextend(cranelift_codegen::ir::types::I64, rt_value);
+                    let prod = self.function_builder.ins().imul(rs_value, rt_value);
+                    let lo = self
+                        .function_builder
+                        .ins()
+                        .ireduce(cranelift_codegen::ir::types::I32, prod);
+                    let lo = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, lo);
+                    let hi = self.function_builder.ins().ushr_imm(prod, 32);
+                    let hi = self
+                        .function_builder
+                        .ins()
+                        .ireduce(cranelift_codegen::ir::types::I32, hi);
+                    let hi = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, hi);
+                    self.set_register(rd, lo, Size::S64);
+                    self.set_register(Register::Lo, lo, Size::S64);
+                    self.set_register(Register::Hi, hi, Size::S64);
                 }
                 Instruction::Div(_, _) => todo!(),
                 Instruction::Divu(rs, rt) => {
