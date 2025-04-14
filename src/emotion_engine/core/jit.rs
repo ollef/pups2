@@ -1134,16 +1134,9 @@ impl<'a> JitCompiler<'a> {
                     break;
                 }
                 Instruction::Ld(rt, base, offset) => {
-                    // let address = self
-                    //     .get_register::<u32>(base)
-                    //     .wrapping_add(offset.sign_extend());
-                    // if address.bits(0..3) != 0 {
-                    //     panic!("Unaligned load at {:#010x}", address);
-                    // }
-                    // let value = self.read_virtual(bus, address);
-                    // self.set_register::<u64>(rt, value);
-                    unhandled();
-                    break;
+                    let base_value = self.get_register(base, Size::S32);
+                    let value = self.load(base_value, offset, Size::S64);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Swc1(ft, base, offset) => {
                     // let address = self
