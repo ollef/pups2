@@ -923,12 +923,24 @@ impl<'a> JitCompiler<'a> {
                     delayed_branch_target = Some(target);
                 }
                 Instruction::Jal(target) => {
-                    // self.set_register(Register::Ra, (next_program_counter + 4) as u64);
-                    // self.set_delayed_branch_target(
-                    //     (next_program_counter & 0xF000_0000).wrapping_add(target << 2),
-                    // );
-                    unhandled();
-                    break;
+                    let upper_next_pc = self
+                        .function_builder
+                        .ins()
+                        .band_imm(next_program_counter, 0xF000_0000);
+                    let target = self
+                        .function_builder
+                        .ins()
+                        .iadd_imm(upper_next_pc, (target << 2) as i64);
+                    delayed_branch_target = Some(target);
+                    let next_next_pc = self
+                        .function_builder
+                        .ins()
+                        .iadd_imm(next_program_counter, 4);
+                    let next_next_pc = self
+                        .function_builder
+                        .ins()
+                        .uextend(cranelift_codegen::ir::types::I64, next_next_pc);
+                    self.set_register(Register::Ra, next_next_pc, Size::S64);
                 }
                 Instruction::Beq(rs, rt, offset) => {
                     // if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
