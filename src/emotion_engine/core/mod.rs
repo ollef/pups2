@@ -17,6 +17,7 @@ use {
 };
 
 #[derive(Enum, Copy, Clone, Debug)]
+#[repr(u8)]
 pub enum Mode {
     Kernel,
     Supervisor,
