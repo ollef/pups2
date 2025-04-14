@@ -44,8 +44,8 @@ impl Mmu {
 
     pub fn virtual_to_physical(&self, virtual_address: u32, mode: Mode) -> PhysicalAddress {
         let page = virtual_address >> OFFSET_BITS;
-        let physical_frame_start = self.pages[mode][page as usize];
-        physical_frame_start + (virtual_address & OFFSET_MASK)
+        let physical_frame_start = unsafe { *self.pages[mode].get_unchecked(page as usize) };
+        PhysicalAddress(physical_frame_start.0 | (virtual_address & OFFSET_MASK))
     }
 
     pub fn physically_consecutive(&self, virtual_range: Range<u32>, mode: Mode) -> bool {
@@ -53,7 +53,7 @@ impl Mmu {
         let end_page = (virtual_range.end - 1) >> OFFSET_BITS;
         let mut physical_frame = self.pages[mode][start_page as usize];
         for page in start_page..=end_page {
-            if self.pages[mode][page as usize] != physical_frame {
+            if unsafe { *self.pages[mode].get_unchecked(page as usize) } != physical_frame {
                 return false;
             }
             physical_frame += PAGE_SIZE;

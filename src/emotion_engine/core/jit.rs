@@ -191,12 +191,11 @@ impl Jit {
 
     pub fn cache_entry(&mut self, state: &State, mmu: &Mmu, bus: &Bus, mode: Mode) -> &CacheEntry {
         let physical_program_counter = mmu.virtual_to_physical(state.program_counter, mode);
-        let cache_index = self
-            .jitted_starts
-            .get(physical_program_counter.0 as usize / INSTRUCTION_SIZE)
-            .unwrap()
-            .view();
-        let index = match cache_index {
+        let cache_index = unsafe {
+            self.jitted_starts
+                .get_unchecked(physical_program_counter.0 as usize / INSTRUCTION_SIZE)
+        };
+        let index = match cache_index.view() {
             CacheIndexView::NotCached => {
                 let jit_compiler = JitCompiler::new(
                     state,
@@ -234,7 +233,7 @@ impl Jit {
             }
             CacheIndexView::Cached(index) => index,
         };
-        &self.cache[index as usize]
+        unsafe { self.cache.get_unchecked(index as usize) }
     }
 }
 
