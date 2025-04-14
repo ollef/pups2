@@ -790,33 +790,43 @@ impl<'a> JitCompiler<'a> {
                 Instruction::Teq(_, _) => todo!(),
                 Instruction::Tne(_, _) => todo!(),
                 Instruction::Dsll(rd, rt, shamt) => {
-                    // self.set_register(rd, self.get_register::<u64>(rt) << shamt);
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self.function_builder.ins().ishl_imm(rt_value, shamt as i64);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Dsrl(rd, rt, shamt) => {
-                    // self.set_register(rd, self.get_register::<u64>(rt) >> shamt);
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self.function_builder.ins().ushr_imm(rt_value, shamt as i64);
+                    self.set_register(rd, value, Size::S64);
                 }
-                Instruction::Dsra(_, _, _) => todo!(),
+                Instruction::Dsra(rd, rt, shamt) => {
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self.function_builder.ins().sshr_imm(rt_value, shamt as i64);
+                    self.set_register(rd, value, Size::S64);
+                }
                 Instruction::Dsll32(rd, rt, shamt) => {
-                    // self.set_register(rd, self.get_register::<u64>(rt) << (shamt + 32));
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .ishl_imm(rt_value, (shamt + 32) as i64);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Dsrl32(rd, rt, shamt) => {
-                    // self.set_register(rd, self.get_register::<u64>(rt) >> (shamt + 32));
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .ushr_imm(rt_value, (shamt + 32) as i64);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Dsra32(rd, rt, shamt) => {
-                    // self.set_register(
-                    //     rd,
-                    //     ((self.get_register::<u64>(rt) as i64) >> (shamt + 32)) as u64,
-                    // );
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .sshr_imm(rt_value, (shamt + 32) as i64);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Bltz(rs, offset) => {
                     // if (self.get_register::<u64>(rs) as i64) < 0 {
