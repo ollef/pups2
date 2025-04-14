@@ -155,7 +155,7 @@ impl Core {
             Instruction::Multu(rd, rs, rt) => {
                 let a = self.get_register::<u32>(rs) as u64;
                 let b = self.get_register::<u32>(rt) as u64;
-                let prod = a * b;
+                let prod = a.wrapping_mul(b);
                 let lo: u64 = (prod as u32).sign_extend();
                 let hi: u64 = ((prod >> 32) as u32).sign_extend();
                 self.set_register(rd, lo);
