@@ -76,7 +76,8 @@ impl ExecutableMemoryAllocator {
     }
 
     fn try_allocate(&mut self, data: &[u8]) -> Option<*const u8> {
-        let len_including_size = data.len() as u32 + std::mem::size_of::<u32>() as u32;
+        let len_including_size =
+            (data.len().div_ceil(4) * 4) as u32 + std::mem::size_of::<u32>() as u32;
         if let Some((block_len, blocks)) = self.free_by_len.range_mut(len_including_size..).next() {
             let block_len = *block_len;
             let block_address = blocks.pop().unwrap();
@@ -118,7 +119,7 @@ impl ExecutableMemoryAllocator {
         if let Some(address) = self.try_allocate(data) {
             return address;
         }
-        let len_including_size = data.len() + std::mem::size_of::<u32>();
+        let len_including_size = data.len().div_ceil(4) * 4 + std::mem::size_of::<u32>();
         let mmap_len = len_including_size
             .max(
                 self.mmaps
