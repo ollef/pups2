@@ -950,14 +950,27 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(Register::Ra, next_next_pc, Size::S64);
                 }
                 Instruction::Beq(rs, rt, offset) => {
-                    // if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
-                    //     let offset: u32 = offset.sign_extend();
-                    //     self.set_delayed_branch_target(
-                    //         next_program_counter.wrapping_add(offset << 2),
-                    //     );
-                    // }
-                    unhandled();
-                    break;
+                    let offset: u32 = offset.sign_extend();
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let conditional = self.function_builder.ins().icmp(
+                        cranelift_codegen::ir::condcodes::IntCC::Equal,
+                        rs_value,
+                        rt_value,
+                    );
+                    let taken = self
+                        .function_builder
+                        .ins()
+                        .iadd_imm(next_program_counter, (offset << 2) as i64);
+                    let not_taken = self
+                        .function_builder
+                        .ins()
+                        .iadd_imm(next_program_counter, INSTRUCTION_SIZE as i64);
+                    let target = self
+                        .function_builder
+                        .ins()
+                        .select(conditional, taken, not_taken);
+                    delayed_branch_target = Some(target);
                 }
                 Instruction::Bne(rs, rt, offset) => {
                     let offset: u32 = offset.sign_extend();
