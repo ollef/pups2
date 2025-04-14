@@ -605,8 +605,19 @@ impl<'a> JitCompiler<'a> {
                     let value = self.function_builder.ins().bor(rs_value, rt_value);
                     self.set_register(rd, value, Size::S64);
                 }
-                Instruction::Xor(_, _, _) => todo!(),
-                Instruction::Nor(_, _, _) => todo!(),
+                Instruction::Xor(rd, rs, rt) => {
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self.function_builder.ins().bxor(rs_value, rt_value);
+                    self.set_register(rd, value, Size::S64);
+                }
+                Instruction::Nor(rd, rs, rt) => {
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let value = self.function_builder.ins().bor(rs_value, rt_value);
+                    let value = self.function_builder.ins().bnot(value);
+                    self.set_register(rd, value, Size::S64);
+                }
                 Instruction::Mfsa(_) => todo!(),
                 Instruction::Mtsa(_) => todo!(),
                 Instruction::Slt(rd, rs, rt) => {
