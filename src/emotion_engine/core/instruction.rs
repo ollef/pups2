@@ -438,7 +438,8 @@ impl Instruction {
             | Instruction::Beq(_, _, offset)
             | Instruction::Bne(_, _, offset)
             | Instruction::Blez(_, offset)
-            | Instruction::Beql(_, _, offset) => Some({
+            | Instruction::Beql(_, _, offset)
+            | Instruction::Bnel(_, _, offset) => Some({
                 let offset: u32 = offset.sign_extend();
                 address.wrapping_add(4).wrapping_add(offset << 2)
             }),
