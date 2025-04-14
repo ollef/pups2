@@ -75,6 +75,8 @@ const INSTRUCTION_SIZE: usize = std::mem::size_of::<u32>();
 
 impl Jit {
     pub fn new() -> Self {
+        let mut settings_builder = settings::builder();
+        settings_builder.set("opt_level", "speed").unwrap();
         Jit {
             jitted_instructions: BitVec::from_vec(vec![
                 0;
@@ -89,7 +91,7 @@ impl Jit {
             next_to_remove: 0,
             isa: cranelift_native::builder()
                 .unwrap()
-                .finish(settings::Flags::new(settings::builder()))
+                .finish(settings::Flags::new(settings_builder))
                 .unwrap(),
             codegen_context: cranelift_codegen::Context::new(),
             function_builder_context: cranelift_frontend::FunctionBuilderContext::new(),
