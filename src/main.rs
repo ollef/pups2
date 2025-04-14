@@ -4,7 +4,6 @@ mod emotion_engine;
 mod executable_memory_allocator;
 mod fifo;
 mod fix;
-mod jit_builder;
 
 use argh::FromArgs;
 use bytes::Bytes;
