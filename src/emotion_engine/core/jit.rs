@@ -704,22 +704,24 @@ impl<'a> JitCompiler<'a> {
                 }
                 Instruction::Sub(rd, rs, rt) => {
                     // TODO: Exception on overflow
-                    // let value = self
-                    //     .get_register::<u32>(rs)
-                    //     .wrapping_sub(self.get_register::<u32>(rt));
-                    // self.set_register::<u64>(rd, value.sign_extend());
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S32);
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let value = self.function_builder.ins().isub(rs_value, rt_value);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Subu(rd, rs, rt) => {
-                    // self.set_register::<u64>(
-                    //     rd,
-                    //     self.get_register::<u32>(rs)
-                    //         .wrapping_sub(self.get_register::<u32>(rt))
-                    //         .sign_extend(),
-                    // );
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S32);
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let value = self.function_builder.ins().isub(rs_value, rt_value);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::And(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S64);
