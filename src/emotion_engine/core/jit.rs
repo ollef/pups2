@@ -83,9 +83,8 @@ impl Jit {
                     / (std::mem::size_of::<usize>() * 8)
             ]),
             jitted_starts_map: BTreeMap::new(),
-            jitted_starts: Box::new(
-                [CacheIndex::not_cached(); PHYSICAL_MEMORY_SIZE / INSTRUCTION_SIZE],
-            ),
+            jitted_starts: vec![CacheIndex::not_cached(); PHYSICAL_MEMORY_SIZE / INSTRUCTION_SIZE]
+                .into_boxed_slice(),
             cache: Vec::new(),
             next_to_remove: 0,
             isa: cranelift_native::builder()
