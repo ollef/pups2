@@ -13,7 +13,7 @@ impl Core {
         if target.bits(0..2) != 0 {
             panic!("Invalid branch target: {:#010x}", target);
         }
-        self.delayed_branch_target = Some(target);
+        self.state.delayed_branch_target = Some(target);
     }
 
     pub fn interpret_instruction(&mut self, instruction: Instruction, bus: &mut Bus) {
@@ -22,13 +22,17 @@ impl Core {
         //     println!("{}={:#x}", reg, value);
         // }
         let mut next_program_counter = self
+            .state
             .delayed_branch_target
             .take()
-            .unwrap_or(self.program_counter + 4);
+            .unwrap_or(self.state.program_counter + 4);
         // println!("pc={:#010}: {instruction}", self.program_counter);
         match instruction {
             Instruction::Unknown => {
-                println!("Unknown instruction at {:#010x}", self.program_counter)
+                println!(
+                    "Unknown instruction at {:#010x}",
+                    self.state.program_counter
+                )
             }
             Instruction::Sll(rd, rt, shamt) => {
                 let value = self.get_register::<u32>(rt) << shamt;
@@ -345,34 +349,34 @@ impl Core {
                 self.set_register::<u64>(rt, ((imm as u32) << 16).sign_extend());
             }
             Instruction::Mfc1(rt, fs) => {
-                let value = self.fpu.get_register::<u32>(fs);
+                let value = self.state.fpu.get_register::<u32>(fs);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
             Instruction::Mtc1(rt, fs) => {
                 let value = self.get_register::<u32>(rt);
-                self.fpu.set_register(fs, value);
+                self.state.fpu.set_register(fs, value);
             }
-            Instruction::Muls(fd, fs, ft) => self.fpu.set_register(
+            Instruction::Muls(fd, fs, ft) => self.state.fpu.set_register(
                 fd,
-                self.fpu.get_register::<f32>(fs) * self.fpu.get_register::<f32>(ft),
+                self.state.fpu.get_register::<f32>(fs) * self.state.fpu.get_register::<f32>(ft),
             ),
             // TODO flags
-            Instruction::Divs(fd, fs, ft) => self.fpu.set_register(
+            Instruction::Divs(fd, fs, ft) => self.state.fpu.set_register(
                 fd,
-                self.fpu.get_register::<f32>(fs) / self.fpu.get_register::<f32>(ft),
+                self.state.fpu.get_register::<f32>(fs) / self.state.fpu.get_register::<f32>(ft),
             ),
             // TODO flags
             Instruction::Movs(fd, fs) => {
-                let value = self.fpu.get_register::<f32>(fs);
-                self.fpu.set_register(fd, value);
+                let value = self.state.fpu.get_register::<f32>(fs);
+                self.state.fpu.set_register(fd, value);
             }
             Instruction::Cvtws(fd, fs) => {
-                let value = self.fpu.get_register::<f32>(fs) as i32;
-                self.fpu.set_register(fd, value as u32);
+                let value = self.state.fpu.get_register::<f32>(fs) as i32;
+                self.state.fpu.set_register(fd, value as u32);
             }
             Instruction::Cvtsw(fd, fs) => {
-                let value = self.fpu.get_register::<u32>(fs) as i32;
-                self.fpu.set_register(fd, value as f32);
+                let value = self.state.fpu.get_register::<u32>(fs) as i32;
+                self.state.fpu.set_register(fd, value as f32);
             }
             Instruction::Ei => {
                 // TODO: Set status register
@@ -503,7 +507,7 @@ impl Core {
                     panic!("Unaligned load at {:#010x}", address);
                 }
                 let value = self.read_virtual::<u32>(bus, address);
-                self.fpu.set_register(ft, value);
+                self.state.fpu.set_register(ft, value);
             }
             Instruction::Ld(rt, base, offset) => {
                 let address = self
@@ -522,7 +526,7 @@ impl Core {
                 if address.bits(0..2) != 0 {
                     panic!("Unaligned store at {:#010x}", address);
                 }
-                self.write_virtual(bus, address, self.fpu.get_register::<u32>(ft));
+                self.write_virtual(bus, address, self.state.fpu.get_register::<u32>(ft));
             }
             Instruction::Sd(rt, base, offset) => {
                 let address = self
@@ -543,6 +547,6 @@ impl Core {
         //         AnyRegister::Fpu(_) => {}
         //     }
         // }
-        self.program_counter = next_program_counter;
+        self.state.program_counter = next_program_counter;
     }
 }

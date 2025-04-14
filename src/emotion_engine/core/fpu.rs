@@ -3,6 +3,7 @@ use std::fmt::Display;
 use super::register::{GetRegister, SetRegister};
 
 // Coprocessor 1
+#[derive(Debug)]
 pub struct Fpu {
     registers: [f32; 32],
 }
