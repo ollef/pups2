@@ -745,16 +745,24 @@ impl<'a> JitCompiler<'a> {
                 }
                 Instruction::Addi(rt, rs, imm) => {
                     // TODO exception on overflow
-                    // let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
-                    // self.set_register::<u64>(rt, (temp as u32).sign_extend());
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S32);
+                    let imm: u64 = imm.sign_extend();
+                    let value = self.function_builder.ins().iadd_imm(rs_value, imm as i64);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .sextend(Size::S64.type_(), value);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Addiu(rt, rs, imm) => {
-                    // let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
-                    // self.set_register::<u64>(rt, (temp as u32).sign_extend());
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S32);
+                    let imm: u64 = imm.sign_extend();
+                    let value = self.function_builder.ins().iadd_imm(rs_value, imm as i64);
+                    let value = self
+                        .function_builder
+                        .ins()
+                        .sextend(Size::S64.type_(), value);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Slti(rt, rs, imm) => {
                     // let imm: u64 = imm.sign_extend();
