@@ -619,9 +619,8 @@ impl<'a> JitCompiler<'a> {
                     break;
                 }
                 Instruction::Jr(rs) => {
-                    // self.set_delayed_branch_target(self.get_register::<u32>(rs));
-                    unhandled();
-                    break;
+                    let target = self.get_register(rs, Size::S32);
+                    delayed_branch_target = Some(target);
                 }
                 Instruction::Jalr(rd, rs) => {
                     // let branch_target = self.get_register::<u32>(rs);
