@@ -1,6 +1,7 @@
 mod bits;
 mod bytes;
 mod emotion_engine;
+mod enum_set;
 mod executable_memory_allocator;
 mod fifo;
 mod fix;
