@@ -42,11 +42,11 @@ pub struct State {
 }
 
 impl Core {
-    pub fn new(program_counter: u32) -> Self {
+    pub fn new() -> Self {
         Core {
             mode: Mode::Kernel,
             state: State {
-                program_counter,
+                program_counter: 0xBFC00000,
                 registers: enum_map! { _ => 0 },
                 cop0_registers: enum_map! { _ => 0 },
                 delayed_branch_target: None,

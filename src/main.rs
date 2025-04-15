@@ -22,6 +22,8 @@ use std::time::Instant;
 struct Arguments {
     #[argh(switch, short = 'd', description = "disassemble the ELF file")]
     disassemble: bool,
+    #[argh(option, short = 'b', description = "BIOS file")]
+    bios: Option<String>,
     #[argh(positional, description = "ELF file")]
     file: String,
 }
@@ -57,29 +59,36 @@ fn disassemble(file: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-fn execute(file: &str) -> std::io::Result<()> {
-    let elf_data = std::fs::read(file)?;
-    let elf = ElfBytes::<LittleEndian>::minimal_parse(&elf_data).expect("Failed to parse ELF");
-    let entry_point = elf.ehdr.e_entry as u32;
-    let mut core = emotion_engine::core::Core::new(entry_point);
+fn execute(bios: &Option<String>, file: &str) -> std::io::Result<()> {
+    let mut core = emotion_engine::core::Core::new();
     let mut bus = emotion_engine::bus::Bus::new();
-    println!("Entry point: {:x?}", entry_point);
-    println!("Program header start: {:x?}", entry_point as u32);
-    for program_header in elf.segments().expect("Failed to get program headers") {
-        let physical_address = program_header.p_paddr;
-        let virtual_address = program_header.p_vaddr;
-        println!("Physical memory address: {:x?}", physical_address);
-        println!("Virtual memory address: {:x?}", virtual_address);
-        let data = elf
-            .segment_data(&program_header)
-            .expect("Failed to get segment data");
-        // state.tlb.mmap(
-        //     virtual_address as u32,
-        //     data.len() as u32,
-        //     physical_address as u32,
-        // );
-        bus.main_memory[physical_address as usize..physical_address as usize + data.len()]
-            .copy_from_slice(data);
+    if let Some(bios) = bios {
+        let bios_data = std::fs::read(bios)?;
+        bus.boot_memory[0..bios_data.len()].copy_from_slice(&bios_data);
+    } else {
+        let elf_data = std::fs::read(file)?;
+        let elf = ElfBytes::<LittleEndian>::minimal_parse(&elf_data).expect("Failed to parse ELF");
+        let entry_point = elf.ehdr.e_entry as u32;
+        core.state.program_counter = entry_point;
+        println!("Entry point: {:x?}", entry_point);
+        println!("Program header start: {:x?}", entry_point as u32);
+        for program_header in elf.segments().expect("Failed to get program headers") {
+            let physical_address = program_header.p_paddr;
+            let virtual_address = program_header.p_vaddr;
+            println!("Physical memory address: {:x?}", physical_address);
+            println!("Virtual memory address: {:x?}", virtual_address);
+            let data = elf
+                .segment_data(&program_header)
+                .expect("Failed to get segment data");
+            // state.tlb.mmap(
+            //     virtual_address as u32,
+            //     data.len() as u32,
+            //     physical_address as u32,
+            // );
+            bus.main_memory[physical_address as usize..physical_address as usize + data.len()]
+                .copy_from_slice(data);
+        }
+        core.mmu.mmap(0, 0x2000_0000, 0);
     }
     let mut window = Window::new(
         "pups2",
@@ -98,7 +107,6 @@ fn execute(file: &str) -> std::io::Result<()> {
     )
     .expect("Failed to create window");
     window.set_background_color(20, 20, 20);
-    core.mmu.mmap(0, 0x2000_0000, 0);
     let mut scheduler = scheduler::Scheduler::new();
     let mut frame_start = Instant::now();
     loop {
@@ -165,6 +173,6 @@ fn main() -> Result<(), std::io::Error> {
     if args.disassemble {
         disassemble(&args.file)
     } else {
-        execute(&args.file)
+        execute(&args.bios, &args.file)
     }
 }
