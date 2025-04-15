@@ -2,7 +2,7 @@ use enum_map::{Enum, EnumMap};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-use crate::{bits::Bits, bytes::Bytes};
+use crate::{bits::Bits, bytes::Bytes, enum_set::EnumSet};
 
 use super::bus::{Bus, PhysicalAddress};
 
@@ -18,6 +18,7 @@ pub struct Dmac {
     hold_status: u32,         // D_ENABLER (read-only)
     hold_control: u32,        // D_ENABLEW (write-only)
     channels: EnumMap<Channel, ChannelRegisters>,
+    active_channels: EnumSet<u16, Channel>,
 }
 
 #[derive(Debug, Enum, Copy, Clone)]
@@ -129,6 +130,7 @@ impl Dmac {
                 self.channels[channel].control.raw = value;
                 if self.channels[channel].control.start() {
                     self.channels[channel].process_next_tag = true;
+                    self.active_channels.insert(channel);
                 }
             }
             0x10 => self.channels[channel].memory_address = PhysicalAddress(value),
@@ -178,7 +180,7 @@ impl Dmac {
 
     pub fn step(bus: &mut Bus) {
         // TODO arbitration
-        for channel in Channel::all() {
+        for channel in bus.dmac.active_channels {
             let registers = &bus.dmac.channels[channel];
             if registers.control.start() {
                 match channel {
@@ -202,6 +204,7 @@ impl Dmac {
                             let registers = &mut bus.dmac.channels[channel];
                             if quad_word_count == 0 {
                                 registers.control.set_start(false);
+                                bus.dmac.active_channels.remove(channel);
                                 // println!(
                                 //     "GIF channel finished, control=0x{:08x}",
                                 //     registers.control.raw
@@ -256,6 +259,7 @@ impl Dmac {
                                 } else {
                                     let registers = &mut bus.dmac.channels[channel];
                                     registers.control.set_start(false);
+                                    bus.dmac.active_channels.remove(channel);
                                     // println!(
                                     //     "GIF channel finished, control=0x{:08x}",
                                     //     registers.control.raw
