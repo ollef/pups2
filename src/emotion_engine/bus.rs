@@ -174,6 +174,9 @@ impl Bus {
                         // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
                         self.dmac.write(address, value)
                     }
+                    0x1000_F500 => {
+                        println!("Unhandled write: 0x{:08x}:=0x{:08x}", address, value);
+                    }
                     0x1200_0000..0x1201_0000 => {
                         println!("Write to GS: 0x{:08x}:=0x{:08x}", address, value);
                         self.gs.write_privileged(address, value)
@@ -185,7 +188,7 @@ impl Bus {
                             .copy_from_slice(value.to_bytes().as_ref());
                     }
                     _ => {
-                        panic!("Invalid write at address: 0x{:08x}", address);
+                        panic!("Invalid write 0x{:08x}=0x{:08x}", address, value);
                     }
                 }
             }
