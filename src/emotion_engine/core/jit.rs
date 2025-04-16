@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt::LowerHex, ops::Range};
 use bitvec::vec::BitVec;
 use cranelift_codegen::{
     control::ControlPlane,
-    ir::{InstBuilder, Signature},
+    ir::{self, InstBuilder, Signature},
     isa::OwnedTargetIsa,
     settings::{self, Configurable},
 };
@@ -248,7 +248,7 @@ struct JitCompiler<'a> {
 }
 
 struct RegisterState {
-    value: cranelift_codegen::ir::Value,
+    value: ir::Value,
     size: Size,
     dirty: bool,
 }
@@ -263,13 +263,13 @@ enum Size {
 }
 
 impl Size {
-    fn type_(self) -> cranelift_codegen::ir::Type {
+    fn type_(self) -> ir::Type {
         match self {
-            Size::S8 => cranelift_codegen::ir::types::I8,
-            Size::S16 => cranelift_codegen::ir::types::I16,
-            Size::S32 => cranelift_codegen::ir::types::I32,
-            Size::S64 => cranelift_codegen::ir::types::I64,
-            Size::S128 => cranelift_codegen::ir::types::I128,
+            Size::S8 => ir::types::I8,
+            Size::S16 => ir::types::I16,
+            Size::S32 => ir::types::I32,
+            Size::S64 => ir::types::I64,
+            Size::S128 => ir::types::I128,
         }
     }
 
@@ -311,11 +311,11 @@ impl<'a> JitCompiler<'a> {
         }
     }
 
-    fn register_address(&mut self, register: Register) -> cranelift_codegen::ir::Value {
+    fn register_address(&mut self, register: Register) -> ir::Value {
         let register_address = &self.state.registers[register] as *const u128;
         self.function_builder
             .ins()
-            .iconst(cranelift_codegen::ir::types::I64, register_address as i64)
+            .iconst(ir::types::I64, register_address as i64)
     }
 
     fn writeback_register(&mut self, register: Register) {
@@ -325,7 +325,7 @@ impl<'a> JitCompiler<'a> {
             }
             let register_address = self.register_address(register);
             self.function_builder.ins().store(
-                cranelift_codegen::ir::MemFlags::trusted(),
+                ir::MemFlags::trusted(),
                 state.value,
                 register_address,
                 0,
@@ -335,7 +335,7 @@ impl<'a> JitCompiler<'a> {
         }
     }
 
-    fn get_register(&mut self, register: Register, size: Size) -> cranelift_codegen::ir::Value {
+    fn get_register(&mut self, register: Register, size: Size) -> ir::Value {
         if register == Register::Zero {
             return self.function_builder.ins().iconst(size.type_(), 0);
         }
@@ -354,7 +354,7 @@ impl<'a> JitCompiler<'a> {
         let register_address = self.register_address(register);
         let value = self.function_builder.ins().load(
             size.type_(),
-            cranelift_codegen::ir::MemFlags::trusted(),
+            ir::MemFlags::trusted(),
             register_address,
             0,
         );
@@ -366,12 +366,7 @@ impl<'a> JitCompiler<'a> {
         value
     }
 
-    fn set_register(
-        &mut self,
-        register: Register,
-        value: cranelift_codegen::ir::Value,
-        size: Size,
-    ) {
+    fn set_register(&mut self, register: Register, value: ir::Value, size: Size) {
         if register == Register::Zero {
             return;
         }
@@ -387,32 +382,26 @@ impl<'a> JitCompiler<'a> {
         });
     }
 
-    fn load_program_counter(&mut self) -> cranelift_codegen::ir::Value {
+    fn load_program_counter(&mut self) -> ir::Value {
         let address = &self.state.program_counter as *const u32;
         let address = self
             .function_builder
             .ins()
-            .iconst(cranelift_codegen::ir::types::I64, address as i64);
-        self.function_builder.ins().load(
-            cranelift_codegen::ir::types::I32,
-            cranelift_codegen::ir::MemFlags::trusted(),
-            address,
-            0,
-        )
+            .iconst(ir::types::I64, address as i64);
+        self.function_builder
+            .ins()
+            .load(ir::types::I32, ir::MemFlags::trusted(), address, 0)
     }
 
-    fn store_program_counter(&mut self, value: cranelift_codegen::ir::Value) {
+    fn store_program_counter(&mut self, value: ir::Value) {
         let address = &self.state.program_counter as *const u32;
         let address = self
             .function_builder
             .ins()
-            .iconst(cranelift_codegen::ir::types::I64, address as i64);
-        self.function_builder.ins().store(
-            cranelift_codegen::ir::MemFlags::trusted(),
-            value,
-            address,
-            0,
-        );
+            .iconst(ir::types::I64, address as i64);
+        self.function_builder
+            .ins()
+            .store(ir::MemFlags::trusted(), value, address, 0);
     }
 
     pub extern "C" fn jit_write_virtual<T: Bytes + LowerHex>(
@@ -436,24 +425,17 @@ impl<'a> JitCompiler<'a> {
         bus.read(physical_address)
     }
 
-    fn load(
-        &mut self,
-        address: cranelift_codegen::ir::Value,
-        offset: u16,
-        size: Size,
-    ) -> cranelift_codegen::ir::Value {
+    fn load(&mut self, address: ir::Value, offset: u16, size: Size) -> ir::Value {
         let offset: u64 = offset.sign_extend();
         let address = self.function_builder.ins().iadd_imm(address, offset as i64);
         let mut signature = Signature::new(self.isa.default_call_conv());
         signature.params.extend_from_slice(&[
-            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I64),
-            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I64),
-            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I32),
-            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I8),
+            ir::AbiParam::new(ir::types::I64),
+            ir::AbiParam::new(ir::types::I64),
+            ir::AbiParam::new(ir::types::I32),
+            ir::AbiParam::new(ir::types::I8),
         ]);
-        signature
-            .returns
-            .push(cranelift_codegen::ir::AbiParam::new(size.type_()));
+        signature.returns.push(ir::AbiParam::new(size.type_()));
         let signature_ref = self.function_builder.import_signature(signature);
 
         let function_ptr = match size {
@@ -466,19 +448,19 @@ impl<'a> JitCompiler<'a> {
         let function_ptr = self
             .function_builder
             .ins()
-            .iconst(cranelift_codegen::ir::types::I64, function_ptr as i64);
-        let mmu_ptr = self.function_builder.ins().iconst(
-            cranelift_codegen::ir::types::I64,
-            self.mmu as *const Mmu as i64,
-        );
-        let bus_ptr = self.function_builder.ins().iconst(
-            cranelift_codegen::ir::types::I64,
-            self.bus as *const Bus as i64,
-        );
+            .iconst(ir::types::I64, function_ptr as i64);
+        let mmu_ptr = self
+            .function_builder
+            .ins()
+            .iconst(ir::types::I64, self.mmu as *const Mmu as i64);
+        let bus_ptr = self
+            .function_builder
+            .ins()
+            .iconst(ir::types::I64, self.bus as *const Bus as i64);
         let mode_value = self
             .function_builder
             .ins()
-            .iconst(cranelift_codegen::ir::types::I8, self.mode as u8 as i64);
+            .iconst(ir::types::I8, self.mode as u8 as i64);
         let call = self.function_builder.ins().call_indirect(
             signature_ref,
             function_ptr,
@@ -487,22 +469,16 @@ impl<'a> JitCompiler<'a> {
         self.function_builder.inst_results(call)[0]
     }
 
-    fn store(
-        &mut self,
-        value: cranelift_codegen::ir::Value,
-        address: cranelift_codegen::ir::Value,
-        offset: u16,
-        size: Size,
-    ) {
+    fn store(&mut self, value: ir::Value, address: ir::Value, offset: u16, size: Size) {
         let offset: u64 = offset.sign_extend();
         let address = self.function_builder.ins().iadd_imm(address, offset as i64);
         let mut signature = Signature::new(self.isa.default_call_conv());
         signature.params.extend_from_slice(&[
-            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I64),
-            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I64),
-            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I32),
-            cranelift_codegen::ir::AbiParam::new(size.type_()),
-            cranelift_codegen::ir::AbiParam::new(cranelift_codegen::ir::types::I8),
+            ir::AbiParam::new(ir::types::I64),
+            ir::AbiParam::new(ir::types::I64),
+            ir::AbiParam::new(ir::types::I32),
+            ir::AbiParam::new(size.type_()),
+            ir::AbiParam::new(ir::types::I8),
         ]);
         let signature_ref = self.function_builder.import_signature(signature);
 
@@ -516,19 +492,19 @@ impl<'a> JitCompiler<'a> {
         let function_ptr = self
             .function_builder
             .ins()
-            .iconst(cranelift_codegen::ir::types::I64, function_ptr as i64);
-        let mmu_ptr = self.function_builder.ins().iconst(
-            cranelift_codegen::ir::types::I64,
-            self.mmu as *const Mmu as i64,
-        );
-        let bus_ptr = self.function_builder.ins().iconst(
-            cranelift_codegen::ir::types::I64,
-            self.bus as *const Bus as i64,
-        );
+            .iconst(ir::types::I64, function_ptr as i64);
+        let mmu_ptr = self
+            .function_builder
+            .ins()
+            .iconst(ir::types::I64, self.mmu as *const Mmu as i64);
+        let bus_ptr = self
+            .function_builder
+            .ins()
+            .iconst(ir::types::I64, self.bus as *const Bus as i64);
         let mode_value = self
             .function_builder
             .ins()
-            .iconst(cranelift_codegen::ir::types::I8, self.mode as u8 as i64);
+            .iconst(ir::types::I8, self.mode as u8 as i64);
         self.function_builder.ins().call_indirect(
             signature_ref,
             function_ptr,
@@ -576,19 +552,13 @@ impl<'a> JitCompiler<'a> {
                 Instruction::Sll(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().ishl_imm(rt_value, shamt as i64);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Srl(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().ushr_imm(rt_value, shamt as i64);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Sra(rd, rt, shamt) => {
@@ -633,7 +603,7 @@ impl<'a> JitCompiler<'a> {
                     let next_next_pc = self
                         .function_builder
                         .ins()
-                        .uextend(cranelift_codegen::ir::types::I64, next_next_pc);
+                        .uextend(ir::types::I64, next_next_pc);
                     self.set_register(rd, next_next_pc, Size::S64);
                 }
                 Instruction::Movz(rd, rs, rt) => {
@@ -678,30 +648,18 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self
                         .function_builder
                         .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, rs_value);
+                        .sextend(ir::types::I64, rs_value);
                     let rt_value = self.get_register(rt, Size::S32);
                     let rt_value = self
                         .function_builder
                         .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, rt_value);
+                        .sextend(ir::types::I64, rt_value);
                     let prod = self.function_builder.ins().imul(rs_value, rt_value);
-                    let lo = self
-                        .function_builder
-                        .ins()
-                        .ireduce(cranelift_codegen::ir::types::I32, prod);
-                    let lo = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, lo);
+                    let lo = self.function_builder.ins().ireduce(ir::types::I32, prod);
+                    let lo = self.function_builder.ins().sextend(ir::types::I64, lo);
                     let hi = self.function_builder.ins().ushr_imm(prod, 32);
-                    let hi = self
-                        .function_builder
-                        .ins()
-                        .ireduce(cranelift_codegen::ir::types::I32, hi);
-                    let hi = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, hi);
+                    let hi = self.function_builder.ins().ireduce(ir::types::I32, hi);
+                    let hi = self.function_builder.ins().sextend(ir::types::I64, hi);
                     self.set_register(rd, lo, Size::S64);
                     self.set_register(Register::Lo, lo, Size::S64);
                     self.set_register(Register::Hi, hi, Size::S64);
@@ -711,30 +669,18 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self
                         .function_builder
                         .ins()
-                        .uextend(cranelift_codegen::ir::types::I64, rs_value);
+                        .uextend(ir::types::I64, rs_value);
                     let rt_value = self.get_register(rt, Size::S32);
                     let rt_value = self
                         .function_builder
                         .ins()
-                        .uextend(cranelift_codegen::ir::types::I64, rt_value);
+                        .uextend(ir::types::I64, rt_value);
                     let prod = self.function_builder.ins().imul(rs_value, rt_value);
-                    let lo = self
-                        .function_builder
-                        .ins()
-                        .ireduce(cranelift_codegen::ir::types::I32, prod);
-                    let lo = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, lo);
+                    let lo = self.function_builder.ins().ireduce(ir::types::I32, prod);
+                    let lo = self.function_builder.ins().sextend(ir::types::I64, lo);
                     let hi = self.function_builder.ins().ushr_imm(prod, 32);
-                    let hi = self
-                        .function_builder
-                        .ins()
-                        .ireduce(cranelift_codegen::ir::types::I32, hi);
-                    let hi = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, hi);
+                    let hi = self.function_builder.ins().ireduce(ir::types::I32, hi);
+                    let hi = self.function_builder.ins().sextend(ir::types::I64, hi);
                     self.set_register(rd, lo, Size::S64);
                     self.set_register(Register::Lo, lo, Size::S64);
                     self.set_register(Register::Hi, hi, Size::S64);
@@ -758,20 +704,14 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().iadd(rs_value, rt_value);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Addu(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().iadd(rs_value, rt_value);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Sub(rd, rs, rt) => {
@@ -779,20 +719,14 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().isub(rs_value, rt_value);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Subu(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().isub(rs_value, rt_value);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::And(rd, rs, rt) => {
@@ -946,7 +880,7 @@ impl<'a> JitCompiler<'a> {
                     let next_next_pc = self
                         .function_builder
                         .ins()
-                        .uextend(cranelift_codegen::ir::types::I64, next_next_pc);
+                        .uextend(ir::types::I64, next_next_pc);
                     self.set_register(Register::Ra, next_next_pc, Size::S64);
                 }
                 Instruction::Beq(rs, rt, offset) => {
@@ -954,7 +888,7 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let conditional = self.function_builder.ins().icmp(
-                        cranelift_codegen::ir::condcodes::IntCC::Equal,
+                        ir::condcodes::IntCC::Equal,
                         rs_value,
                         rt_value,
                     );
@@ -977,7 +911,7 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let conditional = self.function_builder.ins().icmp(
-                        cranelift_codegen::ir::condcodes::IntCC::NotEqual,
+                        ir::condcodes::IntCC::NotEqual,
                         rs_value,
                         rt_value,
                     );
@@ -1068,7 +1002,7 @@ impl<'a> JitCompiler<'a> {
                     let value = self
                         .function_builder
                         .ins()
-                        .iconst(cranelift_codegen::ir::types::I64, value as i64);
+                        .iconst(ir::types::I64, value as i64);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Mfc1(rt, fs) => {
@@ -1127,7 +1061,7 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let conditional = self.function_builder.ins().icmp(
-                        cranelift_codegen::ir::condcodes::IntCC::Equal,
+                        ir::condcodes::IntCC::Equal,
                         rs_value,
                         rt_value,
                     );
@@ -1162,7 +1096,7 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let conditional = self.function_builder.ins().icmp(
-                        cranelift_codegen::ir::condcodes::IntCC::NotEqual,
+                        ir::condcodes::IntCC::NotEqual,
                         rs_value,
                         rt_value,
                     );
@@ -1222,46 +1156,31 @@ impl<'a> JitCompiler<'a> {
                 Instruction::Lb(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S8);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lh(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S16);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lw(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S32);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .sextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lbu(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S8);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .uextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().uextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lhu(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S16);
-                    let value = self
-                        .function_builder
-                        .ins()
-                        .uextend(cranelift_codegen::ir::types::I64, value);
+                    let value = self.function_builder.ins().uextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lwr(rt, base, offset) => {
