@@ -1,6 +1,6 @@
 use std::{fmt::LowerHex, ops::Range};
 
-use enum_map::EnumMap;
+use enum_map::{enum_map, EnumMap};
 
 use crate::{
     bits::Bits,
@@ -28,9 +28,9 @@ pub struct TlbEntry {
 
 impl Mmu {
     pub fn new() -> Mmu {
-        let mut pages = EnumMap::from_fn(|_| {
+        let mut pages = enum_map! { _ =>
             vec![PhysicalAddress::memory(0); PAGES as usize].into_boxed_slice()
-        });
+        };
         let kernel_pages = &mut pages[Mode::Kernel];
         // kseg0 and kseg1 are mapped directly to physical memory.
         for address in (0x8000_0000..0xC000_0000).step_by(PAGE_SIZE as usize) {
