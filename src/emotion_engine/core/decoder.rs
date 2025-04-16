@@ -1,6 +1,6 @@
 use crate::bits::Bits;
 
-use super::{fpu, instruction::Instruction, register::Register};
+use super::{control, fpu, instruction::Instruction, register::Register};
 
 #[inline(always)]
 pub fn decode(data: u32) -> Instruction {
@@ -14,6 +14,7 @@ pub fn decode(data: u32) -> Instruction {
     let ft = || fpu::Register::from(t());
     let fs = || fpu::Register::from(d());
     let fd = || fpu::Register::from(data.bits(6..11));
+    let cd = || control::Register::from(d());
     let shamt = || data.bits(6..11) as u8;
     let imm16 = || data.bits(0..16) as u16;
     let imm26 = || data.bits(0..26);
@@ -104,6 +105,14 @@ pub fn decode(data: u32) -> Instruction {
         0b001110 => Instruction::Xori(rt(), rs(), imm16()),
         0b001111 => Instruction::Lui(rt(), imm16()),
         0b010000 => match s() {
+            0b00000 => match data.bits(0..11) {
+                0b000_0000_0000 => Instruction::Mfc0(rt(), cd()),
+                _ => panic!(
+                    "MF0 not implemented {:#034b} {:011b}",
+                    data,
+                    data.bits(0..11)
+                ),
+            },
             0b10000 => match data.bits(0..6) {
                 0b111000 => Instruction::Ei,
                 _ => panic!("TLB/Exception not implemented {:#034b}", data),

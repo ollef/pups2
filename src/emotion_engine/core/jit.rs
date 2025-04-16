@@ -1005,6 +1005,12 @@ impl<'a> JitCompiler<'a> {
                         .iconst(ir::types::I64, value as i64);
                     self.set_register(rt, value, Size::S64);
                 }
+                Instruction::Mfc0(rt, rs) => {
+                    // let value = self.state.control.get_register(rs);
+                    // self.set_register::<u64>(rt, value.sign_extend());
+                    unhandled();
+                    break;
+                }
                 Instruction::Mfc1(rt, fs) => {
                     // let value = self.fpu.get_register::<u32>(fs);
                     // self.set_register::<u64>(rt, value.sign_extend());

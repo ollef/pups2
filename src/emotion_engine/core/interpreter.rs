@@ -1,9 +1,6 @@
 use crate::{
     bits::{Bits, SignExtend},
-    emotion_engine::{
-        bus::Bus,
-        core::register::{AnyRegister, Register},
-    },
+    emotion_engine::{bus::Bus, core::register::Register},
 };
 
 use super::{instruction::Instruction, Core};
@@ -347,6 +344,10 @@ impl Core {
             }
             Instruction::Lui(rt, imm) => {
                 self.set_register::<u64>(rt, ((imm as u32) << 16).sign_extend());
+            }
+            Instruction::Mfc0(rt, rs) => {
+                let value = self.state.control.get_register(rs);
+                self.set_register::<u64>(rt, value.sign_extend());
             }
             Instruction::Mfc1(rt, fs) => {
                 let value = self.state.fpu.get_register::<u32>(fs);
