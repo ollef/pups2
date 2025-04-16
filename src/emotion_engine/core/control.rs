@@ -58,17 +58,17 @@ impl Control {
     pub fn set_register(&mut self, register: Register, value: u32) {
         println!("Setting control register {:?} to {:#010x}", register, value);
         match register {
-            Register::Index => todo!(),
+            Register::Index => self.registers[register] = value,
             Register::Random => todo!(),
-            Register::EntryLo0 => todo!(),
-            Register::EntryLo1 => todo!(),
+            Register::EntryLo0 => self.registers[register] = value,
+            Register::EntryLo1 => self.registers[register] = value,
             Register::Context => todo!(),
-            Register::PageMask => todo!(),
+            Register::PageMask => self.registers[register] = value,
             Register::Wired => todo!(),
             Register::Undefined7 => todo!(),
             Register::BadVAddr => todo!(),
             Register::Count => self.registers[register] = value,
-            Register::EntryHi => todo!(),
+            Register::EntryHi => self.registers[register] = value,
             Register::Compare => self.registers[register] = value,
             Register::Status => self.registers[register] = value,
             Register::Cause => todo!(),
