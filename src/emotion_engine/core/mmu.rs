@@ -21,6 +21,7 @@ pub struct Mmu {
     pages: EnumMap<Mode, Box<[PhysicalAddress]>>,
 }
 
+#[derive(Clone, Debug)]
 pub struct TlbEntry {
     raw: u128,
 }
@@ -37,7 +38,7 @@ impl Mmu {
             kernel_pages[page as usize] = PhysicalAddress::memory(address & 0x1FFF_FFFF);
         }
         Mmu {
-            tlb_entries: (0..48).map(|_| TlbEntry::new()).collect(),
+            tlb_entries: vec![TlbEntry::new(); 48].into_boxed_slice(),
             pages,
         }
     }
