@@ -122,6 +122,10 @@ pub fn decode(data: u32) -> Instruction {
                 ),
             },
             0b10000 => match data.bits(0..6) {
+                0b000001 => Instruction::Tlbr,
+                0b000010 => Instruction::Tlbwi,
+                0b000110 => Instruction::Tlbwr,
+                0b001000 => Instruction::Tlbp,
                 0b111000 => Instruction::Ei,
                 _ => panic!("TLB/Exception not implemented {:#034b}", data),
             },

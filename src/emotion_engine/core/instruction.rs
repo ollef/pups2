@@ -86,6 +86,10 @@ pub enum Instruction {
     Movs(fpu::Register, fpu::Register),
     Cvtws(fpu::Register, fpu::Register),
     Cvtsw(fpu::Register, fpu::Register),
+    Tlbr,
+    Tlbwi,
+    Tlbwr,
+    Tlbp,
     Ei,
     Beql(Register, Register, u16),
     Bnel(Register, Register, u16),
@@ -189,7 +193,11 @@ impl Instruction {
             Instruction::Movs(a, _) => [fpr(*a), None, None],
             Instruction::Cvtws(a, _) => [fpr(*a), None, None],
             Instruction::Cvtsw(a, _) => [fpr(*a), None, None],
-            Instruction::Ei => [None, None, None],
+            Instruction::Tlbr
+            | Instruction::Tlbwi
+            | Instruction::Tlbwr
+            | Instruction::Tlbp
+            | Instruction::Ei => [None, None, None],
             Instruction::Beql(_, _, _) => [None, None, None],
             Instruction::Bnel(_, _, _) => [None, None, None],
             Instruction::Mult1(a, _, _) => [gpr(*a), gpr(Register::Lo), gpr(Register::Hi)],
@@ -295,7 +303,11 @@ impl Instruction {
             Instruction::Movs(_, b) => [fpr(*b), None],
             Instruction::Cvtws(_, b) => [fpr(*b), None],
             Instruction::Cvtsw(_, b) => [fpr(*b), None],
-            Instruction::Ei => [None, None],
+            Instruction::Tlbr
+            | Instruction::Tlbwi
+            | Instruction::Tlbwr
+            | Instruction::Tlbp
+            | Instruction::Ei => [None, None],
             Instruction::Beql(a, b, _) => [gpr(*a), gpr(*b)],
             Instruction::Bnel(a, b, _) => [gpr(*a), gpr(*b)],
             Instruction::Mult1(_, b, c) => [gpr(*b), gpr(*c)],
@@ -408,6 +420,10 @@ impl Display for Instruction {
             Instruction::Movs(a, b) => write!(f, "mov.s {a}, {b}"),
             Instruction::Cvtws(a, b) => write!(f, "cvt.w.s {a}, {b}"),
             Instruction::Cvtsw(a, b) => write!(f, "cvt.s.w {a}, {b}"),
+            Instruction::Tlbr => write!(f, "tlbr"),
+            Instruction::Tlbwi => write!(f, "tlbwi"),
+            Instruction::Tlbwr => write!(f, "tlbwr"),
+            Instruction::Tlbp => write!(f, "tlbp"),
             Instruction::Ei => write!(f, "ei"),
             Instruction::Beql(a, b, c) => write!(f, "beql {a}, {b}, {c:#x}"),
             Instruction::Bnel(a, b, c) => write!(f, "bnel {a}, {b}, {c:#x}"),

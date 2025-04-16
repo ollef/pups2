@@ -1065,6 +1065,10 @@ impl<'a> JitCompiler<'a> {
                     unhandled();
                     break;
                 }
+                Instruction::Tlbr | Instruction::Tlbwi | Instruction::Tlbwr | Instruction::Tlbp => {
+                    unhandled();
+                    break;
+                }
                 Instruction::Ei => {
                     // TODO: Set status register
                 }

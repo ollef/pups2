@@ -383,6 +383,10 @@ impl Core {
                 let value = self.state.fpu.get_register::<u32>(fs) as i32;
                 self.state.fpu.set_register(fd, value as f32);
             }
+            Instruction::Tlbr => todo!(),
+            Instruction::Tlbwi => todo!(),
+            Instruction::Tlbwr => todo!(),
+            Instruction::Tlbp => todo!(),
             Instruction::Ei => {
                 // TODO: Set status register
             }
