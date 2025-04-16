@@ -19,11 +19,78 @@ impl Control {
     }
 
     pub fn get_register(&self, register: Register) -> u32 {
-        self.registers[register]
+        match register {
+            Register::Index => todo!(),
+            Register::Random => todo!(),
+            Register::EntryLo0 => todo!(),
+            Register::EntryLo1 => todo!(),
+            Register::Context => todo!(),
+            Register::PageMask => todo!(),
+            Register::Wired => todo!(),
+            Register::Undefined7 => todo!(),
+            Register::BadVAddr => todo!(),
+            Register::Count => todo!(),
+            Register::EntryHi => todo!(),
+            Register::Compare => todo!(),
+            Register::Status => todo!(),
+            Register::Cause => todo!(),
+            Register::Epc => todo!(),
+            Register::PrId => self.registers[register],
+            Register::Config => todo!(),
+            Register::Undefined17 => todo!(),
+            Register::Undefined18 => todo!(),
+            Register::Undefined19 => todo!(),
+            Register::Undefined20 => todo!(),
+            Register::Undefined21 => todo!(),
+            Register::Undefined22 => todo!(),
+            Register::BadPAddr => todo!(),
+            Register::Undefined24 => todo!(),
+            Register::Undefined25 => todo!(),
+            Register::Undefined26 => todo!(),
+            Register::Undefined27 => todo!(),
+            Register::TagLo => todo!(),
+            Register::TagHi => todo!(),
+            Register::ErrorEpc => todo!(),
+            Register::Undefined31 => todo!(),
+        }
     }
 
     pub fn set_register(&mut self, register: Register, value: u32) {
-        self.registers[register] = value;
+        println!("Setting control register {:?} to {:#010x}", register, value);
+        match register {
+            Register::Index => todo!(),
+            Register::Random => todo!(),
+            Register::EntryLo0 => todo!(),
+            Register::EntryLo1 => todo!(),
+            Register::Context => todo!(),
+            Register::PageMask => todo!(),
+            Register::Wired => todo!(),
+            Register::Undefined7 => todo!(),
+            Register::BadVAddr => todo!(),
+            Register::Count => self.registers[register] = value,
+            Register::EntryHi => todo!(),
+            Register::Compare => self.registers[register] = value,
+            Register::Status => self.registers[register] = value,
+            Register::Cause => todo!(),
+            Register::Epc => todo!(),
+            Register::PrId => todo!(),
+            Register::Config => self.registers[register] = value,
+            Register::Undefined17 => todo!(),
+            Register::Undefined18 => todo!(),
+            Register::Undefined19 => todo!(),
+            Register::Undefined20 => todo!(),
+            Register::Undefined21 => todo!(),
+            Register::Undefined22 => todo!(),
+            Register::BadPAddr => todo!(),
+            Register::Undefined24 => todo!(),
+            Register::Undefined25 => todo!(),
+            Register::Undefined26 => todo!(),
+            Register::Undefined27 => todo!(),
+            Register::TagLo => todo!(),
+            Register::TagHi => todo!(),
+            Register::ErrorEpc => todo!(),
+            Register::Undefined31 => todo!(),
+        }
     }
 }
 
