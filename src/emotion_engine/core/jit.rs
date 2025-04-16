@@ -1011,6 +1011,12 @@ impl<'a> JitCompiler<'a> {
                     unhandled();
                     break;
                 }
+                Instruction::Mtc0(rt, rs) => {
+                    // let value = self.get_register(rt);
+                    // self.state.control.set_register(rs, value);
+                    unhandled();
+                    break;
+                }
                 Instruction::Mfc1(rt, fs) => {
                     // let value = self.fpu.get_register::<u32>(fs);
                     // self.set_register::<u64>(rt, value.sign_extend());

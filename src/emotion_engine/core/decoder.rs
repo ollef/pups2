@@ -113,6 +113,14 @@ pub fn decode(data: u32) -> Instruction {
                     data.bits(0..11)
                 ),
             },
+            0b00100 => match data.bits(0..11) {
+                0b000_0000_0000 => Instruction::Mtc0(rt(), cd()),
+                _ => panic!(
+                    "MT0 not implemented {:#034b} {:011b}",
+                    data,
+                    data.bits(0..11)
+                ),
+            },
             0b10000 => match data.bits(0..6) {
                 0b111000 => Instruction::Ei,
                 _ => panic!("TLB/Exception not implemented {:#034b}", data),

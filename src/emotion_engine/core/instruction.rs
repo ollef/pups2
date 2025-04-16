@@ -78,6 +78,7 @@ pub enum Instruction {
     Xori(Register, Register, u16),
     Lui(Register, u16),
     Mfc0(Register, control::Register),
+    Mtc0(Register, control::Register),
     Mfc1(Register, fpu::Register),
     Mtc1(Register, fpu::Register),
     Muls(fpu::Register, fpu::Register, fpu::Register),
@@ -108,6 +109,7 @@ pub enum Instruction {
 impl Instruction {
     pub fn definitions(&self) -> impl Iterator<Item = AnyRegister> {
         let gpr = |x| Some(AnyRegister::Core(x));
+        let cpr = |x| Some(AnyRegister::Control(x));
         let fpr = |x| Some(AnyRegister::Fpu(x));
         (match self {
             Instruction::Unknown => [None, None, None],
@@ -179,6 +181,7 @@ impl Instruction {
             Instruction::Xori(a, _, _) => [gpr(*a), None, None],
             Instruction::Lui(a, _) => [gpr(*a), None, None],
             Instruction::Mfc0(a, _) => [gpr(*a), None, None],
+            Instruction::Mtc0(_, b) => [cpr(*b), None, None],
             Instruction::Mfc1(a, _) => [gpr(*a), None, None],
             Instruction::Mtc1(_, b) => [fpr(*b), None, None],
             Instruction::Muls(a, _, _) => [fpr(*a), None, None],
@@ -284,6 +287,7 @@ impl Instruction {
             Instruction::Xori(_, b, _) => [gpr(*b), None],
             Instruction::Lui(_, _) => [None, None],
             Instruction::Mfc0(_, b) => [cpr(*b), None],
+            Instruction::Mtc0(a, _) => [gpr(*a), None],
             Instruction::Mfc1(_, b) => [fpr(*b), None],
             Instruction::Mtc1(a, _) => [gpr(*a), None],
             Instruction::Muls(_, b, c) => [fpr(*b), fpr(*c)],
@@ -396,6 +400,7 @@ impl Display for Instruction {
             Instruction::Xori(a, b, c) => write!(f, "xori {a}, {b}, {c:#x}"),
             Instruction::Lui(a, b) => write!(f, "lui {a}, {b}"),
             Instruction::Mfc0(a, b) => write!(f, "mfc0 {a}, {b}"),
+            Instruction::Mtc0(a, b) => write!(f, "mtc0 {a}, {b}"),
             Instruction::Mfc1(a, b) => write!(f, "mfc1 {a}, {b}"),
             Instruction::Mtc1(a, b) => write!(f, "mtc1 {a}, {b}"),
             Instruction::Muls(a, b, c) => write!(f, "mul.s {a}, {b}, {c}"),

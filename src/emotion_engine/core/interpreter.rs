@@ -349,6 +349,10 @@ impl Core {
                 let value = self.state.control.get_register(rs);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
+            Instruction::Mtc0(rt, rs) => {
+                let value = self.get_register(rt);
+                self.state.control.set_register(rs, value);
+            }
             Instruction::Mfc1(rt, fs) => {
                 let value = self.state.fpu.get_register::<u32>(fs);
                 self.set_register::<u64>(rt, value.sign_extend());
