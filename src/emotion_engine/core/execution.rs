@@ -20,7 +20,7 @@ impl Core {
                         self.mode
                     ));
                     cycles = cycles.saturating_sub(bytes as u64 / 4);
-                    function();
+                    function(self.mode);
                 }
                 Code::Interpreted(instruction) => {
                     cycles -= 1;

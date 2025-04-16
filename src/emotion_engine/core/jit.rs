@@ -64,7 +64,7 @@ pub struct CacheEntry {
 }
 
 pub enum Code {
-    Jitted(extern "C" fn()),
+    Jitted(extern "C" fn(Mode)),
     Interpreted(Instruction),
 }
 
@@ -204,31 +204,31 @@ impl Jit {
                     &mut self.function_builder_context,
                     mmu,
                     bus,
-                    mode,
                 );
 
-                let entry =
-                    if let Some(end_address) = jit_compiler.compile(physical_program_counter) {
-                        // println!("Compiling {}", &self.codegen_context.func);
-                        self.codegen_context
-                            .compile(self.isa.as_ref(), &mut ControlPlane::default())
-                            .unwrap();
-                        // println!("Compiled {}", &self.codegen_context.func);
-                        let compiled_code = self.codegen_context.compiled_code().unwrap();
-                        let pointer = self.executable_memory.allocate(compiled_code.code_buffer());
-                        let function =
-                            unsafe { std::mem::transmute::<*const u8, extern "C" fn()>(pointer) };
-                        CacheEntry {
-                            address_range: physical_program_counter..end_address,
-                            code: Code::Jitted(function),
-                        }
-                    } else {
-                        CacheEntry {
-                            address_range: physical_program_counter
-                                ..physical_program_counter + INSTRUCTION_SIZE as u32,
-                            code: Code::Interpreted(decode(bus.read(physical_program_counter))),
-                        }
-                    };
+                let entry = if let Some(end_address) =
+                    jit_compiler.compile(physical_program_counter)
+                {
+                    // println!("Compiling {}", &self.codegen_context.func);
+                    self.codegen_context
+                        .compile(self.isa.as_ref(), &mut ControlPlane::default())
+                        .unwrap();
+                    // println!("Compiled {}", &self.codegen_context.func);
+                    let compiled_code = self.codegen_context.compiled_code().unwrap();
+                    let pointer = self.executable_memory.allocate(compiled_code.code_buffer());
+                    let function =
+                        unsafe { std::mem::transmute::<*const u8, extern "C" fn(Mode)>(pointer) };
+                    CacheEntry {
+                        address_range: physical_program_counter..end_address,
+                        code: Code::Jitted(function),
+                    }
+                } else {
+                    CacheEntry {
+                        address_range: physical_program_counter
+                            ..physical_program_counter + INSTRUCTION_SIZE as u32,
+                        code: Code::Interpreted(decode(bus.read(physical_program_counter))),
+                    }
+                };
                 self.add(entry)
             }
             CacheIndexView::Cached(index) => index,
@@ -243,7 +243,6 @@ struct JitCompiler<'a> {
     isa: &'a OwnedTargetIsa,
     mmu: &'a Mmu,
     bus: &'a Bus,
-    mode: Mode,
     registers: EnumMap<Register, Option<RegisterState>>,
 }
 
@@ -292,7 +291,6 @@ impl<'a> JitCompiler<'a> {
         function_builder_context: &'a mut cranelift_frontend::FunctionBuilderContext,
         mmu: &'a Mmu,
         bus: &'a Bus,
-        mode: Mode,
     ) -> Self {
         codegen_context.clear();
         let function_builder = cranelift_frontend::FunctionBuilder::new(
@@ -300,13 +298,17 @@ impl<'a> JitCompiler<'a> {
             function_builder_context,
         );
         function_builder.func.signature = Signature::new(isa.default_call_conv());
+        function_builder
+            .func
+            .signature
+            .params
+            .push(ir::AbiParam::new(ir::types::I8)); // Mode
         JitCompiler {
             function_builder,
             state,
             isa,
             mmu,
             bus,
-            mode,
             registers: EnumMap::default(),
         }
     }
@@ -425,7 +427,7 @@ impl<'a> JitCompiler<'a> {
         bus.read(physical_address)
     }
 
-    fn load(&mut self, address: ir::Value, offset: u16, size: Size) -> ir::Value {
+    fn load(&mut self, address: ir::Value, offset: u16, size: Size, mode: ir::Value) -> ir::Value {
         let offset: u64 = offset.sign_extend();
         let address = self.function_builder.ins().iadd_imm(address, offset as i64);
         let mut signature = Signature::new(self.isa.default_call_conv());
@@ -457,19 +459,22 @@ impl<'a> JitCompiler<'a> {
             .function_builder
             .ins()
             .iconst(ir::types::I64, self.bus as *const Bus as i64);
-        let mode_value = self
-            .function_builder
-            .ins()
-            .iconst(ir::types::I8, self.mode as u8 as i64);
         let call = self.function_builder.ins().call_indirect(
             signature_ref,
             function_ptr,
-            &[mmu_ptr, bus_ptr, address, mode_value],
+            &[mmu_ptr, bus_ptr, address, mode],
         );
         self.function_builder.inst_results(call)[0]
     }
 
-    fn store(&mut self, value: ir::Value, address: ir::Value, offset: u16, size: Size) {
+    fn store(
+        &mut self,
+        value: ir::Value,
+        address: ir::Value,
+        offset: u16,
+        size: Size,
+        mode: ir::Value,
+    ) {
         let offset: u64 = offset.sign_extend();
         let address = self.function_builder.ins().iadd_imm(address, offset as i64);
         let mut signature = Signature::new(self.isa.default_call_conv());
@@ -501,14 +506,10 @@ impl<'a> JitCompiler<'a> {
             .function_builder
             .ins()
             .iconst(ir::types::I64, self.bus as *const Bus as i64);
-        let mode_value = self
-            .function_builder
-            .ins()
-            .iconst(ir::types::I8, self.mode as u8 as i64);
         self.function_builder.ins().call_indirect(
             signature_ref,
             function_ptr,
-            &[mmu_ptr, bus_ptr, address, value, mode_value],
+            &[mmu_ptr, bus_ptr, address, value, mode],
         );
     }
 
@@ -517,6 +518,9 @@ impl<'a> JitCompiler<'a> {
             return None;
         }
         let block = self.function_builder.create_block();
+        self.function_builder
+            .append_block_params_for_function_params(block);
+        let mode = self.function_builder.block_params(block)[0];
         self.function_builder.switch_to_block(block);
         println!("Compiling at {:#010x}", address.0);
         let start_address = address;
@@ -1171,31 +1175,31 @@ impl<'a> JitCompiler<'a> {
                 }
                 Instruction::Lb(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
-                    let value = self.load(base_value, offset, Size::S8);
+                    let value = self.load(base_value, offset, Size::S8, mode);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lh(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
-                    let value = self.load(base_value, offset, Size::S16);
+                    let value = self.load(base_value, offset, Size::S16, mode);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lw(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
-                    let value = self.load(base_value, offset, Size::S32);
+                    let value = self.load(base_value, offset, Size::S32, mode);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lbu(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
-                    let value = self.load(base_value, offset, Size::S8);
+                    let value = self.load(base_value, offset, Size::S8, mode);
                     let value = self.function_builder.ins().uextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Lhu(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
-                    let value = self.load(base_value, offset, Size::S16);
+                    let value = self.load(base_value, offset, Size::S16, mode);
                     let value = self.function_builder.ins().uextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
                 }
@@ -1218,17 +1222,17 @@ impl<'a> JitCompiler<'a> {
                 Instruction::Sb(rt, base, offset) => {
                     let rt_value = self.get_register(rt, Size::S8);
                     let base_value = self.get_register(base, Size::S32);
-                    self.store(rt_value, base_value, offset, Size::S8);
+                    self.store(rt_value, base_value, offset, Size::S8, mode);
                 }
                 Instruction::Sh(rt, base, offset) => {
                     let rt_value = self.get_register(rt, Size::S16);
                     let base_value = self.get_register(base, Size::S32);
-                    self.store(rt_value, base_value, offset, Size::S16);
+                    self.store(rt_value, base_value, offset, Size::S16, mode);
                 }
                 Instruction::Sw(rt, base, offset) => {
                     let rt_value = self.get_register(rt, Size::S32);
                     let base_value = self.get_register(base, Size::S32);
-                    self.store(rt_value, base_value, offset, Size::S32);
+                    self.store(rt_value, base_value, offset, Size::S32, mode);
                 }
                 Instruction::Lwc1(ft, base, offset) => {
                     // let address = self
@@ -1244,7 +1248,7 @@ impl<'a> JitCompiler<'a> {
                 }
                 Instruction::Ld(rt, base, offset) => {
                     let base_value = self.get_register(base, Size::S32);
-                    let value = self.load(base_value, offset, Size::S64);
+                    let value = self.load(base_value, offset, Size::S64, mode);
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Swc1(ft, base, offset) => {
@@ -1261,7 +1265,7 @@ impl<'a> JitCompiler<'a> {
                 Instruction::Sd(rt, base, offset) => {
                     let rt_value = self.get_register(rt, Size::S64);
                     let base_value = self.get_register(base, Size::S32);
-                    self.store(rt_value, base_value, offset, Size::S64);
+                    self.store(rt_value, base_value, offset, Size::S64, mode);
                 }
             }
             address += INSTRUCTION_SIZE as u32;
