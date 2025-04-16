@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use enum_map::Enum;
 
-use super::fpu;
+use super::{control, fpu};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
 #[repr(u8)]
@@ -104,53 +104,10 @@ impl Register {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
-#[repr(u8)]
-pub enum ControlRegister {
-    Index,
-    Random,
-    EntryLo0,
-    EntryLo1,
-    Context,
-    PageMask,
-    Wired,
-    Undefined7,
-    BadVAddr,
-    Count,
-    EntryHi,
-    Compare,
-    Status,
-    Cause,
-    Epc,
-    PrId,
-    Config,
-    Undefined17,
-    Undefined18,
-    Undefined19,
-    Undefined20,
-    Undefined21,
-    Undefined22,
-    BadPAddr,
-    Undefined24,
-    Undefined25,
-    Undefined26,
-    Undefined27,
-    TagLo,
-    TagHi,
-    ErrorEpc,
-    Undefined31,
-}
-
-impl From<u32> for ControlRegister {
-    fn from(value: u32) -> Self {
-        let value = value & 0b11111;
-        unsafe { std::mem::transmute(value as u8) }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AnyRegister {
     Core(Register),
+    Control(control::Register),
     Fpu(fpu::Register),
 }
 
@@ -158,6 +115,7 @@ impl AnyRegister {
     pub fn non_zero(self) -> Option<Self> {
         match self {
             AnyRegister::Core(register) => register.non_zero().map(AnyRegister::Core),
+            AnyRegister::Control(register) => Some(AnyRegister::Control(register)),
             AnyRegister::Fpu(register) => Some(AnyRegister::Fpu(register)),
         }
     }

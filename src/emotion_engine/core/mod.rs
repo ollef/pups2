@@ -1,3 +1,4 @@
+pub mod control;
 pub mod decoder;
 pub mod execution;
 pub mod fpu;
@@ -7,13 +8,14 @@ pub mod jit;
 pub mod mmu;
 pub mod register;
 
+use control::Control;
 use enum_map::{enum_map, Enum, EnumMap};
 use fpu::Fpu;
 use jit::Jit;
 
 use {
     mmu::Mmu,
-    register::{ControlRegister, GetRegister, Register, SetRegister},
+    register::{GetRegister, Register, SetRegister},
 };
 
 #[derive(Enum, Copy, Clone, Debug)]
@@ -36,9 +38,9 @@ pub struct Core {
 pub struct State {
     pub program_counter: u32,
     pub registers: EnumMap<Register, u128>,
-    pub cop0_registers: EnumMap<ControlRegister, u32>,
-    pub delayed_branch_target: Option<u32>,
+    pub control: Control,
     pub fpu: Fpu,
+    pub delayed_branch_target: Option<u32>,
 }
 
 impl Core {
@@ -48,9 +50,9 @@ impl Core {
             state: State {
                 program_counter: 0xBFC00000,
                 registers: enum_map! { _ => 0 },
-                cop0_registers: enum_map! { _ => 0 },
-                delayed_branch_target: None,
+                control: Control::new(),
                 fpu: Fpu::new(),
+                delayed_branch_target: None,
             },
             mmu: Mmu::new(),
             main_thread_stack_pointer: 0,
