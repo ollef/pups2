@@ -10,7 +10,11 @@ pub struct Control {
 impl Control {
     pub fn new() -> Control {
         Control {
-            registers: enum_map! {_ => 0},
+            registers: enum_map! {
+                Register::PrId => 0x2E20,
+                Register::Config => 0x440,
+                _ => 0,
+            },
         }
     }
 
