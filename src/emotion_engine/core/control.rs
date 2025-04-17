@@ -20,17 +20,17 @@ impl Control {
 
     pub fn get_register(&self, register: Register) -> u32 {
         match register {
-            Register::Index => todo!(),
+            Register::Index => self.registers[register],
             Register::Random => todo!(),
-            Register::EntryLo0 => todo!(),
-            Register::EntryLo1 => todo!(),
+            Register::EntryLo0 => self.registers[register],
+            Register::EntryLo1 => self.registers[register],
             Register::Context => todo!(),
-            Register::PageMask => todo!(),
+            Register::PageMask => self.registers[register],
             Register::Wired => todo!(),
             Register::Undefined7 => todo!(),
             Register::BadVAddr => todo!(),
             Register::Count => todo!(),
-            Register::EntryHi => todo!(),
+            Register::EntryHi => self.registers[register],
             Register::Compare => todo!(),
             Register::Status => todo!(),
             Register::Cause => todo!(),
