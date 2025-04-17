@@ -3,7 +3,7 @@ use crate::{
     emotion_engine::{bus::Bus, core::register::Register},
 };
 
-use super::{instruction::Instruction, Core};
+use super::{control, instruction::Instruction, mmu::TlbEntry, Core};
 
 impl Core {
     pub fn set_delayed_branch_target(&mut self, target: u32) {
@@ -384,7 +384,25 @@ impl Core {
                 self.state.fpu.set_register(fd, value as f32);
             }
             Instruction::Tlbr => todo!(),
-            Instruction::Tlbwi => todo!(),
+            Instruction::Tlbwi => {
+                let mut entry = 0;
+                let index = self.state.control.get_register(control::Register::Index);
+                let page_mask = self.state.control.get_register(control::Register::PageMask);
+                let entry_hi = self.state.control.get_register(control::Register::EntryHi);
+                let entry_lo0 = self.state.control.get_register(control::Register::EntryLo0);
+                let entry_lo1 = self.state.control.get_register(control::Register::EntryLo1);
+                entry.set_bits(TlbEntry::MASK, page_mask.bits(13..=24));
+                entry.set_bits(
+                    TlbEntry::VIRTUAL_PAGE_NUMBER_DIV_2,
+                    entry_hi.bits(13..=31) & !page_mask.bits(13..=24),
+                );
+                entry.set_bit(TlbEntry::GLOBAL, entry_lo0.bit(0) && entry_lo1.bit(0));
+                entry.set_bits(TlbEntry::ADDRESS_SPACE_ID, entry_hi.bits(0..=11));
+                entry.set_bits(33..=63, entry_lo0.bits(1..=31));
+                entry.set_bits(1..=31, entry_lo1.bits(1..=31));
+                self.mmu
+                    .write_index(index.bits(0..=5) as u8, TlbEntry::new(entry));
+            }
             Instruction::Tlbwr => todo!(),
             Instruction::Tlbp => todo!(),
             Instruction::Ei => {
