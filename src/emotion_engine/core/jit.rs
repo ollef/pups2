@@ -965,26 +965,26 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Slti(rt, rs, imm) => {
-                    // let imm: u64 = imm.sign_extend();
-                    // let value = if (self.get_register::<u64>(rs) as i64) < imm as i64 {
-                    //     1
-                    // } else {
-                    //     0
-                    // };
-                    // self.set_register::<u64>(rt, value);
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let imm: u64 = imm.sign_extend();
+                    let value = self.function_builder.ins().icmp_imm(
+                        ir::condcodes::IntCC::SignedLessThan,
+                        rs_value,
+                        imm as i64,
+                    );
+                    let value = self.function_builder.ins().uextend(ir::types::I64, value);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Sltiu(rt, rs, imm) => {
-                    // let imm: u64 = imm.sign_extend();
-                    // let value = if self.get_register::<u64>(rs) < imm {
-                    //     1
-                    // } else {
-                    //     0
-                    // };
-                    // self.set_register::<u64>(rt, value);
-                    unhandled();
-                    break;
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let imm: u64 = imm.sign_extend();
+                    let value = self.function_builder.ins().icmp_imm(
+                        ir::condcodes::IntCC::UnsignedLessThan,
+                        rs_value,
+                        imm as i64,
+                    );
+                    let value = self.function_builder.ins().uextend(ir::types::I64, value);
+                    self.set_register(rt, value, Size::S64);
                 }
                 Instruction::Andi(rt, rs, imm) => {
                     let rs_value = self.get_register(rs, Size::S64);
