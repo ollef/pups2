@@ -126,6 +126,10 @@ impl Mmu {
         for page in start_page..end_page {
             let virtual_page = page << OFFSET_BITS;
             let physical_frame = physical_frame + ((page - start_page) << OFFSET_BITS);
+            println!(
+                "Mapping virtual page {:#x} to physical frame {:#x}",
+                virtual_page, physical_frame.0
+            );
             self.pages[Mode::Kernel][page as usize] = physical_frame;
             match virtual_page {
                 0x0000_0000..0x8000_0000 => {
