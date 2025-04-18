@@ -659,13 +659,21 @@ impl<'a> JitCompiler<'a> {
                     // TODO: maybe do something here
                 }
                 Instruction::Mfhi(rd) => {
-                    // self.set_register(rd, self.get_register::<u64>(Register::Hi))
-                    unhandled();
-                    break;
+                    let hi_value = self.get_register(Register::Hi, Size::S64);
+                    self.set_register(rd, hi_value, Size::S64);
                 }
-                Instruction::Mthi(_) => todo!(),
-                Instruction::Mflo(_) => todo!(),
-                Instruction::Mtlo(_) => todo!(),
+                Instruction::Mthi(rs) => {
+                    let rs_value = self.get_register(rs, Size::S64);
+                    self.set_register(Register::Hi, rs_value, Size::S64);
+                }
+                Instruction::Mflo(rd) => {
+                    let lo_value = self.get_register(Register::Lo, Size::S64);
+                    self.set_register(rd, lo_value, Size::S64);
+                }
+                Instruction::Mtlo(rs) => {
+                    let rs_value = self.get_register(rs, Size::S64);
+                    self.set_register(Register::Lo, rs_value, Size::S64);
+                }
                 Instruction::Dsllv(_, _, _) => todo!(),
                 Instruction::Dsrav(_, _, _) => todo!(),
                 Instruction::Dsrlv(_, _, _) => todo!(),
