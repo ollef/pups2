@@ -56,7 +56,7 @@ impl Timer {
             0x00 => todo!(),
             0x10 => todo!(),
             0x20 => todo!(),
-            0x30 => todo!(),
+            0x30 if timer == 0 || timer == 1 => todo!(),
             _ => panic!(
                 "Invalid TIMER write of {} at address: 0x{:08x}",
                 value, address
@@ -76,7 +76,7 @@ impl Timer {
             0x00 => (self.bus_clock - self.timers[timer].start) as u16,
             0x10 => self.timers[timer].mode,
             0x20 => self.timers[timer].compare,
-            0x30 => self.timers[timer].hold,
+            0x30 if timer == 0 || timer == 1 => self.timers[timer].hold,
             _ => panic!("Invalid TIMER read at address: 0x{:08x}", address),
         }
     }
