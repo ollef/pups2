@@ -136,9 +136,9 @@ impl Core {
                 // TODO: maybe do something here
             }
             Instruction::Mfhi(rd) => self.set_register(rd, self.get_register::<u64>(Register::Hi)),
-            Instruction::Mthi(_) => todo!(),
-            Instruction::Mflo(_) => todo!(),
-            Instruction::Mtlo(_) => todo!(),
+            Instruction::Mthi(rs) => self.set_register(Register::Hi, self.get_register::<u64>(rs)),
+            Instruction::Mflo(rd) => self.set_register(rd, self.get_register::<u64>(Register::Lo)),
+            Instruction::Mtlo(rs) => self.set_register(Register::Lo, self.get_register::<u64>(rs)),
             Instruction::Dsllv(_, _, _) => todo!(),
             Instruction::Dsrav(_, _, _) => todo!(),
             Instruction::Dsrlv(_, _, _) => todo!(),
