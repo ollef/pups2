@@ -3,16 +3,18 @@ use crate::{
     emotion_engine::{bus::Bus, core::register::Register},
 };
 
-use super::{control, instruction::Instruction, mmu::TlbEntry, Core};
+use super::{control, instruction::Instruction, mmu::TlbEntry, Core, State};
 
-impl Core {
-    pub fn set_delayed_branch_target(&mut self, target: u32) {
+impl State {
+    pub extern "C" fn set_delayed_branch_target(&mut self, target: u32) {
         if target.bits(0..2) != 0 {
             panic!("Invalid branch target: {:#010x}", target);
         }
-        self.state.delayed_branch_target = Some(target);
+        self.delayed_branch_target = Some(target);
     }
+}
 
+impl Core {
     pub fn interpret_instruction(&mut self, instruction: Instruction, bus: &mut Bus) {
         // for reg in instruction.uses() {
         //     let value = self.get_register::<u64>(reg);
@@ -57,12 +59,13 @@ impl Core {
                 self.set_register::<u64>(rd, value.sign_extend());
             }
             Instruction::Jr(rs) => {
-                self.set_delayed_branch_target(self.get_register::<u32>(rs));
+                self.state
+                    .set_delayed_branch_target(self.get_register::<u32>(rs));
             }
             Instruction::Jalr(rd, rs) => {
                 let branch_target = self.get_register::<u32>(rs);
                 self.set_register(rd, (next_program_counter + 4) as u64);
-                self.set_delayed_branch_target(branch_target);
+                self.state.set_delayed_branch_target(branch_target);
             }
             Instruction::Movz(rd, rs, rt) => {
                 if self.get_register::<u64>(rt) == 0 {
@@ -270,40 +273,45 @@ impl Core {
             Instruction::Bltz(rs, offset) => {
                 if (self.get_register::<u64>(rs) as i64) < 0 {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
+                    self.state
+                        .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Bgez(rs, offset) => {
                 if self.get_register::<u64>(rs) as i64 >= 0 {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
+                    self.state
+                        .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
-            Instruction::J(target) => self.set_delayed_branch_target(
+            Instruction::J(target) => self.state.set_delayed_branch_target(
                 (next_program_counter & 0xF000_0000).wrapping_add(target << 2),
             ),
             Instruction::Jal(target) => {
                 self.set_register(Register::Ra, (next_program_counter + 4) as u64);
-                self.set_delayed_branch_target(
+                self.state.set_delayed_branch_target(
                     (next_program_counter & 0xF000_0000).wrapping_add(target << 2),
                 );
             }
             Instruction::Beq(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
+                    self.state
+                        .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Bne(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
+                    self.state
+                        .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Blez(rs, offset) => {
                 if (self.get_register::<u64>(rs) as i64) <= 0 {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
+                    self.state
+                        .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
             Instruction::Addi(rt, rs, imm) => {
@@ -411,7 +419,8 @@ impl Core {
             Instruction::Beql(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
+                    self.state
+                        .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 } else {
                     next_program_counter += 4;
                 }
@@ -419,7 +428,8 @@ impl Core {
             Instruction::Bnel(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
-                    self.set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
+                    self.state
+                        .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 } else {
                     next_program_counter += 4;
                 }

@@ -406,6 +406,30 @@ impl<'a> JitCompiler<'a> {
             .store(ir::MemFlags::trusted(), value, address, 0);
     }
 
+    fn store_delayed_branch_target(&mut self, delayed_branch_target: ir::Value) {
+        let mut signature = Signature::new(self.isa.default_call_conv());
+        signature.params.extend_from_slice(&[
+            ir::AbiParam::new(ir::types::I64),
+            ir::AbiParam::new(ir::types::I32),
+        ]);
+        let signature_ref = self.function_builder.import_signature(signature);
+
+        let function_ptr = State::set_delayed_branch_target as *const u8;
+        let function_ptr = self
+            .function_builder
+            .ins()
+            .iconst(ir::types::I64, function_ptr as i64);
+        let state_ptr = self
+            .function_builder
+            .ins()
+            .iconst(ir::types::I64, self.state as *const State as i64);
+        self.function_builder.ins().call_indirect(
+            signature_ref,
+            function_ptr,
+            &[state_ptr, delayed_branch_target],
+        );
+    }
+
     pub extern "C" fn jit_write_virtual<T: Bytes + LowerHex>(
         mmu: &Mmu,
         bus: &mut Bus,
@@ -533,6 +557,7 @@ impl<'a> JitCompiler<'a> {
                     .iadd_imm(program_counter, INSTRUCTION_SIZE as i64)
             });
             let delay_slot = delayed_branch_target.is_some();
+            delayed_branch_target = None;
             let instruction = decode(self.bus.read(address));
             println!("Instruction: {:#010x} {}", address.0, instruction);
             if instruction.is_branch() {
@@ -544,9 +569,6 @@ impl<'a> JitCompiler<'a> {
             let unhandled = || {
                 println!("Unhandled instruction at {:#010x}", address.0);
                 println!("{}", instruction);
-                if delay_slot {
-                    panic!("Delay slot not handled: {}", instruction);
-                }
             };
             match instruction {
                 _ if instruction.is_nop() => {}
@@ -1278,6 +1300,9 @@ impl<'a> JitCompiler<'a> {
             self.writeback_register(register);
         }
         self.store_program_counter(program_counter);
+        if let Some(delayed_branch_target) = delayed_branch_target {
+            self.store_delayed_branch_target(delayed_branch_target);
+        }
         self.function_builder.ins().return_(&[]);
         self.function_builder.seal_all_blocks();
         self.function_builder.finalize();
