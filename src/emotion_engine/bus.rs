@@ -98,7 +98,7 @@ impl Bus {
         }
     }
 
-    pub fn read<T: Bytes + LowerHex>(&self, address: PhysicalAddress) -> T {
+    pub fn read<T: Bytes + LowerHex + Default>(&self, address: PhysicalAddress) -> T {
         match address.view() {
             PhysicalAddressView::Memory(address) => {
                 assert!(address & (std::mem::size_of::<T>() - 1) as u32 == 0);
@@ -128,6 +128,10 @@ impl Bus {
                         let result = self.gs.read_privileged(address);
                         // println!("Read from GS: 0x{:08x}==0x{:08x}", address, result);
                         result
+                    }
+                    0x1400_0000..0x1FC0_0000 => {
+                        println!("Read from reserved memory: 0x{:08x}", address);
+                        T::default()
                     }
                     0x1FC0_0000..0x2000_0000 => {
                         let address = address as usize & (BOOT_MEMORY_SIZE - 1);

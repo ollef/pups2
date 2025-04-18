@@ -297,7 +297,7 @@ impl Core {
         bus.write(physical_address, value);
     }
 
-    pub fn read_virtual<T: Bytes + LowerHex>(&self, bus: &mut Bus, address: u32) -> T {
+    pub fn read_virtual<T: Bytes + LowerHex + Default>(&self, bus: &mut Bus, address: u32) -> T {
         let physical_address = self.mmu.virtual_to_physical(address, self.mode);
         bus.read(physical_address)
     }

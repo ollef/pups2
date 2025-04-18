@@ -417,7 +417,7 @@ impl<'a> JitCompiler<'a> {
         bus.write(physical_address, value)
     }
 
-    pub extern "C" fn jit_read_virtual<T: Bytes + LowerHex>(
+    pub extern "C" fn jit_read_virtual<T: Bytes + LowerHex + Default>(
         mmu: &Mmu,
         bus: &mut Bus,
         address: u32,
