@@ -129,10 +129,9 @@ impl Bus {
                         // println!("Read from GS: 0x{:08x}==0x{:08x}", address, result);
                         result
                     }
-                    0x1400_0000..0x1FC0_0000 => {
-                        println!("Read from reserved memory: 0x{:08x}", address);
-                        T::default()
-                    }
+                    // PS2 tool model number
+                    // https://www.obscuregamers.com/threads/running-ps1-game-on-dtl-t10000-tool.1949
+                    0x1F80_3204 => T::default(),
                     0x1FC0_0000..0x2000_0000 => {
                         let address = address as usize & (BOOT_MEMORY_SIZE - 1);
                         let result = T::from_bytes(
@@ -178,7 +177,7 @@ impl Bus {
                         // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
                         self.dmac.write(address, value)
                     }
-                    0x1000_F500 => {
+                    0x1000_F500 | 0x1f80_1470 | 0x1F80_1472 => {
                         println!("Unhandled write: 0x{:08x}:=0x{:08x}", address, value);
                     }
                     0x1200_0000..0x1201_0000 => {
