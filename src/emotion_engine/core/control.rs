@@ -29,7 +29,7 @@ impl Control {
             Register::Wired => todo!(),
             Register::Undefined7 => todo!(),
             Register::BadVAddr => todo!(),
-            Register::Count => todo!(),
+            Register::Count => self.registers[register],
             Register::EntryHi => self.registers[register],
             Register::Compare => todo!(),
             Register::Status => todo!(),
