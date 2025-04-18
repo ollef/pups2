@@ -545,7 +545,7 @@ impl<'a> JitCompiler<'a> {
                 println!("Unhandled instruction at {:#010x}", address.0);
                 println!("{}", instruction);
                 if delay_slot {
-                    panic!("Delay slot not handled");
+                    panic!("Delay slot not handled: {}", instruction);
                 }
             };
             match instruction {
