@@ -410,7 +410,7 @@ impl Display for Instruction {
             Instruction::Andi(a, b, c) => write!(f, "andi {a}, {b}, {c:#x}"),
             Instruction::Ori(a, b, c) => write!(f, "ori {a}, {b}, {c:#x}"),
             Instruction::Xori(a, b, c) => write!(f, "xori {a}, {b}, {c:#x}"),
-            Instruction::Lui(a, b) => write!(f, "lui {a}, {b}"),
+            Instruction::Lui(a, b) => write!(f, "lui {a}, {b:#x}"),
             Instruction::Mfc0(a, b) => write!(f, "mfc0 {a}, {b}"),
             Instruction::Mtc0(a, b) => write!(f, "mtc0 {a}, {b}"),
             Instruction::Mfc1(a, b) => write!(f, "mfc1 {a}, {b}"),
