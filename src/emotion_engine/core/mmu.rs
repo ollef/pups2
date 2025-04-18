@@ -283,7 +283,7 @@ impl TlbEntry {
             ]
         })
         .into_iter()
-        .filter_map(|x| x)
+        .flatten()
     }
 }
 
