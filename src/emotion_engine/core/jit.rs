@@ -210,11 +210,11 @@ impl Jit {
                     jit_compiler.compile(physical_program_counter)
                 {
                     // println!("Compiling {}", &self.codegen_context.func);
-                    self.codegen_context
+                    let compiled_code = self
+                        .codegen_context
                         .compile(self.isa.as_ref(), &mut ControlPlane::default())
                         .unwrap();
                     // println!("Compiled {}", &self.codegen_context.func);
-                    let compiled_code = self.codegen_context.compiled_code().unwrap();
                     let pointer = self.executable_memory.allocate(compiled_code.code_buffer());
                     let function =
                         unsafe { std::mem::transmute::<*const u8, extern "C" fn(Mode)>(pointer) };
