@@ -177,7 +177,8 @@ impl Bus {
                         // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
                         self.dmac.write(address, value)
                     }
-                    0x1000_F500 | 0x1f80_1470 | 0x1F80_1472 => {
+                    0x1000_F100 | 0x1000_F120 | 0x1000_F140 | 0x1000_F150 | 0x1000_F500
+                    | 0x1F80_1470 | 0x1F80_1472 => {
                         println!("Unhandled write: 0x{:08x}:=0x{:08x}", address, value);
                     }
                     0x1200_0000..0x1201_0000 => {
