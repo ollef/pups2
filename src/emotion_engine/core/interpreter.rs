@@ -162,7 +162,17 @@ impl Core {
                 self.set_register(Register::Lo, lo);
                 self.set_register(Register::Hi, hi);
             }
-            Instruction::Div(_, _) => todo!(),
+            Instruction::Div(rs, rt) => {
+                let dividend = self.get_register::<u32>(rs) as i32;
+                let divisor = self.get_register::<u32>(rt) as i32;
+                let (quotient, remainder) = match (dividend, divisor) {
+                    (_, 0) => (i32::MAX as _, dividend),
+                    (i32::MIN, -1) => (i32::MIN as _, 0),
+                    (dividend, divisor) => (dividend / divisor, dividend % divisor),
+                };
+                self.set_register::<u64>(Register::Lo, quotient.sign_extend());
+                self.set_register::<u64>(Register::Hi, remainder.sign_extend());
+            }
             Instruction::Divu(rs, rt) => {
                 let dividend = self.get_register::<u32>(rs);
                 let divisor = self.get_register::<u32>(rt);
