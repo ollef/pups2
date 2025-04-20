@@ -4,6 +4,7 @@ use super::{jit::Code, Core};
 
 impl Core {
     pub fn step(&mut self, mut cycles: u64, bus: &mut Bus) {
+        self.state.control.step(cycles);
         while cycles > 0 {
             if self.state.delayed_branch_target.is_some() {
                 cycles -= 1;

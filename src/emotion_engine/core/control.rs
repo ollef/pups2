@@ -18,6 +18,11 @@ impl Control {
         }
     }
 
+    pub fn step(&mut self, cycles: u64) {
+        self.registers[Register::Count] =
+            self.registers[Register::Count].wrapping_add(cycles as u32);
+    }
+
     pub fn get_register(&self, register: Register) -> u32 {
         match register {
             Register::Index => self.registers[register],
