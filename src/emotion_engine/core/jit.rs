@@ -546,7 +546,7 @@ impl<'a> JitCompiler<'a> {
             .append_block_params_for_function_params(block);
         let mode = self.function_builder.block_params(block)[0];
         self.function_builder.switch_to_block(block);
-        println!("Compiling at {:#010x}", address.0);
+        // println!("Compiling at {:#010x}", address.0);
         let start_address = address;
         let mut program_counter = self.load_program_counter();
         let mut delayed_branch_target = None;
@@ -559,7 +559,7 @@ impl<'a> JitCompiler<'a> {
             let delay_slot = delayed_branch_target.is_some();
             delayed_branch_target = None;
             let instruction = decode(self.bus.read(address));
-            println!("Instruction: {:#010x} {}", address.0, instruction);
+            // println!("Instruction: {:#010x} {}", address.0, instruction);
             if instruction.is_branch() {
                 let next_instruction = decode(self.bus.read(address + INSTRUCTION_SIZE as u32));
                 if next_instruction.is_branch() {
@@ -567,8 +567,7 @@ impl<'a> JitCompiler<'a> {
                 }
             }
             let unhandled = || {
-                println!("Unhandled instruction at {:#010x}", address.0);
-                println!("{}", instruction);
+                // println!("Unhandled instruction at {:#010x} {}", address.0, instruction);
             };
             match instruction {
                 _ if instruction.is_nop() => {}
