@@ -1,0 +1,42 @@
+operands:
+  rs: 
+    type: Register
+    decode: 'Register::from({}.bits(21..26))'
+  rt: 
+    type: Register
+    decode: 'Register::from({}.bits(16..21))'
+  rd: 
+    type: Register
+    decode: 'Register::from({}.bits(11..16))'
+  ft:
+    type: fpu::Register
+    decode: 'fpu::Register::from({}.bits(16..21))'
+  fs: 
+    type: fpu::Register
+    decode: 'fpu::Register::from({}.bits(11..16))'
+  fd: 
+    type: fpu::Register
+    decode: 'fpu::Register::from({}.bits(6..11))'
+  cd: 
+    type: control::Register
+    decode: 'control::Register::from({}.bits(11..16))'
+  sa:
+    type: u8
+    decode: '{}.bits(6..11) as u8'
+  imm16:
+    type: u16
+    decode: '{}.bits(0..16) as u16'
+  imm26:
+    type: u32
+    decode: '{}.bits(0..26)'
+
+instructions:
+  000000 ..... ..... ..... ..... 000000: '{rd} = sll {rt}, {sa}'
+  000000 ..... ..... ..... ..... 000001: 'unknown'
+  000000 ..... ..... ..... ..... 000010: '{rd} = srl {rt}, {sa}'
+  000000 ..... ..... ..... ..... 000011: '{rd} = sra {rt}, {sa}'
+  000000 ..... ..... ..... ..... 011010: 'Lo, Hi = div {rs}, {rt}'
+  000000 ..... ..... ..... ..... 100011: '{rt} = lw {imm16:#x}({rs})'
+  000001 ..... 00000 ..... ..... ......: 'bltz {rs}, {imm16}'
+  000001 ..... 00001 ..... ..... ......: 'bgez {rs}, {imm16}'
+  010000 00000 ..... ..... 00000 000000: 'mfc0 {rt}, {cd}'
