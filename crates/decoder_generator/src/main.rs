@@ -172,38 +172,38 @@ struct Instruction {
     raw: u32,
 }
 
-trait Operands<const OPCODE: usize> {
-    type Output;
-    fn operands(self) -> Self::Output;
-}
+// trait Operands<const OPCODE: usize> {
+//     type Output;
+//     fn operands(self) -> Self::Output;
+// }
 
-impl Operands<{ Opcode::Sll as _ }> for Instruction {
-    type Output = (u16, u16);
+// impl Operands<{ Opcode::Sll as _ }> for Instruction {
+//     type Output = (u16, u16);
 
-    #[inline(always)]
-    fn operands(self) -> Self::Output {
-        assert!(self.opcode == Opcode::Sll);
-        ((self.raw & 0xffff) as u16, (self.raw >> 16) as u16)
-    }
-}
+//     #[inline(always)]
+//     fn operands(self) -> Self::Output {
+//         assert!(self.opcode == Opcode::Sll);
+//         ((self.raw & 0xffff) as u16, (self.raw >> 16) as u16)
+//     }
+// }
 
-impl Operands<{ Opcode::Srl as _ }> for Instruction {
-    type Output = u8;
+// impl Operands<{ Opcode::Srl as _ }> for Instruction {
+//     type Output = u8;
 
-    #[inline(always)]
-    fn operands(self) -> Self::Output {
-        assert!(self.opcode == Opcode::Srl);
-        (self.raw & 0xffff) as u8
-    }
-}
+//     #[inline(always)]
+//     fn operands(self) -> Self::Output {
+//         assert!(self.opcode == Opcode::Srl);
+//         (self.raw & 0xffff) as u8
+//     }
+// }
 
-fn lol() {
-    let instr = Instruction {
-        opcode: Opcode::Sll,
-        raw: 0,
-    };
-    let operands = <Instruction as Operands<{ Opcode::Srl as _ }>>::operands(instr);
-}
+// fn lol() {
+//     let instr = Instruction {
+//         opcode: Opcode::Sll,
+//         raw: 0,
+//     };
+//     let operands = <Instruction as Operands<{ Opcode::Srl as _ }>>::operands(instr);
+// }
 
 // macro_rules! opcode {
 //     ($variant:pat, $($args:pat), *) =>
@@ -211,55 +211,6 @@ fn lol() {
 //       instruction @ Instruction { opcode: $variant, .. } if let ($($args),*) = <Instruction as Operands<{ $variant as _ }>>::operands(instr)
 //     }
 // }
-
-macro_rules! operands {
-    (Sll, $instruction:expr) => {
-        ($instruction.raw as u16, ($instruction.raw >> 16) as u16)
-    };
-    (Srl, $instruction:expr) => {
-        $instruction.raw as u8
-    };
-}
-
-macro_rules! match_instruction {
-    ($scrutinee:expr,
-        $(($variant:ident, $operands:pat) => $body:block ) *
-    ) => {
-        match $scrutinee {
-            $(Instruction { opcode: Opcode::$variant, .. } => {
-                let $operands = operands!($variant, $scrutinee);
-                $body
-            })*
-        }
-    };
-}
-
-fn lol2() {
-    let instr = Instruction {
-        opcode: Opcode::Sll,
-        raw: 0,
-    };
-    let a = match_instruction!(instr,
-        (Sll, (a, b)) => { 1234
-        }
-        (Srl, a) => {
-            let b = a;
-            println!("Srl: {a}");
-            123
-        }
-    );
-    println!("{a:?}");
-    // match instr {
-    //     opcode!(Opcode::Sll, a, b) => {
-    //         let a = a;
-    //         println!("Sll: {a}, {b}");
-    //     }
-    //     opcode!(Opcode::Srl, a, b) => {
-    //         println!("Sll: {a}, {b}");
-    //     }
-    // }
-}
-
 fn decoder(operands: &Yaml, decision_tree: &DecisionTree<String>) {
     fn go(indent: usize, decision_tree: &DecisionTree<String>) {
         match decision_tree {
@@ -367,18 +318,69 @@ fn main() {
     println!("{:#?}", decision_tree);
     instruction_type(&yaml[0]["operands"], &encodings);
     decoder(&yaml[0]["operands"], &decision_tree);
+}
+
+macro_rules! opcode_pattern {
+    ($opcode:ident, $raw:ident) => {
+        Instruction {
+            opcode: Opcode::$opcode,
+            raw: $raw,
+        }
+    };
+    (_, $raw:ident) => {
+        _
+    };
+}
+
+macro_rules! let_operands {
+    ($operands:pat, Sll, $raw:ident) => {
+        let $operands = ($raw as u16, ($raw >> 16) as u16);
+    };
+    ($operands:pat, Srl, $raw:ident) => {
+        let $operands = $raw as u8;
+    };
+    (, _, $raw:ident) => {};
+}
+
+macro_rules! case {
+    ($scrutinee:expr,
+        $($opcode:tt $($operands:pat)? => $body:expr),* $(,)?
+    ) => {
+        match $scrutinee {
+            $(opcode_pattern!($opcode, raw) => {
+                let_operands!($($operands)?, $opcode, raw);
+                $body
+            })*
+        }
+    };
+}
+
+fn lol2() {
     let instr = Instruction {
         opcode: Opcode::Sll,
-        raw: 100,
+        raw: 0,
     };
-    let a = match_instruction!(instr, {
-        (Sll, (a, b)) => {
-            println!("Sll: {a}, {b}"); 223
-    }
-        (Srl, a) => {
-            println!("Srl: {a}");
-            123
-        }
-    });
+    let a = case! { instr,
+       Sll(_, _) => 1234,
+       Srl a => {
+           println!("Srl: {a}");
+           123
+       },
+    //    _ => 111,
+    };
     println!("{a:?}");
+
+    // match instr {
+    //     opcode!(Opcode::Sll, a, b) => {
+    //         let a = a;
+    //         println!("Sll: {a}, {b}");
+    //     }
+    //     opcode!(Opcode::Srl, a, b) => {
+    //         println!("Sll: {a}, {b}");
+    //     }
+    // }
+    // let instr = Instruction {
+    //     opcode: Opcode::Sll,
+    //     raw: 100,
+    // };
 }
