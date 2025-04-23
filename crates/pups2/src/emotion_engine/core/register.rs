@@ -1,11 +1,12 @@
 use std::fmt::Display;
 
 use enum_map::Enum;
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
 use super::{control, fpu};
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum)]
-#[repr(u8)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum, FromPrimitive)]
 pub enum Register {
     Zero,
     At,
@@ -45,8 +46,7 @@ pub enum Register {
 
 impl From<u32> for Register {
     fn from(value: u32) -> Self {
-        let value = value & 0b11111;
-        unsafe { std::mem::transmute(value as u8) }
+        Register::from_u32(value & 0b11111).unwrap()
     }
 }
 
@@ -100,7 +100,7 @@ impl Register {
     }
 
     pub fn all() -> impl ExactSizeIterator<Item = Register> {
-        (0..Register::LENGTH).map(Register::from_usize)
+        (0..Register::LENGTH).map(<Register as Enum>::from_usize)
     }
 }
 

@@ -36,7 +36,6 @@ pub struct ContextualRegisters {
     pub alpha: Alpha,                               // ALPHA_1, ALPHA_2
 }
 
-#[repr(u8)]
 #[derive(FromPrimitive, Debug, Clone, Copy)]
 pub enum Register {
     Primitive = 0x00,              // PRIM Drawing primitive setting

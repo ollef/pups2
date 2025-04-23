@@ -560,11 +560,8 @@ impl<'a> JitCompiler<'a> {
             delayed_branch_target = None;
             let instruction = decode(self.bus.read(address));
             // println!("Instruction: {:#010x} {}", address.0, instruction);
-            if instruction.is_branch() {
-                let next_instruction = decode(self.bus.read(address + INSTRUCTION_SIZE as u32));
-                if next_instruction.is_branch() {
-                    break;
-                }
+            if delay_slot && instruction.is_branch() {
+                break;
             }
             let unhandled = || {
                 // println!("Unhandled instruction at {:#010x} {}", address.0, instruction);

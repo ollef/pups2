@@ -57,6 +57,12 @@ impl InstructionFormat<'_> {
         }
     }
 
+    pub fn constructor_name(&self) -> String {
+        let lower = self.mnemonic().replace(".", "");
+        let mut chars = lower.chars();
+        chars.next().unwrap().to_uppercase().chain(chars).collect()
+    }
+
     pub fn operands(&self) -> impl Iterator<Item = &str> {
         self.0.match_indices("{").map(|(i, _)| {
             let end = self.0[i..].find('}').expect("Missing closing brace");
@@ -124,47 +130,190 @@ impl<T: Clone + Display> DecisionTree<T> {
     }
 }
 
-fn opcode_visitor_trait(encodings: &[Encoding<String>]) {
-    println!("pub trait OpcodeVisitor {{");
-    println!("    type Output;");
+fn instruction_type(operands: &Yaml, encodings: &[Encoding<String>]) {
+    println!("pub enum Instruction {{");
     let mut unknown_added = false;
     for encoding in encodings {
         let format = InstructionFormat(&encoding.payload);
-        let mnemonic = format.mnemonic();
-        if mnemonic == "unknown" {
+        let constructor_name = format.constructor_name();
+        if constructor_name == "Unknown" {
             if unknown_added {
                 continue;
             }
             unknown_added = true;
         }
 
-        println!("    fn {mnemonic}(self, instruction: Instruction) -> Self::Output;");
+        print!("    {constructor_name}");
+        let mut comma = "";
+        if format.operands().next().is_some() {
+            print!("(");
+        }
+        for operand in format.operands() {
+            let operand_type = operands[operand]["type"].as_str().unwrap();
+            print!("{comma}{operand_type}");
+            comma = ", ";
+        }
+        if format.operands().next().is_some() {
+            print!(")");
+        }
+        println!(",");
     }
     println!("}}");
 }
 
-fn instruction_visitor_trait(operands: &Yaml, encodings: &[Encoding<String>]) {
-    println!("pub trait InstructionVisitor {{");
-    println!("    type Output;");
-    let mut unknown_added = false;
-    for encoding in encodings {
-        let format = InstructionFormat(&encoding.payload);
-        let mnemonic = format.mnemonic();
-        if mnemonic == "unknown" {
-            if unknown_added {
-                continue;
-            }
-            unknown_added = true;
-        }
+#[derive(Debug, PartialEq, Eq)]
+enum Opcode {
+    Sll,
+    Srl,
+}
 
-        print!("    fn {mnemonic}(self");
-        for operand in format.operands() {
-            let operand_type = operands[operand]["type"].as_str().unwrap();
-            print!(", {operand}: {operand_type}");
-        }
+struct Instruction {
+    opcode: Opcode,
+    raw: u32,
+}
 
-        println!(") -> Self::Output;");
+trait Operands<const OPCODE: usize> {
+    type Output;
+    fn operands(self) -> Self::Output;
+}
+
+impl Operands<{ Opcode::Sll as _ }> for Instruction {
+    type Output = (u16, u16);
+
+    #[inline(always)]
+    fn operands(self) -> Self::Output {
+        assert!(self.opcode == Opcode::Sll);
+        ((self.raw & 0xffff) as u16, (self.raw >> 16) as u16)
     }
+}
+
+impl Operands<{ Opcode::Srl as _ }> for Instruction {
+    type Output = u8;
+
+    #[inline(always)]
+    fn operands(self) -> Self::Output {
+        assert!(self.opcode == Opcode::Srl);
+        (self.raw & 0xffff) as u8
+    }
+}
+
+fn lol() {
+    let instr = Instruction {
+        opcode: Opcode::Sll,
+        raw: 0,
+    };
+    let operands = <Instruction as Operands<{ Opcode::Srl as _ }>>::operands(instr);
+}
+
+// macro_rules! opcode {
+//     ($variant:pat, $($args:pat), *) =>
+//     {
+//       instruction @ Instruction { opcode: $variant, .. } if let ($($args),*) = <Instruction as Operands<{ $variant as _ }>>::operands(instr)
+//     }
+// }
+
+macro_rules! operands {
+    (Sll, $instruction:expr) => {
+        ($instruction.raw as u16, ($instruction.raw >> 16) as u16)
+    };
+    (Srl, $instruction:expr) => {
+        $instruction.raw as u8
+    };
+}
+
+macro_rules! match_instruction {
+    ($scrutinee:expr,
+        $(($variant:ident, $operands:pat) => $body:block ) *
+    ) => {
+        match $scrutinee {
+            $(Instruction { opcode: Opcode::$variant, .. } => {
+                let $operands = operands!($variant, $scrutinee);
+                $body
+            })*
+        }
+    };
+}
+
+fn lol2() {
+    let instr = Instruction {
+        opcode: Opcode::Sll,
+        raw: 0,
+    };
+    let a = match_instruction!(instr,
+        (Sll, (a, b)) => { 1234
+        }
+        (Srl, a) => {
+            let b = a;
+            println!("Srl: {a}");
+            123
+        }
+    );
+    println!("{a:?}");
+    // match instr {
+    //     opcode!(Opcode::Sll, a, b) => {
+    //         let a = a;
+    //         println!("Sll: {a}, {b}");
+    //     }
+    //     opcode!(Opcode::Srl, a, b) => {
+    //         println!("Sll: {a}, {b}");
+    //     }
+    // }
+}
+
+fn decoder(operands: &Yaml, decision_tree: &DecisionTree<String>) {
+    fn go(indent: usize, decision_tree: &DecisionTree<String>) {
+        match decision_tree {
+            DecisionTree::Leaf(format) => {
+                let format = InstructionFormat(format);
+                print!("Instruction::{}", format.constructor_name());
+                let mut comma = "";
+                if format.operands().next().is_some() {
+                    print!("(");
+                }
+                for operand in format.operands() {
+                    print!("{comma}{operand}()");
+                    comma = ", ";
+                }
+                if format.operands().next().is_some() {
+                    print!(")");
+                }
+                print!(",");
+            }
+            DecisionTree::Match { bits, nodes } => {
+                println!("match data.bits({}..{}) {{", bits.start, bits.end,);
+                let bits_len = (bits.end - bits.start) as usize;
+                for (value, node) in nodes {
+                    let value = format!("{value:032b}");
+                    print!(
+                        "{}0b{} => ",
+                        "    ".repeat(indent + 1),
+                        &value[value.len() - bits_len..]
+                    );
+                    go(indent + 1, node);
+                    println!();
+                }
+                print!("{}_ => ", "    ".repeat(indent + 1),);
+                if nodes.len() == 1 << bits_len {
+                    println!("unreachable!(),");
+                } else {
+                    println!("panic!(\"Unhandled instruction: {{:#034b}}\", data),");
+                }
+                print!("{}}}", "    ".repeat(indent));
+            }
+        }
+    }
+
+    println!("pub fn decode(data: u32) -> Instruction {{");
+    for (operand, fields) in operands.as_hash().unwrap() {
+        let operand = operand.as_str().unwrap();
+        let decode = fields["decode"].as_str().unwrap();
+        let decode = decode.replace("{}", "data");
+        println!("    let {operand} = || {decode};");
+    }
+
+    print!("    ");
+    go(1, decision_tree);
+
     println!("}}");
 }
 
@@ -177,15 +326,15 @@ fn main() {
     let mut encodings = Vec::with_capacity(raw_instructions.len());
     for (encoding_str, format) in raw_instructions.iter() {
         println!("{:#?}", encoding_str);
+        let format = format
+            .as_str()
+            .unwrap_or_else(|| format["format"].as_str().unwrap());
         println!("{:#?}", format);
-        println!(
-            "mnemonic: {}",
-            InstructionFormat(format.as_str().unwrap()).mnemonic()
-        );
+        println!("mnemonic: {}", InstructionFormat(format).mnemonic());
         let mut encoding = Encoding {
             bits: 0,
             mask: 0,
-            payload: format.as_str().unwrap().to_string(),
+            payload: format.to_string(),
         };
         for char in encoding_str.as_str().unwrap().chars() {
             match char {
@@ -216,6 +365,20 @@ fn main() {
     }
     let decision_tree = DecisionTree::new(&encodings);
     println!("{:#?}", decision_tree);
-    opcode_visitor_trait(&encodings);
-    instruction_visitor_trait(&yaml[0]["operands"], &encodings);
+    instruction_type(&yaml[0]["operands"], &encodings);
+    decoder(&yaml[0]["operands"], &decision_tree);
+    let instr = Instruction {
+        opcode: Opcode::Sll,
+        raw: 100,
+    };
+    let a = match_instruction!(instr, {
+        (Sll, (a, b)) => {
+            println!("Sll: {a}, {b}"); 223
+    }
+        (Srl, a) => {
+            println!("Srl: {a}");
+            123
+        }
+    });
+    println!("{a:?}");
 }

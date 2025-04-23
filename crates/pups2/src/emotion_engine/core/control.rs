@@ -1,5 +1,7 @@
 use derive_more::Display;
 use enum_map::{enum_map, Enum, EnumMap};
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
 // Coprocessor 0
 #[derive(Debug)]
@@ -99,8 +101,7 @@ impl Control {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum, Display)]
-#[repr(u8)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Enum, Display, FromPrimitive)]
 pub enum Register {
     Index,
     Random,
@@ -138,6 +139,6 @@ pub enum Register {
 
 impl From<u32> for Register {
     fn from(value: u32) -> Self {
-        Register::from_usize((value & 0b11111) as usize)
+        Register::from_u32(value & 0b11111).unwrap()
     }
 }
