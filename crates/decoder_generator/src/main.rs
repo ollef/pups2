@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fmt::{Debug, Display, Formatter},
     ops::Range,
 };
@@ -102,10 +102,6 @@ impl<T: Clone + Display> DecisionTree<T> {
         let discriminant_mask =
             !((1 << range_start) - 1) & (1u32.checked_shl(range_end).unwrap_or(0)).wrapping_sub(1);
 
-        println!("Discriminant mask: {:#034b}", discriminant_mask);
-        println!("Range start: {}", range_start);
-        println!("Range end: {}", range_end);
-
         let mut nodes: BTreeMap<u32, Vec<Encoding<T>>> = BTreeMap::new();
         for encoding in encodings.iter() {
             let bits = (encoding.bits & discriminant_mask) >> range_start;
@@ -130,8 +126,9 @@ impl<T: Clone + Display> DecisionTree<T> {
     }
 }
 
-fn instruction_type(operands: &Yaml, encodings: &[Encoding<String>]) {
-    println!("pub enum Instruction {{");
+fn opcode_type(encodings: &[Encoding<String>]) {
+    println!("#[derive(Debug, PartialEq, Eq, Copy, Clone)]");
+    println!("pub enum Opcode {{");
     let mut unknown_added = false;
     for encoding in encodings {
         let format = InstructionFormat(&encoding.payload);
@@ -143,92 +140,17 @@ fn instruction_type(operands: &Yaml, encodings: &[Encoding<String>]) {
             unknown_added = true;
         }
 
-        print!("    {constructor_name}");
-        let mut comma = "";
-        if format.operands().next().is_some() {
-            print!("(");
-        }
-        for operand in format.operands() {
-            let operand_type = operands[operand]["type"].as_str().unwrap();
-            print!("{comma}{operand_type}");
-            comma = ", ";
-        }
-        if format.operands().next().is_some() {
-            print!(")");
-        }
-        println!(",");
+        println!("    {constructor_name},");
     }
     println!("}}");
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum Opcode {
-    Sll,
-    Srl,
-}
-
-struct Instruction {
-    opcode: Opcode,
-    raw: u32,
-}
-
-// trait Operands<const OPCODE: usize> {
-//     type Output;
-//     fn operands(self) -> Self::Output;
-// }
-
-// impl Operands<{ Opcode::Sll as _ }> for Instruction {
-//     type Output = (u16, u16);
-
-//     #[inline(always)]
-//     fn operands(self) -> Self::Output {
-//         assert!(self.opcode == Opcode::Sll);
-//         ((self.raw & 0xffff) as u16, (self.raw >> 16) as u16)
-//     }
-// }
-
-// impl Operands<{ Opcode::Srl as _ }> for Instruction {
-//     type Output = u8;
-
-//     #[inline(always)]
-//     fn operands(self) -> Self::Output {
-//         assert!(self.opcode == Opcode::Srl);
-//         (self.raw & 0xffff) as u8
-//     }
-// }
-
-// fn lol() {
-//     let instr = Instruction {
-//         opcode: Opcode::Sll,
-//         raw: 0,
-//     };
-//     let operands = <Instruction as Operands<{ Opcode::Srl as _ }>>::operands(instr);
-// }
-
-// macro_rules! opcode {
-//     ($variant:pat, $($args:pat), *) =>
-//     {
-//       instruction @ Instruction { opcode: $variant, .. } if let ($($args),*) = <Instruction as Operands<{ $variant as _ }>>::operands(instr)
-//     }
-// }
-fn decoder(operands: &Yaml, decision_tree: &DecisionTree<String>) {
+fn opcode_decoder(decision_tree: &DecisionTree<String>) {
     fn go(indent: usize, decision_tree: &DecisionTree<String>) {
         match decision_tree {
             DecisionTree::Leaf(format) => {
                 let format = InstructionFormat(format);
-                print!("Instruction::{}", format.constructor_name());
-                let mut comma = "";
-                if format.operands().next().is_some() {
-                    print!("(");
-                }
-                for operand in format.operands() {
-                    print!("{comma}{operand}()");
-                    comma = ", ";
-                }
-                if format.operands().next().is_some() {
-                    print!(")");
-                }
-                print!(",");
+                print!("Opcode::{},", format.constructor_name());
             }
             DecisionTree::Match { bits, nodes } => {
                 println!("match data.bits({}..{}) {{", bits.start, bits.end,);
@@ -254,17 +176,285 @@ fn decoder(operands: &Yaml, decision_tree: &DecisionTree<String>) {
         }
     }
 
-    println!("pub fn decode(data: u32) -> Instruction {{");
-    for (operand, fields) in operands.as_hash().unwrap() {
-        let operand = operand.as_str().unwrap();
-        let decode = fields["decode"].as_str().unwrap();
-        let decode = decode.replace("{}", "data");
-        println!("    let {operand} = || {decode};");
+    println!("impl Opcode {{");
+    println!("    pub fn decode(data: u32) -> Opcode {{");
+    print!("        ");
+    go(2, decision_tree);
+
+    println!("\n    }}");
+    println!("}}");
+}
+
+fn let_operands_macro(operands: &Yaml, encodings: &[Encoding<String>]) {
+    println!("macro_rules! let_operands {{");
+    let mut unknown_added = false;
+    for encoding in encodings {
+        let format = InstructionFormat(&encoding.payload);
+        if format.constructor_name() == "Unknown" {
+            if unknown_added {
+                continue;
+            }
+            unknown_added = true;
+        }
+        let operand_count = format.operands().count();
+        if operand_count == 0 {
+            println!("    (, {}, $raw:expr) => {{", format.constructor_name());
+        } else {
+            println!(
+                "    ($operands:pat_param, {}, $raw:expr) => {{",
+                format.constructor_name()
+            );
+            print!("        let $operands = ");
+            if format.operands().count() != 1 {
+                print!("(");
+            }
+            let mut comma = "";
+            for operand in format.operands() {
+                let decoded_operand = &operands[operand]["decode"]
+                    .as_str()
+                    .unwrap()
+                    .replace("{}", "$raw");
+                print!("{comma}{decoded_operand}");
+                comma = ", ";
+            }
+            if format.operands().count() != 1 {
+                print!(")");
+            }
+            println!(";");
+        }
+        println!("    }};");
+    }
+    println!("    (, _, $raw:expr) => {{}};");
+    println!("}}");
+
+    println!("pub(super) use let_operands;");
+}
+
+fn display_impl(encodings: &[Encoding<String>]) {
+    println!("impl Display for Instruction {{");
+    println!("    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {{");
+    println!("        case! {{ self,");
+    let mut unknown_added = false;
+    for encoding in encodings {
+        let format = InstructionFormat(&encoding.payload);
+        let constructor_name = format.constructor_name();
+        if constructor_name == "Unknown" {
+            if unknown_added {
+                continue;
+            }
+            unknown_added = true;
+        }
+        print!("            {constructor_name}");
+        let operand_count = format.operands().count();
+        if operand_count == 1 {
+            print!(" ");
+        }
+        if operand_count > 1 {
+            print!("(");
+        }
+        let mut comma = "";
+        for operand in format.operands() {
+            print!("{comma}{operand}");
+            comma = ", ";
+        }
+        if operand_count > 1 {
+            print!(")");
+        }
+        println!(" => write!(f, \"{}\"),", format.0);
+    }
+    println!("        }}");
+    println!("    }}");
+    println!("}}");
+}
+
+fn predicates<'a>(instructions: impl IntoIterator<Item = (&'a Yaml, &'a Yaml)>) {
+    let mut predicate_opcodes: HashMap<String, Vec<String>> = HashMap::new();
+    for (_, instruction) in instructions {
+        if let Some(predicates) = instruction["predicates"].as_vec() {
+            let format = InstructionFormat(instruction["format"].as_str().unwrap());
+            for predicate in predicates {
+                let predicate = predicate.as_str().unwrap();
+                predicate_opcodes
+                    .entry(predicate.to_string())
+                    .or_default()
+                    .push(format.constructor_name());
+            }
+        }
     }
 
-    print!("    ");
-    go(1, decision_tree);
+    if predicate_opcodes.is_empty() {
+        return;
+    }
+    println!("impl Opcode {{");
+    let mut newline = false;
+    for (predicate, opcodes) in predicate_opcodes {
+        if newline {
+            println!();
+        }
+        println!("    pub fn {predicate}(self) -> bool {{");
+        println!("        match self {{");
+        for opcode in opcodes {
+            println!("            Opcode::{opcode} => true,");
+        }
+        println!("            _ => false,");
+        println!("        }}");
+        println!("    }}");
+        newline = true;
+    }
+    println!("}}");
+}
 
+fn definitions_and_uses<'a>(
+    operands: &Yaml,
+    instructions: impl IntoIterator<Item = (&'a Yaml, &'a Yaml)>,
+    encodings: &[Encoding<String>],
+) {
+    let mut uses: HashMap<String, Vec<String>> = HashMap::new();
+    let mut defs: HashMap<String, Vec<String>> = HashMap::new();
+    for encoding in encodings {
+        let format = InstructionFormat(&encoding.payload);
+        let mnemonic = format.mnemonic();
+        let eq_index = encoding.payload.find('=');
+        if let Some(eq_index) = eq_index {
+            let def_format = InstructionFormat(&encoding.payload[..eq_index]);
+            for def in def_format.operands() {
+                defs.entry(mnemonic.to_string())
+                    .or_default()
+                    .push(def.to_string());
+            }
+        }
+        let use_format = InstructionFormat(&encoding.payload[eq_index.unwrap_or_default()..]);
+        for use_ in use_format.operands() {
+            let type_ = operands[use_]["type"].as_str().unwrap();
+            if matches!(type_, "u8" | "u16" | "u32" | "i8" | "i16" | "i32") {
+                continue;
+            }
+            uses.entry(mnemonic.to_string())
+                .or_default()
+                .push(use_.to_string());
+        }
+    }
+
+    for (_, instruction) in instructions {
+        if let Some(instruction_uses) = instruction["uses"].as_vec() {
+            let format = InstructionFormat(instruction["format"].as_str().unwrap());
+            let mnemonic = format.mnemonic();
+            for use_ in instruction_uses {
+                uses.entry(mnemonic.to_string())
+                    .or_default()
+                    .push(use_.as_str().unwrap().to_string());
+            }
+        }
+        if let Some(instruction_defs) = instruction["defs"].as_vec() {
+            let format = InstructionFormat(instruction["format"].as_str().unwrap());
+            let mnemonic = format.mnemonic();
+            for def in instruction_defs {
+                defs.entry(mnemonic.to_string())
+                    .or_default()
+                    .push(def.as_str().unwrap().to_string());
+            }
+        }
+    }
+
+    let max_uses = uses.values().map(|v| v.len()).max().unwrap_or(0);
+    let max_defs = defs.values().map(|v| v.len()).max().unwrap_or(0);
+
+    println!("impl Instruction {{");
+    println!("    fn raw_definitions(self) -> [Option<Definition>; {max_defs}] {{");
+    println!("        case! {{ self,");
+    let mut unknown_added = false;
+    for encoding in encodings {
+        let format = InstructionFormat(&encoding.payload);
+        let defs = defs.get(format.mnemonic()).cloned().unwrap_or_default();
+        let constructor_name = format.constructor_name();
+        if constructor_name == "Unknown" {
+            if unknown_added {
+                continue;
+            }
+            unknown_added = true;
+        }
+        print!("            {constructor_name}");
+        let operand_count = format.operands().count();
+        if operand_count == 1 {
+            print!(" ");
+        }
+        if operand_count > 1 {
+            print!("(");
+        }
+        let mut comma = "";
+        for operand in format.operands() {
+            if defs.contains(&operand.to_string()) {
+                print!("{comma}{operand}");
+            } else {
+                print!("{comma}_");
+            }
+            comma = ", ";
+        }
+        if operand_count > 1 {
+            print!(")");
+        }
+        print!(" => [");
+        let mut comma = "";
+        for def in &defs {
+            print!("{comma}Some(Definition::from({def}))");
+            comma = ", ";
+        }
+        for _ in defs.len()..max_defs {
+            print!("{comma}None");
+            comma = ", ";
+        }
+        println!("],");
+    }
+    println!("        }}");
+    println!("    }}");
+    println!();
+    println!("    fn raw_uses(self) -> [Option<Use>; {max_uses}] {{");
+    println!("        case! {{ self,");
+    let mut unknown_added = false;
+    for encoding in encodings {
+        let format = InstructionFormat(&encoding.payload);
+        let uses = uses.get(format.mnemonic()).cloned().unwrap_or_default();
+        let constructor_name = format.constructor_name();
+        if constructor_name == "Unknown" {
+            if unknown_added {
+                continue;
+            }
+            unknown_added = true;
+        }
+        print!("            {constructor_name}");
+        let operand_count = format.operands().count();
+        if operand_count == 1 {
+            print!(" ");
+        }
+        if operand_count > 1 {
+            print!("(");
+        }
+        let mut comma = "";
+        for operand in format.operands() {
+            if uses.contains(&operand.to_string()) {
+                print!("{comma}{operand}");
+            } else {
+                print!("{comma}_");
+            }
+            comma = ", ";
+        }
+        if operand_count > 1 {
+            print!(")");
+        }
+        print!(" => [");
+        let mut comma = "";
+        for use_ in &uses {
+            print!("{comma}Some(Use::from({use_}))");
+            comma = ", ";
+        }
+        for _ in uses.len()..max_uses {
+            print!("{comma}None");
+            comma = ", ";
+        }
+        println!("],");
+    }
+    println!("        }}");
+    println!("    }}");
     println!("}}");
 }
 
@@ -272,16 +462,12 @@ fn main() {
     let arg = std::env::args().nth(1).unwrap();
     let string = std::fs::read_to_string(arg).unwrap();
     let yaml = YamlLoader::load_from_str(&string).unwrap();
-    // println!("{:#?}", yaml);
-    let raw_instructions = &yaml[0]["instructions"].as_hash().unwrap();
+    let raw_instructions = yaml[0]["instructions"].as_hash().unwrap();
     let mut encodings = Vec::with_capacity(raw_instructions.len());
     for (encoding_str, format) in raw_instructions.iter() {
-        println!("{:#?}", encoding_str);
         let format = format
             .as_str()
             .unwrap_or_else(|| format["format"].as_str().unwrap());
-        println!("{:#?}", format);
-        println!("mnemonic: {}", InstructionFormat(format).mnemonic());
         let mut encoding = Encoding {
             bits: 0,
             mask: 0,
@@ -311,15 +497,41 @@ fn main() {
                 _ => panic!("Invalid character in encoding: {}", char),
             }
         }
-        println!("{}", encoding);
         encodings.push(encoding);
     }
     let decision_tree = DecisionTree::new(&encodings);
-    println!("{:#?}", decision_tree);
-    instruction_type(&yaml[0]["operands"], &encodings);
-    decoder(&yaml[0]["operands"], &decision_tree);
+
+    println!("use super::control;");
+    println!("use super::fpu;");
+    println!("use super::instruction::{{case, opcode_pattern, Definition, Instruction, Use}};");
+    println!("use super::register::Register;");
+    println!("use crate::bits::Bits;");
+    println!("use std::fmt::{{Display, Formatter}};");
+    println!();
+    opcode_type(&encodings);
+    println!();
+    opcode_decoder(&decision_tree);
+    println!();
+    let_operands_macro(&yaml[0]["operands"], &encodings);
+    println!();
+    display_impl(&encodings);
+    println!();
+    predicates(raw_instructions);
+    println!();
+    definitions_and_uses(&yaml[0]["operands"], raw_instructions, &encodings);
+    println!();
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum Opcode {
+    Sll,
+    Srl,
+}
+
+struct Instruction {
+    opcode: Opcode,
+    raw: u32,
+}
 macro_rules! opcode_pattern {
     ($opcode:ident, $raw:ident) => {
         Instruction {

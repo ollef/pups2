@@ -1,6 +1,6 @@
-use crate::emotion_engine::{bus::Bus, core::decoder::decode};
+use crate::emotion_engine::bus::Bus;
 
-use super::{jit::Code, Core};
+use super::{instruction::Instruction, jit::Code, Core};
 
 impl Core {
     pub fn step(&mut self, mut cycles: u64, bus: &mut Bus) {
@@ -8,7 +8,8 @@ impl Core {
         while cycles > 0 {
             if self.state.delayed_branch_target.is_some() {
                 cycles -= 1;
-                let instruction = decode(self.read_virtual(bus, self.state.program_counter));
+                let instruction =
+                    Instruction::decode(self.read_virtual(bus, self.state.program_counter));
                 // println!("I {:08x}: {}", self.state.program_counter, instruction);
                 self.interpret_instruction(instruction, bus);
             } else {

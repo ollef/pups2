@@ -1,5 +1,24 @@
 use std::{collections::BTreeMap, fmt::LowerHex, ops::Range};
 
+use super::{
+    instruction::Instruction,
+    instruction_gen::{let_operands, Opcode},
+    mmu::Mmu,
+    register::Register,
+    Mode, State,
+};
+use crate::{
+    bits::{Bits, SignExtend},
+    bytes::Bytes,
+    emotion_engine::{
+        bus::{Bus, PhysicalAddress},
+        core::{
+            control, fpu,
+            instruction::{case, opcode_pattern},
+        },
+    },
+    executable_memory_allocator::ExecutableMemoryAllocator,
+};
 use bitvec::vec::BitVec;
 use cranelift_codegen::{
     control::ControlPlane,
@@ -8,15 +27,6 @@ use cranelift_codegen::{
     settings::{self, Configurable},
 };
 use enum_map::EnumMap;
-
-use crate::{
-    bits::SignExtend,
-    bytes::Bytes,
-    emotion_engine::bus::{Bus, PhysicalAddress},
-    executable_memory_allocator::ExecutableMemoryAllocator,
-};
-
-use super::{decoder::decode, instruction::Instruction, mmu::Mmu, register::Register, Mode, State};
 
 pub struct Jit {
     jitted_instructions: BitVec<usize>,
@@ -226,7 +236,9 @@ impl Jit {
                     CacheEntry {
                         address_range: physical_program_counter
                             ..physical_program_counter + INSTRUCTION_SIZE as u32,
-                        code: Code::Interpreted(decode(bus.read(physical_program_counter))),
+                        code: Code::Interpreted(Instruction::decode(
+                            bus.read(physical_program_counter),
+                        )),
                     }
                 };
                 self.add(entry)
@@ -558,7 +570,7 @@ impl<'a> JitCompiler<'a> {
             });
             let delay_slot = delayed_branch_target.is_some();
             delayed_branch_target = None;
-            let instruction = decode(self.bus.read(address));
+            let instruction = Instruction::decode(self.bus.read(address));
             // println!("Instruction: {:#010x} {}", address.0, instruction);
             if delay_slot && instruction.is_branch() {
                 break;
@@ -566,55 +578,54 @@ impl<'a> JitCompiler<'a> {
             let unhandled = || {
                 // println!("Unhandled instruction at {:#010x} {}", address.0, instruction);
             };
-            match instruction {
-                _ if instruction.is_nop() => {}
-                Instruction::Unknown => {
+            case! { instruction,
+                Unknown => {
                     println!("Unknown instruction at {:#010x}", address.0)
-                }
-                Instruction::Sll(rd, rt, shamt) => {
+                },
+                Sll(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().ishl_imm(rt_value, shamt as i64);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Srl(rd, rt, shamt) => {
+                },
+                Srl(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().ushr_imm(rt_value, shamt as i64);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Sra(rd, rt, shamt) => {
+                },
+                Sra(rd, rt, shamt) => {
                     // let value = (self.get_register::<u32>(rt) as i32) >> shamt;
                     // self.set_register::<u64>(rd, value.sign_extend());
                     unhandled();
                     break;
-                }
-                Instruction::Sllv(rd, rt, rs) => {
+                },
+                Sllv(rd, rt, rs) => {
                     // let value =
                     //     self.get_register::<u32>(rt) << self.get_register::<u32>(rs).bits(0..5);
                     // self.set_register::<u64>(rd, value.sign_extend());
                     unhandled();
                     break;
-                }
-                Instruction::Srlv(rd, rt, rs) => {
+                },
+                Srlv(rd, rt, rs) => {
                     // let value =
                     //     self.get_register::<u32>(rt) >> self.get_register::<u32>(rs).bits(0..5);
                     // self.set_register::<u64>(rd, value.sign_extend());
                     unhandled();
                     break;
-                }
-                Instruction::Srav(rd, rt, rs) => {
+                },
+                Srav(rd, rt, rs) => {
                     // let value = (self.get_register::<u32>(rt) as i32)
                     //     >> self.get_register::<u32>(rs).bits(0..5);
                     // self.set_register::<u64>(rd, value.sign_extend());
                     unhandled();
                     break;
-                }
-                Instruction::Jr(rs) => {
+                },
+                Jr rs => {
                     let target = self.get_register(rs, Size::S32);
                     delayed_branch_target = Some(target);
-                }
-                Instruction::Jalr(rd, rs) => {
+                },
+                Jalr(rd, rs) => {
                     let target = self.get_register(rs, Size::S32);
                     delayed_branch_target = Some(target);
 
@@ -627,53 +638,53 @@ impl<'a> JitCompiler<'a> {
                         .ins()
                         .uextend(ir::types::I64, next_next_pc);
                     self.set_register(rd, next_next_pc, Size::S64);
-                }
-                Instruction::Movz(rd, rs, rt) => {
+                },
+                Movz(rd, rs, rt) => {
                     // if self.get_register::<u64>(rt) == 0 {
                     //     let value = self.get_register::<u64>(rs);
                     //     self.set_register(rd, value);
                     // }
                     unhandled();
                     break;
-                }
-                Instruction::Movn(rd, rs, rt) => {
+                },
+                Movn(rd, rs, rt) => {
                     // if self.get_register::<u64>(rt) != 0 {
                     //     let value = self.get_register::<u64>(rs);
                     //     self.set_register(rd, value);
                     // }
                     unhandled();
                     break;
-                }
-                Instruction::Syscall => {
+                },
+                Syscall => {
                     break;
-                }
-                Instruction::Break => {
+                },
+                Break => {
                     unhandled();
                     break;
-                }
-                Instruction::Sync => {
+                },
+                Sync => {
                     // TODO: maybe do something here
-                }
-                Instruction::Mfhi(rd) => {
+                },
+                Mfhi rd => {
                     let hi_value = self.get_register(Register::Hi, Size::S64);
                     self.set_register(rd, hi_value, Size::S64);
-                }
-                Instruction::Mthi(rs) => {
+                },
+                Mthi rs => {
                     let rs_value = self.get_register(rs, Size::S64);
                     self.set_register(Register::Hi, rs_value, Size::S64);
-                }
-                Instruction::Mflo(rd) => {
+                },
+                Mflo rd => {
                     let lo_value = self.get_register(Register::Lo, Size::S64);
                     self.set_register(rd, lo_value, Size::S64);
-                }
-                Instruction::Mtlo(rs) => {
+                },
+                Mtlo rs => {
                     let rs_value = self.get_register(rs, Size::S64);
                     self.set_register(Register::Lo, rs_value, Size::S64);
-                }
-                Instruction::Dsllv(_, _, _) => todo!(),
-                Instruction::Dsrav(_, _, _) => todo!(),
-                Instruction::Dsrlv(_, _, _) => todo!(),
-                Instruction::Mult(rd, rs, rt) => {
+                },
+                Dsllv(_, _, _) => todo!(),
+                Dsrav(_, _, _) => todo!(),
+                Dsrlv(_, _, _) => todo!(),
+                Mult(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rs_value = self
                         .function_builder
@@ -693,8 +704,8 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rd, lo, Size::S64);
                     self.set_register(Register::Lo, lo, Size::S64);
                     self.set_register(Register::Hi, hi, Size::S64);
-                }
-                Instruction::Multu(rd, rs, rt) => {
+                },
+                Multu(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rs_value = self
                         .function_builder
@@ -714,8 +725,8 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rd, lo, Size::S64);
                     self.set_register(Register::Lo, lo, Size::S64);
                     self.set_register(Register::Hi, hi, Size::S64);
-                }
-                Instruction::Div(rs, rt) => {
+                },
+                Div(rs, rt) => {
                     // let dividend = self.get_register::<u32>(rs) as i32;
                     // let divisor = self.get_register::<u32>(rt) as i32;
                     // let (quotient, remainder) = match (dividend, divisor) {
@@ -727,8 +738,8 @@ impl<'a> JitCompiler<'a> {
                     // self.set_register::<u64>(Register::Hi, remainder.sign_extend());
                     unhandled();
                     break;
-                }
-                Instruction::Divu(rs, rt) => {
+                },
+                Divu(rs, rt) => {
                     // let dividend = self.get_register::<u32>(rs);
                     // let divisor = self.get_register::<u32>(rt);
                     // let (quotient, remainder) = if divisor == 0 {
@@ -740,65 +751,65 @@ impl<'a> JitCompiler<'a> {
                     // self.set_register::<u64>(Register::Hi, remainder.sign_extend());
                     unhandled();
                     break;
-                }
-                Instruction::Add(rd, rs, rt) => {
+                },
+                Add(rd, rs, rt) => {
                     // TODO: Exception on overflow
                     let rs_value = self.get_register(rs, Size::S32);
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().iadd(rs_value, rt_value);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Addu(rd, rs, rt) => {
+                },
+                Addu(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().iadd(rs_value, rt_value);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Sub(rd, rs, rt) => {
+                },
+                Sub(rd, rs, rt) => {
                     // TODO: Exception on overflow
                     let rs_value = self.get_register(rs, Size::S32);
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().isub(rs_value, rt_value);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Subu(rd, rs, rt) => {
+                },
+                Subu(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rt_value = self.get_register(rt, Size::S32);
                     let value = self.function_builder.ins().isub(rs_value, rt_value);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::And(rd, rs, rt) => {
+                },
+                And(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self.function_builder.ins().band(rs_value, rt_value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Or(rd, rs, rt) => {
+                },
+                Or(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self.function_builder.ins().bor(rs_value, rt_value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Xor(rd, rs, rt) => {
+                },
+                Xor(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self.function_builder.ins().bxor(rs_value, rt_value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Nor(rd, rs, rt) => {
+                },
+                Nor(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self.function_builder.ins().bor(rs_value, rt_value);
                     let value = self.function_builder.ins().bnot(value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Mfsa(_) => todo!(),
-                Instruction::Mtsa(_) => todo!(),
-                Instruction::Slt(rd, rs, rt) => {
+                },
+                Mfsa _ => todo!(),
+                Mtsa _ => todo!(),
+                Slt(rd, rs, rt) => {
                     // let value = if (self.get_register::<u64>(rs) as i64)
                     //     < (self.get_register::<u64>(rt) as i64)
                     // {
@@ -809,8 +820,8 @@ impl<'a> JitCompiler<'a> {
                     // self.set_register::<u64>(rd, value);
                     unhandled();
                     break;
-                }
-                Instruction::Sltu(rd, rs, rt) => {
+                },
+                Sltu(rd, rs, rt) => {
                     // let value = if self.get_register::<u64>(rs) < self.get_register::<u64>(rt) {
                     //     1
                     // } else {
@@ -819,62 +830,62 @@ impl<'a> JitCompiler<'a> {
                     // self.set_register::<u64>(rd, value);
                     unhandled();
                     break;
-                }
-                Instruction::Dadd(_, _, _) => todo!(),
-                Instruction::Daddu(rd, rs, rt) => {
+                },
+                Dadd(_, _, _) => todo!(),
+                Daddu(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self.function_builder.ins().iadd(rs_value, rt_value);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Dsub(_, _, _) => todo!(),
-                Instruction::Dsubu(_, _, _) => todo!(),
-                Instruction::Tge(_, _) => todo!(),
-                Instruction::Tgeu(_, _) => todo!(),
-                Instruction::Tlt(_, _) => todo!(),
-                Instruction::Tltu(_, _) => todo!(),
-                Instruction::Teq(_, _) => todo!(),
-                Instruction::Tne(_, _) => todo!(),
-                Instruction::Dsll(rd, rt, shamt) => {
+                },
+                Dsub(_, _, _) => todo!(),
+                Dsubu(_, _, _) => todo!(),
+                Tge(_, _) => todo!(),
+                Tgeu(_, _) => todo!(),
+                Tlt(_, _) => todo!(),
+                Tltu(_, _) => todo!(),
+                Teq(_, _) => todo!(),
+                Tne(_, _) => todo!(),
+                Dsll(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self.function_builder.ins().ishl_imm(rt_value, shamt as i64);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Dsrl(rd, rt, shamt) => {
+                },
+                Dsrl(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self.function_builder.ins().ushr_imm(rt_value, shamt as i64);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Dsra(rd, rt, shamt) => {
+                },
+                Dsra(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self.function_builder.ins().sshr_imm(rt_value, shamt as i64);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Dsll32(rd, rt, shamt) => {
+                },
+                Dsll32(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self
                         .function_builder
                         .ins()
                         .ishl_imm(rt_value, (shamt + 32) as i64);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Dsrl32(rd, rt, shamt) => {
+                },
+                Dsrl32(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self
                         .function_builder
                         .ins()
                         .ushr_imm(rt_value, (shamt + 32) as i64);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Dsra32(rd, rt, shamt) => {
+                },
+                Dsra32(rd, rt, shamt) => {
                     let rt_value = self.get_register(rt, Size::S64);
                     let value = self
                         .function_builder
                         .ins()
                         .sshr_imm(rt_value, (shamt + 32) as i64);
                     self.set_register(rd, value, Size::S64);
-                }
-                Instruction::Bltz(rs, offset) => {
+                },
+                Bltz(rs, offset) => {
                     // if (self.get_register::<u64>(rs) as i64) < 0 {
                     //     let offset: u32 = offset.sign_extend();
                     //     self.set_delayed_branch_target(
@@ -883,8 +894,8 @@ impl<'a> JitCompiler<'a> {
                     // }
                     unhandled();
                     break;
-                }
-                Instruction::Bgez(rs, offset) => {
+                },
+                Bgez(rs, offset) => {
                     // if self.get_register::<u64>(rs) as i64 >= 0 {
                     //     let offset: u32 = offset.sign_extend();
                     //     self.set_delayed_branch_target(
@@ -893,8 +904,8 @@ impl<'a> JitCompiler<'a> {
                     // }
                     unhandled();
                     break;
-                }
-                Instruction::J(target) => {
+                },
+                J target => {
                     let upper_next_pc = self
                         .function_builder
                         .ins()
@@ -904,8 +915,8 @@ impl<'a> JitCompiler<'a> {
                         .ins()
                         .iadd_imm(upper_next_pc, (target << 2) as i64);
                     delayed_branch_target = Some(target);
-                }
-                Instruction::Jal(target) => {
+                },
+                Jal target => {
                     let upper_next_pc = self
                         .function_builder
                         .ins()
@@ -924,8 +935,8 @@ impl<'a> JitCompiler<'a> {
                         .ins()
                         .uextend(ir::types::I64, next_next_pc);
                     self.set_register(Register::Ra, next_next_pc, Size::S64);
-                }
-                Instruction::Beq(rs, rt, offset) => {
+                },
+                Beq(rs, rt, offset) => {
                     let offset: u32 = offset.sign_extend();
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
@@ -947,8 +958,8 @@ impl<'a> JitCompiler<'a> {
                         .ins()
                         .select(conditional, taken, not_taken);
                     delayed_branch_target = Some(target);
-                }
-                Instruction::Bne(rs, rt, offset) => {
+                },
+                Bne(rs, rt, offset) => {
                     let offset: u32 = offset.sign_extend();
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
@@ -970,8 +981,8 @@ impl<'a> JitCompiler<'a> {
                         .ins()
                         .select(conditional, taken, not_taken);
                     delayed_branch_target = Some(target);
-                }
-                Instruction::Blez(rs, offset) => {
+                },
+                Blez(rs, offset) => {
                     // if (self.get_register::<u64>(rs) as i64) <= 0 {
                     //     let offset: u32 = offset.sign_extend();
                     //     self.set_delayed_branch_target(
@@ -980,8 +991,8 @@ impl<'a> JitCompiler<'a> {
                     // }
                     unhandled();
                     break;
-                }
-                Instruction::Addi(rt, rs, imm) => {
+                },
+                Addi(rt, rs, imm) => {
                     // TODO exception on overflow
                     let rs_value = self.get_register(rs, Size::S32);
                     let imm: u64 = imm.sign_extend();
@@ -991,8 +1002,8 @@ impl<'a> JitCompiler<'a> {
                         .ins()
                         .sextend(Size::S64.type_(), value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Addiu(rt, rs, imm) => {
+                },
+                Addiu(rt, rs, imm) => {
                     let rs_value = self.get_register(rs, Size::S32);
                     let imm: u64 = imm.sign_extend();
                     let value = self.function_builder.ins().iadd_imm(rs_value, imm as i64);
@@ -1001,8 +1012,8 @@ impl<'a> JitCompiler<'a> {
                         .ins()
                         .sextend(Size::S64.type_(), value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Slti(rt, rs, imm) => {
+                },
+                Slti(rt, rs, imm) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let imm: u64 = imm.sign_extend();
                     let value = self.function_builder.ins().icmp_imm(
@@ -1012,8 +1023,8 @@ impl<'a> JitCompiler<'a> {
                     );
                     let value = self.function_builder.ins().uextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Sltiu(rt, rs, imm) => {
+                },
+                Sltiu(rt, rs, imm) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let imm: u64 = imm.sign_extend();
                     let value = self.function_builder.ins().icmp_imm(
@@ -1023,98 +1034,98 @@ impl<'a> JitCompiler<'a> {
                     );
                     let value = self.function_builder.ins().uextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Andi(rt, rs, imm) => {
+                },
+                Andi(rt, rs, imm) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let value = self.function_builder.ins().band_imm(rs_value, imm as i64);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Ori(rt, rs, imm) => {
+                },
+                Ori(rt, rs, imm) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let value = self.function_builder.ins().bor_imm(rs_value, imm as i64);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Xori(rt, rs, imm) => {
+                },
+                Xori(rt, rs, imm) => {
                     let rs_value = self.get_register(rs, Size::S64);
                     let value = self.function_builder.ins().bxor_imm(rs_value, imm as i64);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Lui(rt, imm) => {
+                },
+                Lui(rt, imm) => {
                     let value: u64 = ((imm as u32) << 16).sign_extend();
                     let value = self
                         .function_builder
                         .ins()
                         .iconst(ir::types::I64, value as i64);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Mfc0(rt, rs) => {
+                },
+                Mfc0(rt, rs) => {
                     // let value = self.state.control.get_register(rs);
                     // self.set_register::<u64>(rt, value.sign_extend());
                     unhandled();
                     break;
-                }
-                Instruction::Mtc0(rt, rs) => {
+                },
+                Mtc0(rt, rs) => {
                     // let value = self.get_register(rt);
                     // self.state.control.set_register(rs, value);
                     unhandled();
                     break;
-                }
-                Instruction::Mfc1(rt, fs) => {
+                },
+                Mfc1(rt, fs) => {
                     // let value = self.fpu.get_register::<u32>(fs);
                     // self.set_register::<u64>(rt, value.sign_extend());
                     unhandled();
                     break;
-                }
-                Instruction::Mtc1(rt, fs) => {
+                },
+                Mtc1(rt, fs) => {
                     // let value = self.get_register::<u32>(rt);
                     // self.fpu.set_register(fs, value);
                     unhandled();
                     break;
-                }
-                Instruction::Muls(fd, fs, ft) => {
+                },
+                Muls(fd, fs, ft) => {
                     //     self.fpu.set_register(
                     //     fd,
                     //     self.fpu.get_register::<f32>(fs) * self.fpu.get_register::<f32>(ft),
                     // )
                     unhandled();
                     break;
-                }
+                },
                 // TODO flags
-                Instruction::Divs(fd, fs, ft) => {
+                Divs(fd, fs, ft) => {
                     //     self.fpu.set_register(
                     //     fd,
                     //     self.fpu.get_register::<f32>(fs) / self.fpu.get_register::<f32>(ft),
                     // )
                     unhandled();
                     break;
-                }
+                },
                 // TODO flags
-                Instruction::Movs(fd, fs) => {
+                Movs(fd, fs) => {
                     // let value = self.fpu.get_register::<f32>(fs);
                     // self.fpu.set_register(fd, value);
                     unhandled();
                     break;
-                }
-                Instruction::Cvtws(fd, fs) => {
+                },
+                Cvtws(fd, fs) => {
                     // let value = self.fpu.get_register::<f32>(fs) as i32;
                     // self.fpu.set_register(fd, value as u32);
                     unhandled();
                     break;
-                }
-                Instruction::Cvtsw(fd, fs) => {
+                },
+                Cvtsw(fd, fs) => {
                     // let value = self.fpu.get_register::<u32>(fs) as i32;
                     // self.fpu.set_register(fd, value as f32);
                     unhandled();
                     break;
-                }
-                Instruction::Tlbr | Instruction::Tlbwi | Instruction::Tlbwr | Instruction::Tlbp => {
+                },
+                Tlbr | Tlbwi | Tlbwr | Tlbp => {
                     unhandled();
                     break;
-                }
-                Instruction::Ei => {
+                },
+                Ei => {
                     // TODO: Set status register
-                }
-                Instruction::Beql(rs, rt, offset) => {
+                },
+                Beql(rs, rt, offset) => {
                     let offset: u32 = offset.sign_extend();
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
@@ -1148,8 +1159,8 @@ impl<'a> JitCompiler<'a> {
                     self.store_program_counter(not_taken);
                     self.function_builder.ins().return_(&[]);
                     self.function_builder.switch_to_block(taken_block);
-                }
-                Instruction::Bnel(rs, rt, offset) => {
+                },
+                Bnel(rs, rt, offset) => {
                     let offset: u32 = offset.sign_extend();
                     let rs_value = self.get_register(rs, Size::S64);
                     let rt_value = self.get_register(rt, Size::S64);
@@ -1183,26 +1194,8 @@ impl<'a> JitCompiler<'a> {
                     self.store_program_counter(not_taken);
                     self.function_builder.ins().return_(&[]);
                     self.function_builder.switch_to_block(taken_block);
-                }
-                Instruction::Mult1(rd, rs, rt) => {
-                    // let a: u64 = self.get_register::<u32>(rs).sign_extend();
-                    // let b: u64 = self.get_register::<u32>(rt).sign_extend();
-                    // let prod = a.wrapping_mul(b);
-                    // let lo: u64 = (prod as u32).sign_extend();
-                    // let hi: u64 = ((prod >> 32) as u32).sign_extend();
-                    // self.set_register(rd, lo);
-                    // self.set_register::<u128>(
-                    //     Register::Lo,
-                    //     ((lo as u128) << 64) | self.get_register::<u64>(Register::Lo) as u128,
-                    // );
-                    // self.set_register::<u128>(
-                    //     Register::Hi,
-                    //     ((hi as u128) << 64) | self.get_register::<u64>(Register::Hi) as u128,
-                    // );
-                    unhandled();
-                    break;
-                }
-                Instruction::Sq(rt, base, offset) => {
+                },
+                Sq(rt, offset, base) => {
                     // let mut address = self
                     //     .get_register::<u32>(base)
                     //     .wrapping_add(offset.sign_extend());
@@ -1210,38 +1203,38 @@ impl<'a> JitCompiler<'a> {
                     // self.write_virtual(bus, address, self.get_register::<u128>(rt));
                     unhandled();
                     break;
-                }
-                Instruction::Lb(rt, base, offset) => {
+                },
+                Lb(rt, offset, base) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S8, mode);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Lh(rt, base, offset) => {
+                },
+                Lh(rt, offset, base) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S16, mode);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Lw(rt, base, offset) => {
+                },
+                Lw(rt, offset, base) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S32, mode);
                     let value = self.function_builder.ins().sextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Lbu(rt, base, offset) => {
+                },
+                Lbu(rt, offset, base) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S8, mode);
                     let value = self.function_builder.ins().uextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Lhu(rt, base, offset) => {
+                },
+                Lhu(rt, offset, base) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S16, mode);
                     let value = self.function_builder.ins().uextend(ir::types::I64, value);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Lwr(rt, base, offset) => {
+                },
+                Lwr(rt, offset, base) => {
                     // let address = self
                     //     .get_register::<u32>(base)
                     //     .wrapping_add(offset.sign_extend());
@@ -1256,23 +1249,23 @@ impl<'a> JitCompiler<'a> {
                     // self.set_register(rt, value);
                     unhandled();
                     break;
-                }
-                Instruction::Sb(rt, base, offset) => {
+                },
+                Sb(rt, offset, base) => {
                     let rt_value = self.get_register(rt, Size::S8);
                     let base_value = self.get_register(base, Size::S32);
                     self.store(rt_value, base_value, offset, Size::S8, mode);
-                }
-                Instruction::Sh(rt, base, offset) => {
+                },
+                Sh(rt, offset, base) => {
                     let rt_value = self.get_register(rt, Size::S16);
                     let base_value = self.get_register(base, Size::S32);
                     self.store(rt_value, base_value, offset, Size::S16, mode);
-                }
-                Instruction::Sw(rt, base, offset) => {
+                },
+                Sw(rt, offset, base) => {
                     let rt_value = self.get_register(rt, Size::S32);
                     let base_value = self.get_register(base, Size::S32);
                     self.store(rt_value, base_value, offset, Size::S32, mode);
-                }
-                Instruction::Lwc1(ft, base, offset) => {
+                },
+                Lwc1(ft, offset, base) => {
                     // let address = self
                     //     .get_register::<u32>(base)
                     //     .wrapping_add(offset.sign_extend());
@@ -1283,13 +1276,13 @@ impl<'a> JitCompiler<'a> {
                     // self.fpu.set_register(ft, value);
                     unhandled();
                     break;
-                }
-                Instruction::Ld(rt, base, offset) => {
+                },
+                Ld(rt, offset, base) => {
                     let base_value = self.get_register(base, Size::S32);
                     let value = self.load(base_value, offset, Size::S64, mode);
                     self.set_register(rt, value, Size::S64);
-                }
-                Instruction::Swc1(ft, base, offset) => {
+                },
+                Swc1(ft, offset, base) => {
                     // let address = self
                     //     .get_register::<u32>(base)
                     //     .wrapping_add(offset.sign_extend());
@@ -1299,12 +1292,12 @@ impl<'a> JitCompiler<'a> {
                     // self.write_virtual(bus, address, self.fpu.get_register::<u32>(ft));
                     unhandled();
                     break;
-                }
-                Instruction::Sd(rt, base, offset) => {
+                },
+                Sd(rt, offset, base) => {
                     let rt_value = self.get_register(rt, Size::S64);
                     let base_value = self.get_register(base, Size::S32);
                     self.store(rt_value, base_value, offset, Size::S64, mode);
-                }
+                },
             }
             address += INSTRUCTION_SIZE as u32;
             program_counter = next_program_counter;

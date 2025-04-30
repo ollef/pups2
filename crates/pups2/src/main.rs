@@ -10,6 +10,7 @@ use argh::FromArgs;
 use bytes::Bytes;
 use elf::{endian::LittleEndian, ElfBytes};
 use emotion_engine::{
+    core::instruction::Instruction,
     dmac::Dmac,
     gif::Gif,
     scheduler::{self, Event},
@@ -42,7 +43,7 @@ fn disassemble(file: &str) -> std::io::Result<()> {
         for (word_index, bytes) in data.chunks_exact(4).enumerate() {
             let address = virtual_address + (word_index as u64 * 4);
             let data = u32::from_bytes(bytes);
-            let instruction = emotion_engine::core::decoder::decode(data);
+            let instruction = Instruction::decode(data);
             print!(
                 "{:6x?}:    {:02x?} {:02x?} {:02x?} {:02x?}    {}",
                 address, bytes[3], bytes[2], bytes[1], bytes[0], instruction

@@ -1,9 +1,16 @@
+use super::{instruction::Instruction, instruction_gen::let_operands, mmu::TlbEntry, Core, State};
 use crate::{
     bits::{Bits, SignExtend},
-    emotion_engine::{bus::Bus, core::register::Register},
+    emotion_engine::{
+        bus::Bus,
+        core::{
+            control, fpu,
+            instruction::{case, opcode_pattern},
+            instruction_gen::Opcode,
+            register::Register,
+        },
+    },
 };
-
-use super::{control, instruction::Instruction, mmu::TlbEntry, Core, State};
 
 impl State {
     pub extern "C" fn set_delayed_branch_target(&mut self, target: u32) {
@@ -26,60 +33,60 @@ impl Core {
             .take()
             .unwrap_or(self.state.program_counter + 4);
         // println!("pc={:#010}: {instruction}", self.program_counter);
-        match instruction {
-            Instruction::Unknown => {
+        case! {instruction,
+            Unknown => {
                 println!(
                     "Unknown instruction at {:#010x}",
                     self.state.program_counter
                 )
-            }
-            Instruction::Sll(rd, rt, shamt) => {
+            },
+            Sll(rd, rt, shamt) => {
                 let value = self.get_register::<u32>(rt) << shamt;
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Srl(rd, rt, shamt) => {
+            },
+            Srl(rd, rt, shamt) => {
                 let value = self.get_register::<u32>(rt) >> shamt;
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Sra(rd, rt, shamt) => {
+            },
+            Sra(rd, rt, shamt) => {
                 let value = (self.get_register::<u32>(rt) as i32) >> shamt;
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Sllv(rd, rt, rs) => {
+            },
+            Sllv(rd, rt, rs) => {
                 let value = self.get_register::<u32>(rt) << self.get_register::<u32>(rs).bits(0..5);
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Srlv(rd, rt, rs) => {
+            },
+            Srlv(rd, rt, rs) => {
                 let value = self.get_register::<u32>(rt) >> self.get_register::<u32>(rs).bits(0..5);
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Srav(rd, rt, rs) => {
+            },
+            Srav(rd, rt, rs) => {
                 let value = (self.get_register::<u32>(rt) as i32)
                     >> self.get_register::<u32>(rs).bits(0..5);
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Jr(rs) => {
+            },
+            Jr rs => {
                 self.state
                     .set_delayed_branch_target(self.get_register::<u32>(rs));
-            }
-            Instruction::Jalr(rd, rs) => {
+            },
+            Jalr(rd, rs) => {
                 let branch_target = self.get_register::<u32>(rs);
                 self.set_register(rd, (next_program_counter + 4) as u64);
                 self.state.set_delayed_branch_target(branch_target);
-            }
-            Instruction::Movz(rd, rs, rt) => {
+            },
+            Movz(rd, rs, rt) => {
                 if self.get_register::<u64>(rt) == 0 {
                     let value = self.get_register::<u64>(rs);
                     self.set_register(rd, value);
                 }
-            }
-            Instruction::Movn(rd, rs, rt) => {
+            },
+            Movn(rd, rs, rt) => {
                 if self.get_register::<u64>(rt) != 0 {
                     let value = self.get_register::<u64>(rs);
                     self.set_register(rd, value);
                 }
-            }
-            Instruction::Syscall => {
+            },
+            Syscall => {
                 println!(
                     "v1 register state: {:x}",
                     self.get_register::<u64>(Register::V1)
@@ -130,19 +137,19 @@ impl Core {
                     0x71 => {}
                     _ => todo!("Syscall number: {syscall_number}"),
                 }
-            }
-            Instruction::Break => todo!(),
-            Instruction::Sync => {
+            },
+            Break => todo!(),
+            Sync => {
                 // TODO: maybe do something here
-            }
-            Instruction::Mfhi(rd) => self.set_register(rd, self.get_register::<u64>(Register::Hi)),
-            Instruction::Mthi(rs) => self.set_register(Register::Hi, self.get_register::<u64>(rs)),
-            Instruction::Mflo(rd) => self.set_register(rd, self.get_register::<u64>(Register::Lo)),
-            Instruction::Mtlo(rs) => self.set_register(Register::Lo, self.get_register::<u64>(rs)),
-            Instruction::Dsllv(_, _, _) => todo!(),
-            Instruction::Dsrav(_, _, _) => todo!(),
-            Instruction::Dsrlv(_, _, _) => todo!(),
-            Instruction::Mult(rd, rs, rt) => {
+            },
+            Mfhi rd => self.set_register(rd, self.get_register::<u64>(Register::Hi)),
+            Mthi rs => self.set_register(Register::Hi, self.get_register::<u64>(rs)),
+            Mflo rd => self.set_register(rd, self.get_register::<u64>(Register::Lo)),
+            Mtlo rs => self.set_register(Register::Lo, self.get_register::<u64>(rs)),
+            Dsllv(_, _, _) => todo!(),
+            Dsrav(_, _, _) => todo!(),
+            Dsrlv(_, _, _) => todo!(),
+            Mult(rd, rs, rt) => {
                 let a: u64 = self.get_register::<u32>(rs).sign_extend();
                 let b: u64 = self.get_register::<u32>(rt).sign_extend();
                 let prod = a.wrapping_mul(b);
@@ -151,8 +158,8 @@ impl Core {
                 self.set_register(rd, lo);
                 self.set_register(Register::Lo, lo);
                 self.set_register(Register::Hi, hi);
-            }
-            Instruction::Multu(rd, rs, rt) => {
+            },
+            Multu(rd, rs, rt) => {
                 let a = self.get_register::<u32>(rs) as u64;
                 let b = self.get_register::<u32>(rt) as u64;
                 let prod = a.wrapping_mul(b);
@@ -161,8 +168,8 @@ impl Core {
                 self.set_register(rd, lo);
                 self.set_register(Register::Lo, lo);
                 self.set_register(Register::Hi, hi);
-            }
-            Instruction::Div(rs, rt) => {
+            },
+            Div(rs, rt) => {
                 let dividend = self.get_register::<u32>(rs) as i32;
                 let divisor = self.get_register::<u32>(rt) as i32;
                 let (quotient, remainder) = match (dividend, divisor) {
@@ -172,8 +179,8 @@ impl Core {
                 };
                 self.set_register::<u64>(Register::Lo, quotient.sign_extend());
                 self.set_register::<u64>(Register::Hi, remainder.sign_extend());
-            }
-            Instruction::Divu(rs, rt) => {
+            },
+            Divu(rs, rt) => {
                 let dividend = self.get_register::<u32>(rs);
                 let divisor = self.get_register::<u32>(rt);
                 let (quotient, remainder) = if divisor == 0 {
@@ -183,52 +190,52 @@ impl Core {
                 };
                 self.set_register::<u64>(Register::Lo, quotient.sign_extend());
                 self.set_register::<u64>(Register::Hi, remainder.sign_extend());
-            }
-            Instruction::Add(rd, rs, rt) => {
+            },
+            Add(rd, rs, rt) => {
                 // TODO: Exception on overflow
                 let value = self
                     .get_register::<u32>(rs)
                     .wrapping_add(self.get_register::<u32>(rt));
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Addu(rd, rs, rt) => {
+            },
+            Addu(rd, rs, rt) => {
                 let value = self
                     .get_register::<u32>(rs)
                     .wrapping_add(self.get_register::<u32>(rt));
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Sub(rd, rs, rt) => {
+            },
+            Sub(rd, rs, rt) => {
                 // TODO: Exception on overflow
                 let value = self
                     .get_register::<u32>(rs)
                     .wrapping_sub(self.get_register::<u32>(rt));
                 self.set_register::<u64>(rd, value.sign_extend());
-            }
-            Instruction::Subu(rd, rs, rt) => {
+            },
+            Subu(rd, rs, rt) => {
                 self.set_register::<u64>(
                     rd,
                     self.get_register::<u32>(rs)
                         .wrapping_sub(self.get_register::<u32>(rt))
                         .sign_extend(),
                 );
-            }
-            Instruction::And(rd, rs, rt) => {
+            },
+            And(rd, rs, rt) => {
                 self.set_register(
                     rd,
                     self.get_register::<u64>(rs) & self.get_register::<u64>(rt),
                 );
-            }
-            Instruction::Or(rd, rs, rt) => {
+            },
+            Or(rd, rs, rt) => {
                 self.set_register(
                     rd,
                     self.get_register::<u64>(rs) | self.get_register::<u64>(rt),
                 );
-            }
-            Instruction::Xor(_, _, _) => todo!(),
-            Instruction::Nor(_, _, _) => todo!(),
-            Instruction::Mfsa(_) => todo!(),
-            Instruction::Mtsa(_) => todo!(),
-            Instruction::Slt(rd, rs, rt) => {
+            },
+            Xor(_, _, _) => todo!(),
+            Nor(_, _, _) => todo!(),
+            Mfsa _ => todo!(),
+            Mtsa _ => todo!(),
+            Slt(rd, rs, rt) => {
                 let value = if (self.get_register::<u64>(rs) as i64)
                     < (self.get_register::<u64>(rt) as i64)
                 {
@@ -237,103 +244,103 @@ impl Core {
                     0
                 };
                 self.set_register::<u64>(rd, value);
-            }
-            Instruction::Sltu(rd, rs, rt) => {
+            },
+            Sltu(rd, rs, rt) => {
                 let value = if self.get_register::<u64>(rs) < self.get_register::<u64>(rt) {
                     1
                 } else {
                     0
                 };
                 self.set_register::<u64>(rd, value);
-            }
-            Instruction::Dadd(_, _, _) => todo!(),
-            Instruction::Daddu(rd, rs, rt) => {
+            },
+            Dadd(_, _, _) => todo!(),
+            Daddu(rd, rs, rt) => {
                 let value = self
                     .get_register::<u64>(rs)
                     .wrapping_add(self.get_register::<u64>(rt));
                 self.set_register(rd, value);
-            }
-            Instruction::Dsub(_, _, _) => todo!(),
-            Instruction::Dsubu(_, _, _) => todo!(),
-            Instruction::Tge(_, _) => todo!(),
-            Instruction::Tgeu(_, _) => todo!(),
-            Instruction::Tlt(_, _) => todo!(),
-            Instruction::Tltu(_, _) => todo!(),
-            Instruction::Teq(_, _) => todo!(),
-            Instruction::Tne(_, _) => todo!(),
-            Instruction::Dsll(rd, rt, shamt) => {
+            },
+            Dsub(_, _, _) => todo!(),
+            Dsubu(_, _, _) => todo!(),
+            Tge(_, _) => todo!(),
+            Tgeu(_, _) => todo!(),
+            Tlt(_, _) => todo!(),
+            Tltu(_, _) => todo!(),
+            Teq(_, _) => todo!(),
+            Tne(_, _) => todo!(),
+            Dsll(rd, rt, shamt) => {
                 self.set_register(rd, self.get_register::<u64>(rt) << shamt);
-            }
-            Instruction::Dsrl(rd, rt, shamt) => {
+            },
+            Dsrl(rd, rt, shamt) => {
                 self.set_register(rd, self.get_register::<u64>(rt) >> shamt);
-            }
-            Instruction::Dsra(_, _, _) => todo!(),
-            Instruction::Dsll32(rd, rt, shamt) => {
+            },
+            Dsra(_, _, _) => todo!(),
+            Dsll32(rd, rt, shamt) => {
                 self.set_register(rd, self.get_register::<u64>(rt) << (shamt + 32));
-            }
-            Instruction::Dsrl32(rd, rt, shamt) => {
+            },
+            Dsrl32(rd, rt, shamt) => {
                 self.set_register(rd, self.get_register::<u64>(rt) >> (shamt + 32));
-            }
-            Instruction::Dsra32(rd, rt, shamt) => {
+            },
+            Dsra32(rd, rt, shamt) => {
                 self.set_register(
                     rd,
                     ((self.get_register::<u64>(rt) as i64) >> (shamt + 32)) as u64,
                 );
-            }
-            Instruction::Bltz(rs, offset) => {
+            },
+            Bltz(rs, offset) => {
                 if (self.get_register::<u64>(rs) as i64) < 0 {
                     let offset: u32 = offset.sign_extend();
                     self.state
                         .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
-            }
-            Instruction::Bgez(rs, offset) => {
+            },
+            Bgez(rs, offset) => {
                 if self.get_register::<u64>(rs) as i64 >= 0 {
                     let offset: u32 = offset.sign_extend();
                     self.state
                         .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
-            }
-            Instruction::J(target) => self.state.set_delayed_branch_target(
+            },
+            J target => self.state.set_delayed_branch_target(
                 (next_program_counter & 0xF000_0000).wrapping_add(target << 2),
             ),
-            Instruction::Jal(target) => {
+            Jal target => {
                 self.set_register(Register::Ra, (next_program_counter + 4) as u64);
                 self.state.set_delayed_branch_target(
                     (next_program_counter & 0xF000_0000).wrapping_add(target << 2),
                 );
-            }
-            Instruction::Beq(rs, rt, offset) => {
+            },
+            Beq(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
                     self.state
                         .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
-            }
-            Instruction::Bne(rs, rt, offset) => {
+            },
+            Bne(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
                     self.state
                         .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
-            }
-            Instruction::Blez(rs, offset) => {
+            },
+            Blez(rs, offset) => {
                 if (self.get_register::<u64>(rs) as i64) <= 0 {
                     let offset: u32 = offset.sign_extend();
                     self.state
                         .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
-            }
-            Instruction::Addi(rt, rs, imm) => {
+            },
+            Addi(rt, rs, imm) => {
                 // TODO exception on overflow
                 let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
                 self.set_register::<u64>(rt, (temp as u32).sign_extend());
-            }
-            Instruction::Addiu(rt, rs, imm) => {
+            },
+            Addiu(rt, rs, imm) => {
                 let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
                 self.set_register::<u64>(rt, (temp as u32).sign_extend());
-            }
-            Instruction::Slti(rt, rs, imm) => {
+            },
+            Slti(rt, rs, imm) => {
                 let imm: u64 = imm.sign_extend();
                 let value = if (self.get_register::<u64>(rs) as i64) < imm as i64 {
                     1
@@ -341,8 +348,8 @@ impl Core {
                     0
                 };
                 self.set_register::<u64>(rt, value);
-            }
-            Instruction::Sltiu(rt, rs, imm) => {
+            },
+            Sltiu(rt, rs, imm) => {
                 let imm: u64 = imm.sign_extend();
                 let value = if self.get_register::<u64>(rs) < imm {
                     1
@@ -350,59 +357,59 @@ impl Core {
                     0
                 };
                 self.set_register::<u64>(rt, value);
-            }
-            Instruction::Andi(rt, rs, imm) => {
+            },
+            Andi(rt, rs, imm) => {
                 self.set_register::<u64>(rt, self.get_register::<u64>(rs) & (imm as u64));
-            }
-            Instruction::Ori(rt, rs, imm) => {
+            },
+            Ori(rt, rs, imm) => {
                 self.set_register::<u64>(rt, self.get_register::<u64>(rs) | (imm as u64));
-            }
-            Instruction::Xori(rt, rs, imm) => {
+            },
+            Xori(rt, rs, imm) => {
                 self.set_register::<u64>(rt, self.get_register::<u64>(rs) ^ (imm as u64));
-            }
-            Instruction::Lui(rt, imm) => {
+            },
+            Lui(rt, imm) => {
                 self.set_register::<u64>(rt, ((imm as u32) << 16).sign_extend());
-            }
-            Instruction::Mfc0(rt, rs) => {
+            },
+            Mfc0(rt, rs) => {
                 let value = self.state.control.get_register(rs);
                 self.set_register::<u64>(rt, value.sign_extend());
-            }
-            Instruction::Mtc0(rt, rs) => {
+            },
+            Mtc0(rs, rt) => {
                 let value = self.get_register(rt);
                 self.state.control.set_register(rs, value);
-            }
-            Instruction::Mfc1(rt, fs) => {
+            },
+            Mfc1(rt, fs) => {
                 let value = self.state.fpu.get_register::<u32>(fs);
                 self.set_register::<u64>(rt, value.sign_extend());
-            }
-            Instruction::Mtc1(rt, fs) => {
+            },
+            Mtc1(fs, rt) => {
                 let value = self.get_register::<u32>(rt);
                 self.state.fpu.set_register(fs, value);
-            }
-            Instruction::Muls(fd, fs, ft) => self.state.fpu.set_register(
+            },
+            Muls(fd, fs, ft) => self.state.fpu.set_register(
                 fd,
                 self.state.fpu.get_register::<f32>(fs) * self.state.fpu.get_register::<f32>(ft),
             ),
             // TODO flags
-            Instruction::Divs(fd, fs, ft) => self.state.fpu.set_register(
+            Divs(fd, fs, ft) => self.state.fpu.set_register(
                 fd,
                 self.state.fpu.get_register::<f32>(fs) / self.state.fpu.get_register::<f32>(ft),
             ),
             // TODO flags
-            Instruction::Movs(fd, fs) => {
+            Movs(fd, fs) => {
                 let value = self.state.fpu.get_register::<f32>(fs);
                 self.state.fpu.set_register(fd, value);
-            }
-            Instruction::Cvtws(fd, fs) => {
+            },
+            Cvtws(fd, fs) => {
                 let value = self.state.fpu.get_register::<f32>(fs) as i32;
                 self.state.fpu.set_register(fd, value as u32);
-            }
-            Instruction::Cvtsw(fd, fs) => {
+            },
+            Cvtsw(fd, fs) => {
                 let value = self.state.fpu.get_register::<u32>(fs) as i32;
                 self.state.fpu.set_register(fd, value as f32);
-            }
-            Instruction::Tlbr => todo!(),
-            Instruction::Tlbwi => {
+            },
+            Tlbr => todo!(),
+            Tlbwi => {
                 let mut entry = 0;
                 let index = self.state.control.get_register(control::Register::Index);
                 let page_mask = self.state.control.get_register(control::Register::PageMask);
@@ -420,13 +427,13 @@ impl Core {
                 entry.set_bits(1..=31, entry_lo1.bits(1..=31));
                 self.mmu
                     .write_index(index.bits(0..=5) as u8, TlbEntry::new(entry));
-            }
-            Instruction::Tlbwr => todo!(),
-            Instruction::Tlbp => todo!(),
-            Instruction::Ei => {
+            },
+            Tlbwr => todo!(),
+            Tlbp => todo!(),
+            Ei => {
                 // TODO: Set status register
-            }
-            Instruction::Beql(rs, rt, offset) => {
+            },
+            Beql(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) == self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
                     self.state
@@ -434,8 +441,8 @@ impl Core {
                 } else {
                     next_program_counter += 4;
                 }
-            }
-            Instruction::Bnel(rs, rt, offset) => {
+            },
+            Bnel(rs, rt, offset) => {
                 if self.get_register::<u64>(rs) != self.get_register::<u64>(rt) {
                     let offset: u32 = offset.sign_extend();
                     self.state
@@ -443,38 +450,22 @@ impl Core {
                 } else {
                     next_program_counter += 4;
                 }
-            }
-            Instruction::Mult1(rd, rs, rt) => {
-                let a: u64 = self.get_register::<u32>(rs).sign_extend();
-                let b: u64 = self.get_register::<u32>(rt).sign_extend();
-                let prod = a.wrapping_mul(b);
-                let lo: u64 = (prod as u32).sign_extend();
-                let hi: u64 = ((prod >> 32) as u32).sign_extend();
-                self.set_register(rd, lo);
-                self.set_register::<u128>(
-                    Register::Lo,
-                    ((lo as u128) << 64) | self.get_register::<u64>(Register::Lo) as u128,
-                );
-                self.set_register::<u128>(
-                    Register::Hi,
-                    ((hi as u128) << 64) | self.get_register::<u64>(Register::Hi) as u128,
-                );
-            }
-            Instruction::Sq(rt, base, offset) => {
+            },
+            Sq(rt, offset, base ) => {
                 let mut address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 address &= !0b1111;
                 self.write_virtual(bus, address, self.get_register::<u128>(rt));
-            }
-            Instruction::Lb(rt, base, offset) => {
+            },
+            Lb(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 let value = self.read_virtual::<u8>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
-            }
-            Instruction::Lh(rt, base, offset) => {
+            },
+            Lh(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -483,8 +474,8 @@ impl Core {
                 }
                 let value = self.read_virtual::<u16>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
-            }
-            Instruction::Lw(rt, base, offset) => {
+            },
+            Lw(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -493,22 +484,22 @@ impl Core {
                 }
                 let value = self.read_virtual::<u32>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
-            }
-            Instruction::Lbu(rt, base, offset) => {
+            },
+            Lbu(rt,  offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 let value = self.read_virtual::<u8>(bus, address);
                 self.set_register(rt, value as u64);
-            }
-            Instruction::Lhu(rt, base, offset) => {
+            },
+            Lhu(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 let value = self.read_virtual::<u16>(bus, address);
                 self.set_register(rt, value as u64);
-            }
-            Instruction::Lwr(rt, base, offset) => {
+            },
+            Lwr(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -521,14 +512,14 @@ impl Core {
                     existing & u64::mask(byte * 8..64) | (memory_word >> (byte * 8)) as u64
                 };
                 self.set_register(rt, value);
-            }
-            Instruction::Sb(rt, base, offset) => {
+            },
+            Sb(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 self.write_virtual(bus, address, self.get_register::<u8>(rt));
-            }
-            Instruction::Sh(rt, base, offset) => {
+            },
+            Sh(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -536,8 +527,8 @@ impl Core {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 self.write_virtual(bus, address, self.get_register::<u16>(rt));
-            }
-            Instruction::Sw(rt, base, offset) => {
+            },
+            Sw(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -545,8 +536,8 @@ impl Core {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 self.write_virtual(bus, address, self.get_register::<u32>(rt));
-            }
-            Instruction::Lwc1(ft, base, offset) => {
+            },
+            Lwc1(ft, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -555,8 +546,8 @@ impl Core {
                 }
                 let value = self.read_virtual::<u32>(bus, address);
                 self.state.fpu.set_register(ft, value);
-            }
-            Instruction::Ld(rt, base, offset) => {
+            },
+            Ld(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -565,8 +556,8 @@ impl Core {
                 }
                 let value = self.read_virtual(bus, address);
                 self.set_register::<u64>(rt, value);
-            }
-            Instruction::Swc1(ft, base, offset) => {
+            },
+            Swc1(ft, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -574,8 +565,8 @@ impl Core {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 self.write_virtual(bus, address, self.state.fpu.get_register::<u32>(ft));
-            }
-            Instruction::Sd(rt, base, offset) => {
+            },
+            Sd(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -583,7 +574,7 @@ impl Core {
                     panic!("Unaligned store at {:#010x}", address);
                 }
                 self.write_virtual(bus, address, self.get_register::<u64>(rt));
-            }
+            },
         }
         // for reg in instruction.definitions() {
         //     match reg {
