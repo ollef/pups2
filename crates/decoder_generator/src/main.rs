@@ -345,7 +345,7 @@ fn definitions_and_uses<'a>(
     let max_defs = defs.values().map(|v| v.len()).max().unwrap_or(0);
 
     println!("impl Instruction {{");
-    println!("    fn raw_definitions(self) -> [Option<Occurrence>; {max_defs}] {{");
+    println!("    pub fn raw_definitions(self) -> [Option<Occurrence>; {max_defs}] {{");
     println!("        match self {{");
     let mut unknown_added = false;
     for encoding in encodings {
@@ -390,7 +390,7 @@ fn definitions_and_uses<'a>(
     println!("        }}");
     println!("    }}");
     println!();
-    println!("    fn raw_uses(self) -> [Option<Occurrence>; {max_uses}] {{");
+    println!("    pub fn raw_uses(self) -> [Option<Occurrence>; {max_uses}] {{");
     println!("        match self {{");
     let mut unknown_added = false;
     for encoding in encodings {

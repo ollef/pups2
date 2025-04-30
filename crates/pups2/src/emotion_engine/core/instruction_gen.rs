@@ -398,6 +398,14 @@ impl Display for Instruction {
 }
 
 impl Instruction {
+    pub fn is_branch_likely(self) -> bool {
+        match self {
+            Instruction::Beql(..) => true,
+            Instruction::Bnel(..) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_branch(self) -> bool {
         match self {
             Instruction::Jr(..) => true,
@@ -414,18 +422,10 @@ impl Instruction {
             _ => false,
         }
     }
-
-    pub fn is_branch_likely(self) -> bool {
-        match self {
-            Instruction::Beql(..) => true,
-            Instruction::Bnel(..) => true,
-            _ => false,
-        }
-    }
 }
 
 impl Instruction {
-    fn raw_definitions(self) -> [Option<Occurrence>; 3] {
+    pub fn raw_definitions(self) -> [Option<Occurrence>; 3] {
         match self {
             Instruction::Sll(rd, _, _) => [Some(Occurrence::from(rd)), None, None],
             Instruction::Unknown => [None, None, None],
@@ -528,7 +528,7 @@ impl Instruction {
         }
     }
 
-    fn raw_uses(self) -> [Option<Occurrence>; 2] {
+    pub fn raw_uses(self) -> [Option<Occurrence>; 2] {
         match self {
             Instruction::Sll(_, rt, _) => [Some(Occurrence::from(rt)), None],
             Instruction::Unknown => [None, None],
