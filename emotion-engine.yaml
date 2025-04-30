@@ -136,6 +136,10 @@ instructions:
   010001 10100 00000 ..... ..... 100000: '{fd} = cvt.s.w {fs}'
   010100 ..... ..... ..... ..... ......: {format: 'beql {rs}, {rt}, {imm16:#x}', predicates: [is_branch, is_branch_likely]}
   010101 ..... ..... ..... ..... ......: {format: 'bnel {rs}, {rt}, {imm16:#x}', predicates: [is_branch, is_branch_likely]}
+  011100 00000 00000 ..... 00000 010000: {format: '{rd} = mfhi1', uses: [Register::Hi]}
+  011100 ..... 00000 00000 00000 010001: {format: 'mthi1 {rs}', defs: [Register::Hi]}
+  011100 00000 00000 ..... 00000 010010: {format: '{rd} = mflo1', uses: [Register::Lo]}
+  011100 ..... 00000 00000 00000 010011: {format: 'mtlo1 {rs}', defs: [Register::Lo]}
   011100 ..... ..... 00000 00000 011010: {format: 'div1 {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
   011100 ..... ..... 00000 00000 011011: {format: 'divu1 {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
   011111 ..... ..... ..... ..... ......: 'sq {rt}, {imm16:#x}({rs})'

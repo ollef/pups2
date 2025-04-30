@@ -444,6 +444,10 @@ impl Core {
                     next_program_counter += 4;
                 }
             }
+            Instruction::Mfhi1(rd) => self.set_register(rd, self.get_upper(Register::Hi)),
+            Instruction::Mthi1(rs) => self.set_upper(Register::Hi, self.get_register::<u64>(rs)),
+            Instruction::Mflo1(rd) => self.set_register(rd, self.get_upper(Register::Lo)),
+            Instruction::Mtlo1(rs) => self.set_upper(Register::Lo, self.get_register::<u64>(rs)),
             Instruction::Div1(rs, rt) => {
                 let dividend = self.get_register::<u32>(rs) as i32;
                 let divisor = self.get_register::<u32>(rt) as i32;

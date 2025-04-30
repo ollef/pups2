@@ -1183,6 +1183,22 @@ impl<'a> JitCompiler<'a> {
                     self.function_builder.ins().return_(&[]);
                     self.function_builder.switch_to_block(taken_block);
                 }
+                Instruction::Mfhi1(rd) => {
+                    unhandled();
+                    break;
+                }
+                Instruction::Mthi1(rs) => {
+                    unhandled();
+                    break;
+                }
+                Instruction::Mflo1(rd) => {
+                    unhandled();
+                    break;
+                }
+                Instruction::Mtlo1(rs) => {
+                    unhandled();
+                    break;
+                }
                 Instruction::Div1(rs, rt) => {
                     unhandled();
                     break;

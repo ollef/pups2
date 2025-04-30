@@ -92,6 +92,10 @@ pub enum Instruction {
     Cvtsw(fpu::Register, fpu::Register),
     Beql(Register, Register, u16),
     Bnel(Register, Register, u16),
+    Mfhi1(Register),
+    Mthi1(Register),
+    Mflo1(Register),
+    Mtlo1(Register),
     Div1(Register, Register),
     Divu1(Register, Register),
     Sq(Register, u16, Register),
@@ -287,9 +291,31 @@ impl Instruction {
             }
             0b010100 => Instruction::Beql(rs(), rt(), imm16()),
             0b010101 => Instruction::Bnel(rs(), rt(), imm16()),
-            0b011100 => match data.bits(0..16) {
-                0b0000000000011010 => Instruction::Div1(rs(), rt()),
-                0b0000000000011011 => Instruction::Divu1(rs(), rt()),
+            0b011100 => match data.bits(0..11) {
+                0b00000010000 => match data.bits(16..26) {
+                    0b0000000000 => Instruction::Mfhi1(rd()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b00000010001 => match data.bits(11..21) {
+                    0b0000000000 => Instruction::Mthi1(rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b00000010010 => match data.bits(16..26) {
+                    0b0000000000 => Instruction::Mflo1(rd()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b00000010011 => match data.bits(11..21) {
+                    0b0000000000 => Instruction::Mtlo1(rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b00000011010 => match data.bits(11..16) {
+                    0b00000 => Instruction::Div1(rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b00000011011 => match data.bits(11..16) {
+                    0b00000 => Instruction::Divu1(rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 _ => panic!("Unhandled instruction: {:#034b}", data),
             }
             0b011111 => Instruction::Sq(rt(), imm16(), rs()),
@@ -398,6 +424,10 @@ impl Display for Instruction {
             Instruction::Cvtsw(fd, fs) => write!(f, "{fd} = cvt.s.w {fs}"),
             Instruction::Beql(rs, rt, imm16) => write!(f, "beql {rs}, {rt}, {imm16:#x}"),
             Instruction::Bnel(rs, rt, imm16) => write!(f, "bnel {rs}, {rt}, {imm16:#x}"),
+            Instruction::Mfhi1(rd) => write!(f, "{rd} = mfhi1"),
+            Instruction::Mthi1(rs) => write!(f, "mthi1 {rs}"),
+            Instruction::Mflo1(rd) => write!(f, "{rd} = mflo1"),
+            Instruction::Mtlo1(rs) => write!(f, "mtlo1 {rs}"),
             Instruction::Div1(rs, rt) => write!(f, "div1 {rs}, {rt}"),
             Instruction::Divu1(rs, rt) => write!(f, "divu1 {rs}, {rt}"),
             Instruction::Sq(rt, imm16, rs) => write!(f, "sq {rt}, {imm16:#x}({rs})"),
@@ -515,6 +545,10 @@ impl Instruction {
             Instruction::Cvtsw(fd, _) => [Some(Occurrence::from(fd)), None, None],
             Instruction::Beql(_, _, _) => [None, None, None],
             Instruction::Bnel(_, _, _) => [None, None, None],
+            Instruction::Mfhi1(rd) => [Some(Occurrence::from(rd)), None, None],
+            Instruction::Mthi1(_) => [Some(Occurrence::from(Register::Hi)), None, None],
+            Instruction::Mflo1(rd) => [Some(Occurrence::from(rd)), None, None],
+            Instruction::Mtlo1(_) => [Some(Occurrence::from(Register::Lo)), None, None],
             Instruction::Div1(_, _) => [Some(Occurrence::from(Register::Lo)), Some(Occurrence::from(Register::Hi)), None],
             Instruction::Divu1(_, _) => [Some(Occurrence::from(Register::Lo)), Some(Occurrence::from(Register::Hi)), None],
             Instruction::Sq(_, _, _) => [None, None, None],
@@ -620,6 +654,10 @@ impl Instruction {
             Instruction::Cvtsw(_, fs) => [Some(Occurrence::from(fs)), None],
             Instruction::Beql(rs, rt, _) => [Some(Occurrence::from(rs)), Some(Occurrence::from(rt))],
             Instruction::Bnel(rs, rt, _) => [Some(Occurrence::from(rs)), Some(Occurrence::from(rt))],
+            Instruction::Mfhi1(_) => [Some(Occurrence::from(Register::Hi)), None],
+            Instruction::Mthi1(rs) => [Some(Occurrence::from(rs)), None],
+            Instruction::Mflo1(_) => [Some(Occurrence::from(Register::Lo)), None],
+            Instruction::Mtlo1(rs) => [Some(Occurrence::from(rs)), None],
             Instruction::Div1(rs, rt) => [Some(Occurrence::from(rs)), Some(Occurrence::from(rt))],
             Instruction::Divu1(rs, rt) => [Some(Occurrence::from(rs)), Some(Occurrence::from(rt))],
             Instruction::Sq(rt, _, rs) => [Some(Occurrence::from(rt)), Some(Occurrence::from(rs))],
