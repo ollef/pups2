@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::LowerHex, ops::Range};
+use std::{fmt::LowerHex, ops::Range, ptr::null};
 
 use bitvec::vec::BitVec;
 use cranelift_codegen::{
@@ -20,49 +20,35 @@ use super::{decoder::decode, instruction::Instruction, mmu::Mmu, register::Regis
 
 pub struct Jit {
     jitted_instructions: BitVec<usize>,
-    jitted_starts_map: BTreeMap<PhysicalAddress, u16>,
-    jitted_starts: Box<[CacheIndex]>,
-    cache: Vec<CacheEntry>,
-    next_to_remove: u16,
+    jitted_starts: Box<[CacheEntry]>,
     isa: OwnedTargetIsa,
     codegen_context: cranelift_codegen::Context,
     function_builder_context: cranelift_frontend::FunctionBuilderContext,
     executable_memory: ExecutableMemoryAllocator,
 }
 
-#[derive(Clone, Copy)]
-struct CacheIndex(u16);
-
-const CODE_CACHE_MAX_SIZE: u16 = u16::MAX - 1;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CacheIndexView {
-    NotCached,
-    Cached(u16),
-}
-
-impl CacheIndex {
-    pub fn not_cached() -> Self {
-        CacheIndex(0)
-    }
-
-    pub fn cached(index: u16) -> Self {
-        CacheIndex(index + 1)
-    }
-
-    pub fn view(self) -> CacheIndexView {
-        match self.0 {
-            0 => CacheIndexView::NotCached,
-            _ => CacheIndexView::Cached(self.0 - 1),
-        }
-    }
-}
-
+#[derive(Clone)]
 pub struct CacheEntry {
     pub address_range: Range<PhysicalAddress>,
     pub code: Code,
 }
 
+impl CacheEntry {
+    pub fn invalid() -> Self {
+        CacheEntry {
+            address_range: PhysicalAddress(0)..PhysicalAddress(0),
+            code: Code::Jitted(unsafe {
+                std::mem::transmute::<*const u8, extern "C" fn(Mode)>(null())
+            }),
+        }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.address_range.start != self.address_range.end
+    }
+}
+
+#[derive(Clone)]
 pub enum Code {
     Jitted(extern "C" fn(Mode)),
     Interpreted(Instruction),
@@ -82,11 +68,8 @@ impl Jit {
                     / INSTRUCTION_SIZE
                     / (std::mem::size_of::<usize>() * 8)
             ]),
-            jitted_starts_map: BTreeMap::new(),
-            jitted_starts: vec![CacheIndex::not_cached(); PHYSICAL_MEMORY_SIZE / INSTRUCTION_SIZE]
+            jitted_starts: vec![CacheEntry::invalid(); PHYSICAL_MEMORY_SIZE / INSTRUCTION_SIZE]
                 .into_boxed_slice(),
-            cache: Vec::new(),
-            next_to_remove: 0,
             isa: cranelift_native::builder()
                 .unwrap()
                 .finish(settings::Flags::new(settings_builder))
@@ -97,67 +80,50 @@ impl Jit {
         }
     }
 
-    fn remove(&mut self, cache_index: u16) {
-        let entry = self.cache.swap_remove(cache_index as usize);
-        if let Some(moved_code) = self.cache.last() {
-            let moved_index = (self.cache.len() - 1) as u16;
-            self.jitted_starts_map
-                .insert(moved_code.address_range.start, moved_index)
-                .unwrap();
-            self.jitted_starts[moved_code.address_range.start.0 as usize / INSTRUCTION_SIZE] =
-                CacheIndex::cached(moved_index);
-        }
-        self.jitted_starts[entry.address_range.start.0 as usize / INSTRUCTION_SIZE] =
-            CacheIndex::not_cached();
-        self.jitted_starts_map
-            .remove(&entry.address_range.start)
-            .unwrap();
-        let start = self
-            .jitted_starts_map
-            .range(..entry.address_range.start)
+    fn add(&mut self, entry: CacheEntry) {
+        self.jitted_instructions[entry.address_range.start.0 as usize / INSTRUCTION_SIZE
+            ..entry.address_range.end.0 as usize / INSTRUCTION_SIZE]
+            .fill(true);
+        let old_entry = std::mem::replace(
+            &mut self.jitted_starts[entry.address_range.start.0 as usize / INSTRUCTION_SIZE],
+            entry,
+        );
+        assert!(!old_entry.is_valid());
+    }
+
+    fn remove(&mut self, entry: CacheEntry) {
+        let mut start = entry.address_range.start;
+        let mut end = entry.address_range.end;
+        for address in (0..entry.address_range.start.0)
+            .step_by(INSTRUCTION_SIZE)
             .rev()
-            .map(|(_, index)| {
-                let earlier_code = &self.cache[*index as usize];
-                earlier_code.address_range.end
-            })
-            .take_while(|earlier_code_end| *earlier_code_end > entry.address_range.start)
-            .max()
-            .unwrap_or(entry.address_range.start);
-        let end = self
-            .jitted_starts_map
-            .range(entry.address_range.start..entry.address_range.end)
-            .next()
-            .map(|(start, _)| *start)
-            .unwrap_or(entry.address_range.end);
+        {
+            let entry = &self.jitted_starts[address as usize / INSTRUCTION_SIZE];
+            if entry.is_valid() {
+                if entry.address_range.end <= start {
+                    break;
+                }
+                start = entry.address_range.end;
+            } else if !self.jitted_instructions[address as usize / INSTRUCTION_SIZE] {
+                break;
+            }
+        }
+        for address in (entry.address_range.start.0 + INSTRUCTION_SIZE as u32
+            ..entry.address_range.end.0)
+            .step_by(INSTRUCTION_SIZE)
+            .rev()
+        {
+            let entry = &self.jitted_starts[address as usize / INSTRUCTION_SIZE];
+            if entry.is_valid() {
+                end = PhysicalAddress(address);
+                break;
+            }
+        }
         if start < end {
             self.jitted_instructions
                 [start.0 as usize / INSTRUCTION_SIZE..end.0 as usize / INSTRUCTION_SIZE]
                 .fill(false);
         }
-        match entry.code {
-            Code::Jitted(function) => self.executable_memory.free(function as *const u8),
-            Code::Interpreted(_) => {}
-        }
-    }
-
-    fn add(&mut self, code: CacheEntry) -> u16 {
-        if self.cache.len() as u16 == CODE_CACHE_MAX_SIZE {
-            self.remove(self.next_to_remove);
-            self.next_to_remove += 1;
-            if self.next_to_remove >= CODE_CACHE_MAX_SIZE {
-                self.next_to_remove = 0;
-            }
-        }
-        let cache_index = self.cache.len() as u16;
-        self.jitted_starts[code.address_range.start.0 as usize / INSTRUCTION_SIZE] =
-            CacheIndex::cached(cache_index);
-        self.jitted_starts_map
-            .insert(code.address_range.start, cache_index);
-        self.jitted_instructions[code.address_range.start.0 as usize / INSTRUCTION_SIZE
-            ..code.address_range.end.0 as usize / INSTRUCTION_SIZE]
-            .fill(true);
-        self.cache.push(code);
-        cache_index
     }
 
     #[inline(always)]
@@ -173,67 +139,71 @@ impl Jit {
     }
 
     fn invalidate_range_slow(&mut self, range: Range<PhysicalAddress>) {
-        let to_remove = self
-            .jitted_starts_map
-            .range(..range.end)
-            .rev()
-            .take_while(|(_, index)| {
-                let entry = &self.cache[**index as usize];
-                entry.address_range.end > range.start
-            })
-            .map(|(_, index)| *index)
-            .collect::<Vec<_>>();
-
-        for index in to_remove {
-            self.remove(index);
+        for address in (0..range.start.0).step_by(INSTRUCTION_SIZE).rev() {
+            let entry = &mut self.jitted_starts[address as usize / INSTRUCTION_SIZE];
+            if entry.is_valid() {
+                if entry.address_range.end <= range.start {
+                    break;
+                }
+                let entry = std::mem::replace(entry, CacheEntry::invalid());
+                self.remove(entry);
+            } else if !self.jitted_instructions[address as usize / INSTRUCTION_SIZE] {
+                break;
+            }
+        }
+        for address in (range.start.0 as u32..range.end.0).step_by(INSTRUCTION_SIZE) {
+            let entry = &mut self.jitted_starts[address as usize / INSTRUCTION_SIZE];
+            if entry.is_valid() {
+                let entry = std::mem::replace(entry, CacheEntry::invalid());
+                self.remove(entry);
+            }
         }
     }
 
     pub fn cache_entry(&mut self, state: &State, mmu: &Mmu, bus: &Bus, mode: Mode) -> &CacheEntry {
         let physical_program_counter = mmu.virtual_to_physical(state.program_counter, mode);
-        let cache_index = unsafe {
+        let has_valid_entry = unsafe {
             self.jitted_starts
                 .get_unchecked(physical_program_counter.0 as usize / INSTRUCTION_SIZE)
+                .is_valid()
         };
-        let index = match cache_index.view() {
-            CacheIndexView::NotCached => {
-                let jit_compiler = JitCompiler::new(
-                    state,
-                    &self.isa,
-                    &mut self.codegen_context,
-                    &mut self.function_builder_context,
-                    mmu,
-                    bus,
-                );
+        if !has_valid_entry {
+            let jit_compiler = JitCompiler::new(
+                state,
+                &self.isa,
+                &mut self.codegen_context,
+                &mut self.function_builder_context,
+                mmu,
+                bus,
+            );
 
-                let entry = if let Some(end_address) =
-                    jit_compiler.compile(physical_program_counter)
-                {
-                    // println!("Compiling {}", &self.codegen_context.func);
-                    let compiled_code = self
-                        .codegen_context
-                        .compile(self.isa.as_ref(), &mut ControlPlane::default())
-                        .unwrap();
-                    // println!("Compiled {}", &self.codegen_context.func);
-                    let pointer = self.executable_memory.allocate(compiled_code.code_buffer());
-                    let function =
-                        unsafe { std::mem::transmute::<*const u8, extern "C" fn(Mode)>(pointer) };
-                    CacheEntry {
-                        address_range: physical_program_counter..end_address,
-                        code: Code::Jitted(function),
-                    }
-                } else {
-                    CacheEntry {
-                        address_range: physical_program_counter
-                            ..physical_program_counter + INSTRUCTION_SIZE as u32,
-                        code: Code::Interpreted(decode(bus.read(physical_program_counter))),
-                    }
-                };
-                self.add(entry)
-            }
-            CacheIndexView::Cached(index) => index,
-        };
-        unsafe { self.cache.get_unchecked(index as usize) }
+            let entry = if let Some(end_address) = jit_compiler.compile(physical_program_counter) {
+                // println!("Compiling {}", &self.codegen_context.func);
+                let compiled_code = self
+                    .codegen_context
+                    .compile(self.isa.as_ref(), &mut ControlPlane::default())
+                    .unwrap();
+                // println!("Compiled {}", &self.codegen_context.func);
+                let pointer = self.executable_memory.allocate(compiled_code.code_buffer());
+                let function =
+                    unsafe { std::mem::transmute::<*const u8, extern "C" fn(Mode)>(pointer) };
+                CacheEntry {
+                    address_range: physical_program_counter..end_address,
+                    code: Code::Jitted(function),
+                }
+            } else {
+                CacheEntry {
+                    address_range: physical_program_counter
+                        ..physical_program_counter + INSTRUCTION_SIZE as u32,
+                    code: Code::Interpreted(decode(bus.read(physical_program_counter))),
+                }
+            };
+            self.add(entry);
+        }
+        unsafe {
+            self.jitted_starts
+                .get_unchecked(physical_program_counter.0 as usize / INSTRUCTION_SIZE)
+        }
     }
 }
 

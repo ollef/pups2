@@ -17,13 +17,13 @@ impl Core {
                 match &cache_entry.code {
                     Code::Jitted(function) => {
                         let bytes = cache_entry.address_range.end - cache_entry.address_range.start;
-                        for pc in (self.state.program_counter..self.state.program_counter + bytes)
-                            .step_by(4)
-                        {
-                            let physical_address = self.mmu.virtual_to_physical(pc, self.mode);
-                            let instruction = decode(bus.read(physical_address));
-                            println!("J {:08x}: {}", pc, instruction);
-                        }
+                        // for pc in (self.state.program_counter..self.state.program_counter + bytes)
+                        //     .step_by(4)
+                        // {
+                        //     let physical_address = self.mmu.virtual_to_physical(pc, self.mode);
+                        //     let instruction = decode(bus.read(physical_address));
+                        //     println!("J {:08x}: {}", pc, instruction);
+                        // }
                         assert!(self.mmu.physically_consecutive(
                             self.state.program_counter..self.state.program_counter + bytes,
                             self.mode
@@ -34,7 +34,7 @@ impl Core {
                     Code::Interpreted(instruction) => {
                         cycles -= 1;
                         let instruction = *instruction;
-                        println!("I {:08x}: {}", self.state.program_counter, instruction);
+                        // println!("I {:08x}: {}", self.state.program_counter, instruction);
                         self.interpret_instruction(instruction, bus);
                     }
                 }
