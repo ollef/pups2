@@ -452,12 +452,8 @@ impl Core {
                     (i32::MIN, -1) => (i32::MIN as _, 0),
                     (dividend, divisor) => (dividend / divisor, dividend % divisor),
                 };
-                let quotient: u64 = quotient.sign_extend();
-                let remainder: u64 = remainder.sign_extend();
-                let lo = self.get_register::<u64>(Register::Lo) as u128;
-                let hi = self.get_register::<u64>(Register::Lo) as u128;
-                self.set_register::<u128>(Register::Lo, ((quotient as u128) << 64) | lo);
-                self.set_register::<u128>(Register::Hi, ((remainder as u128) << 64) | hi);
+                self.set_upper(Register::Lo, quotient.sign_extend());
+                self.set_upper(Register::Hi, remainder.sign_extend());
             }
             Instruction::Divu1(rs, rt) => {
                 let dividend = self.get_register::<u32>(rs);
@@ -467,12 +463,8 @@ impl Core {
                 } else {
                     (dividend / divisor, dividend % divisor)
                 };
-                let quotient: u64 = quotient.sign_extend();
-                let remainder: u64 = remainder.sign_extend();
-                let lo = self.get_register::<u64>(Register::Lo) as u128;
-                let hi = self.get_register::<u64>(Register::Lo) as u128;
-                self.set_register::<u128>(Register::Lo, ((quotient as u128) << 64) | lo);
-                self.set_register::<u128>(Register::Hi, ((remainder as u128) << 64) | hi);
+                self.set_upper(Register::Lo, quotient.sign_extend());
+                self.set_upper(Register::Hi, remainder.sign_extend());
             }
             Instruction::Sq(rt, offset, base) => {
                 let mut address = self

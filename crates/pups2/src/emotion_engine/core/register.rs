@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use crate::bits::Bits;
 use enum_map::Enum;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -106,14 +107,22 @@ pub trait SetRegister<T> {
     fn set_register(&mut self, value: T);
 }
 
+pub trait SetUpper<T> {
+    fn set_upper(&mut self, value: T);
+}
+
 pub trait GetRegister<T> {
     fn get_register(&self) -> T;
+}
+
+pub trait GetUpper<T> {
+    fn get_upper(&self) -> T;
 }
 
 impl SetRegister<u64> for u128 {
     #[inline(always)]
     fn set_register(&mut self, value: u64) {
-        *self = value as u128 | (*self & 0xFFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000);
+        *self = value as u128 | (*self & u128::mask(64..128));
     }
 }
 
@@ -156,5 +165,19 @@ impl GetRegister<u128> for u128 {
     #[inline(always)]
     fn get_register(&self) -> u128 {
         *self
+    }
+}
+
+impl SetUpper<u64> for u128 {
+    #[inline(always)]
+    fn set_upper(&mut self, value: u64) {
+        *self = self.bits(0..64) | ((value as u128) << 64);
+    }
+}
+
+impl GetUpper<u64> for u128 {
+    #[inline(always)]
+    fn get_upper(&self) -> u64 {
+        self.bits(64..128) as u64
     }
 }

@@ -12,6 +12,7 @@ use control::Control;
 use enum_map::{enum_map, Enum, EnumMap};
 use fpu::Fpu;
 use jit::Jit;
+use register::{GetUpper, SetUpper};
 
 use {
     mmu::Mmu,
@@ -77,5 +78,24 @@ impl Core {
             return;
         }
         self.state.registers[register].set_register(value);
+    }
+
+    #[inline(always)]
+    pub fn get_upper<T>(&self, register: Register) -> T
+    where
+        u128: GetUpper<T>,
+    {
+        self.state.registers[register].get_upper()
+    }
+
+    #[inline(always)]
+    pub fn set_upper<T>(&mut self, register: Register, value: T)
+    where
+        u128: SetUpper<T>,
+    {
+        if register == Register::Zero {
+            return;
+        }
+        self.state.registers[register].set_upper(value);
     }
 }
