@@ -66,4 +66,18 @@ impl Instruction {
             _ => None,
         }
     }
+
+    pub fn definitions(&self) -> impl Iterator<Item = Occurrence> {
+        self.raw_definitions()
+            .into_iter()
+            .take_while(|occ| occ.is_some())
+            .filter_map(|occ| occ.and_then(|occ| occ.non_zero()))
+    }
+
+    pub fn uses(&self) -> impl Iterator<Item = Occurrence> {
+        self.raw_uses()
+            .into_iter()
+            .take_while(|occ| occ.is_some())
+            .filter_map(|occ| occ.and_then(|occ| occ.non_zero()))
+    }
 }
