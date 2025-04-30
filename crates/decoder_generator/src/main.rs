@@ -492,5 +492,4 @@ fn main() {
     predicates(raw_instructions);
     println!();
     definitions_and_uses(&yaml[0]["operands"], raw_instructions, &encodings);
-    println!();
 }
