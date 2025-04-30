@@ -105,13 +105,13 @@ instructions:
   000000 ..... ..... ..... ..... 111101: 'unknown'
   000000 ..... ..... ..... ..... 111110: '{rd} = dsrl32 {rt}, {sa}'
   000000 ..... ..... ..... ..... 111111: '{rd} = dsra32 {rt}, {sa}'
-  000001 ..... 00000 ..... ..... ......: {format: 'bltz {rs}, {imm16}', predicates: [is_branch]}
-  000001 ..... 00001 ..... ..... ......: {format: 'bgez {rs}, {imm16}', predicates: [is_branch]}
-  000010 ..... ..... ..... ..... ......: {format: 'j {imm26}', predicates: [is_branch]}
-  000011 ..... ..... ..... ..... ......: {format: 'jal {imm26}', predicates: [is_branch]}
-  000100 ..... ..... ..... ..... ......: {format: 'beq {rs}, {rt}, {imm16}', predicates: [is_branch]}
-  000101 ..... ..... ..... ..... ......: {format: 'bne {rs}, {rt}, {imm16}', predicates: [is_branch]}
-  000110 ..... 00000 ..... ..... ......: {format: 'blez {rs}, {imm16}', predicates: [is_branch]}
+  000001 ..... 00000 ..... ..... ......: {format: 'bltz {rs}, {imm16:#x}', predicates: [is_branch]}
+  000001 ..... 00001 ..... ..... ......: {format: 'bgez {rs}, {imm16:#x}', predicates: [is_branch]}
+  000010 ..... ..... ..... ..... ......: {format: 'j {imm26:#x}', predicates: [is_branch]}
+  000011 ..... ..... ..... ..... ......: {format: 'jal {imm26:#x}', predicates: [is_branch]}
+  000100 ..... ..... ..... ..... ......: {format: 'beq {rs}, {rt}, {imm16:#x}', predicates: [is_branch]}
+  000101 ..... ..... ..... ..... ......: {format: 'bne {rs}, {rt}, {imm16:#x}', predicates: [is_branch]}
+  000110 ..... 00000 ..... ..... ......: {format: 'blez {rs}, {imm16:#x}', predicates: [is_branch]}
   001000 ..... ..... ..... ..... ......: '{rt} = addi {rs}, {imm16}'
   001001 ..... ..... ..... ..... ......: '{rt} = addiu {rs}, {imm16}'
   001010 ..... ..... ..... ..... ......: '{rt} = slti {rs}, {imm16}'
@@ -119,7 +119,7 @@ instructions:
   001100 ..... ..... ..... ..... ......: '{rt} = andi {rs}, {imm16}'
   001101 ..... ..... ..... ..... ......: '{rt} = ori {rs}, {imm16}'
   001110 ..... ..... ..... ..... ......: '{rt} = xori {rs}, {imm16}'
-  001111 00000 ..... ..... ..... ......: '{rt} = lui {imm16}'
+  001111 00000 ..... ..... ..... ......: '{rt} = lui {imm16:#x}'
   010000 00000 ..... ..... 00000 000000: '{rt} = mfc0 {cd}'
   010000 00100 ..... ..... 00000 000000: '{cd} = mtc0 {rt}'
   010000 10000 00000 00000 00000 000001: 'tlbr'
@@ -134,8 +134,8 @@ instructions:
   010001 10000 00000 ..... ..... 000110: '{fd} = mov.s {fs}'
   010001 10000 00000 ..... ..... 100100: '{fd} = cvt.w.s {fs}'
   010001 10100 00000 ..... ..... 100000: '{fd} = cvt.s.w {fs}'
-  010100 ..... ..... ..... ..... ......: {format: 'beql {rs}, {rt}, {imm16}', predicates: [is_branch, is_branch_likely]}
-  010101 ..... ..... ..... ..... ......: {format: 'bnel {rs}, {rt}, {imm16}', predicates: [is_branch, is_branch_likely]}
+  010100 ..... ..... ..... ..... ......: {format: 'beql {rs}, {rt}, {imm16:#x}', predicates: [is_branch, is_branch_likely]}
+  010101 ..... ..... ..... ..... ......: {format: 'bnel {rs}, {rt}, {imm16:#x}', predicates: [is_branch, is_branch_likely]}
   011100 ..... ..... 00000 00000 011010: {format: 'div1 {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
   011100 ..... ..... 00000 00000 011011: {format: 'divu1 {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
   011111 ..... ..... ..... ..... ......: 'sq {rt}, {imm16:#x}({rs})'
