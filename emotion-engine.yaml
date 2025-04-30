@@ -65,10 +65,10 @@ instructions:
   000000 ..... ..... ..... ..... 010101: 'unknown'
   000000 ..... ..... ..... ..... 010110: '{rd} = dsrlv {rt}, {rs}'
   000000 ..... ..... ..... ..... 010111: '{rd} = dsrav {rt}, {rs}'
-  000000 ..... ..... ..... ..... 011000: {format: '{rd} = mult {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
-  000000 ..... ..... ..... ..... 011001: {format: '{rd} = multu {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
-  000000 ..... ..... ..... ..... 011010: {format: 'div {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
-  000000 ..... ..... ..... ..... 011011: {format: 'divu {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
+  000000 ..... ..... 00000 00000 011000: {format: '{rd} = mult {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
+  000000 ..... ..... 00000 00000 011001: {format: '{rd} = multu {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
+  000000 ..... ..... 00000 00000 011010: {format: 'div {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
+  000000 ..... ..... 00000 00000 011011: {format: 'divu {rs}, {rt}', defs: [Register::Lo, Register::Hi]}
   000000 ..... ..... ..... ..... 011100: 'unknown'
   000000 ..... ..... ..... ..... 011101: 'unknown'
   000000 ..... ..... ..... ..... 011110: 'unknown'

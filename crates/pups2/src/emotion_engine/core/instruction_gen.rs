@@ -146,10 +146,22 @@ impl Instruction {
                 0b010101 => Instruction::Unknown,
                 0b010110 => Instruction::Dsrlv(rd(), rt(), rs()),
                 0b010111 => Instruction::Dsrav(rd(), rt(), rs()),
-                0b011000 => Instruction::Mult(rd(), rs(), rt()),
-                0b011001 => Instruction::Multu(rd(), rs(), rt()),
-                0b011010 => Instruction::Div(rs(), rt()),
-                0b011011 => Instruction::Divu(rs(), rt()),
+                0b011000 => match data.bits(6..16) {
+                    0b0000000000 => Instruction::Mult(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b011001 => match data.bits(6..16) {
+                    0b0000000000 => Instruction::Multu(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b011010 => match data.bits(6..16) {
+                    0b0000000000 => Instruction::Div(rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b011011 => match data.bits(6..16) {
+                    0b0000000000 => Instruction::Divu(rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b011100 => Instruction::Unknown,
                 0b011101 => Instruction::Unknown,
                 0b011110 => Instruction::Unknown,
