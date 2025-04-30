@@ -253,7 +253,7 @@ fn display_impl(encodings: &[Encoding<String>]) {
 }
 
 fn predicates<'a>(instructions: impl IntoIterator<Item = (&'a Yaml, &'a Yaml)>) {
-    let mut predicate_opcodes: HashMap<String, Vec<String>> = HashMap::new();
+    let mut predicate_opcodes: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (_, instruction) in instructions {
         if let Some(predicates) = instruction["predicates"].as_vec() {
             let format = InstructionFormat(instruction["format"].as_str().unwrap());

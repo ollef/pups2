@@ -398,14 +398,6 @@ impl Display for Instruction {
 }
 
 impl Instruction {
-    pub fn is_branch_likely(self) -> bool {
-        match self {
-            Instruction::Beql(..) => true,
-            Instruction::Bnel(..) => true,
-            _ => false,
-        }
-    }
-
     pub fn is_branch(self) -> bool {
         match self {
             Instruction::Jr(..) => true,
@@ -417,6 +409,14 @@ impl Instruction {
             Instruction::Beq(..) => true,
             Instruction::Bne(..) => true,
             Instruction::Blez(..) => true,
+            Instruction::Beql(..) => true,
+            Instruction::Bnel(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_branch_likely(self) -> bool {
+        match self {
             Instruction::Beql(..) => true,
             Instruction::Bnel(..) => true,
             _ => false,
