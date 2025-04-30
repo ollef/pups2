@@ -277,12 +277,13 @@ fn predicates<'a>(instructions: impl IntoIterator<Item = (&'a Yaml, &'a Yaml)>) 
             println!();
         }
         println!("    pub fn {predicate}(self) -> bool {{");
-        println!("        match self {{");
+        print!("        matches!(self, ");
+        let mut bar = "";
         for opcode in opcodes {
-            println!("            Instruction::{opcode}(..) => true,");
+            print!("{bar}Instruction::{opcode}(..)");
+            bar = " | ";
         }
-        println!("            _ => false,");
-        println!("        }}");
+        println!(")");
         println!("    }}");
         newline = true;
     }

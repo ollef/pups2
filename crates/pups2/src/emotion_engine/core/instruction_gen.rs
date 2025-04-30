@@ -399,28 +399,11 @@ impl Display for Instruction {
 
 impl Instruction {
     pub fn is_branch(self) -> bool {
-        match self {
-            Instruction::Jr(..) => true,
-            Instruction::Jalr(..) => true,
-            Instruction::Bltz(..) => true,
-            Instruction::Bgez(..) => true,
-            Instruction::J(..) => true,
-            Instruction::Jal(..) => true,
-            Instruction::Beq(..) => true,
-            Instruction::Bne(..) => true,
-            Instruction::Blez(..) => true,
-            Instruction::Beql(..) => true,
-            Instruction::Bnel(..) => true,
-            _ => false,
-        }
+        matches!(self, Instruction::Jr(..) | Instruction::Jalr(..) | Instruction::Bltz(..) | Instruction::Bgez(..) | Instruction::J(..) | Instruction::Jal(..) | Instruction::Beq(..) | Instruction::Bne(..) | Instruction::Blez(..) | Instruction::Beql(..) | Instruction::Bnel(..))
     }
 
     pub fn is_branch_likely(self) -> bool {
-        match self {
-            Instruction::Beql(..) => true,
-            Instruction::Bnel(..) => true,
-            _ => false,
-        }
+        matches!(self, Instruction::Beql(..) | Instruction::Bnel(..))
     }
 }
 
