@@ -3,7 +3,7 @@ use crate::{
     emotion_engine::{bus::Bus, core::register::Register},
 };
 
-use super::{control, instruction::Instruction, mmu::TlbEntry, Core, State};
+use super::{control, instruction_gen::Instruction, mmu::TlbEntry, Core, State};
 
 impl State {
     pub extern "C" fn set_delayed_branch_target(&mut self, target: u32) {
@@ -363,19 +363,19 @@ impl Core {
             Instruction::Lui(rt, imm) => {
                 self.set_register::<u64>(rt, ((imm as u32) << 16).sign_extend());
             }
-            Instruction::Mfc0(rt, rs) => {
-                let value = self.state.control.get_register(rs);
+            Instruction::Mfc0(rt, rd) => {
+                let value = self.state.control.get_register(rd);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
-            Instruction::Mtc0(rt, rs) => {
+            Instruction::Mtc0(rd, rt) => {
                 let value = self.get_register(rt);
-                self.state.control.set_register(rs, value);
+                self.state.control.set_register(rd, value);
             }
             Instruction::Mfc1(rt, fs) => {
                 let value = self.state.fpu.get_register::<u32>(fs);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
-            Instruction::Mtc1(rt, fs) => {
+            Instruction::Mtc1(fs, rt) => {
                 let value = self.get_register::<u32>(rt);
                 self.state.fpu.set_register(fs, value);
             }
@@ -444,37 +444,21 @@ impl Core {
                     next_program_counter += 4;
                 }
             }
-            Instruction::Mult1(rd, rs, rt) => {
-                let a: u64 = self.get_register::<u32>(rs).sign_extend();
-                let b: u64 = self.get_register::<u32>(rt).sign_extend();
-                let prod = a.wrapping_mul(b);
-                let lo: u64 = (prod as u32).sign_extend();
-                let hi: u64 = ((prod >> 32) as u32).sign_extend();
-                self.set_register(rd, lo);
-                self.set_register::<u128>(
-                    Register::Lo,
-                    ((lo as u128) << 64) | self.get_register::<u64>(Register::Lo) as u128,
-                );
-                self.set_register::<u128>(
-                    Register::Hi,
-                    ((hi as u128) << 64) | self.get_register::<u64>(Register::Hi) as u128,
-                );
-            }
-            Instruction::Sq(rt, base, offset) => {
+            Instruction::Sq(rt, offset, base) => {
                 let mut address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 address &= !0b1111;
                 self.write_virtual(bus, address, self.get_register::<u128>(rt));
             }
-            Instruction::Lb(rt, base, offset) => {
+            Instruction::Lb(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 let value = self.read_virtual::<u8>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
-            Instruction::Lh(rt, base, offset) => {
+            Instruction::Lh(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -484,7 +468,7 @@ impl Core {
                 let value = self.read_virtual::<u16>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
-            Instruction::Lw(rt, base, offset) => {
+            Instruction::Lw(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -494,21 +478,21 @@ impl Core {
                 let value = self.read_virtual::<u32>(bus, address);
                 self.set_register::<u64>(rt, value.sign_extend());
             }
-            Instruction::Lbu(rt, base, offset) => {
+            Instruction::Lbu(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 let value = self.read_virtual::<u8>(bus, address);
                 self.set_register(rt, value as u64);
             }
-            Instruction::Lhu(rt, base, offset) => {
+            Instruction::Lhu(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 let value = self.read_virtual::<u16>(bus, address);
                 self.set_register(rt, value as u64);
             }
-            Instruction::Lwr(rt, base, offset) => {
+            Instruction::Lwr(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -522,13 +506,13 @@ impl Core {
                 };
                 self.set_register(rt, value);
             }
-            Instruction::Sb(rt, base, offset) => {
+            Instruction::Sb(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
                 self.write_virtual(bus, address, self.get_register::<u8>(rt));
             }
-            Instruction::Sh(rt, base, offset) => {
+            Instruction::Sh(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -537,7 +521,7 @@ impl Core {
                 }
                 self.write_virtual(bus, address, self.get_register::<u16>(rt));
             }
-            Instruction::Sw(rt, base, offset) => {
+            Instruction::Sw(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -546,7 +530,7 @@ impl Core {
                 }
                 self.write_virtual(bus, address, self.get_register::<u32>(rt));
             }
-            Instruction::Lwc1(ft, base, offset) => {
+            Instruction::Lwc1(ft, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -556,7 +540,7 @@ impl Core {
                 let value = self.read_virtual::<u32>(bus, address);
                 self.state.fpu.set_register(ft, value);
             }
-            Instruction::Ld(rt, base, offset) => {
+            Instruction::Ld(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -566,7 +550,7 @@ impl Core {
                 let value = self.read_virtual(bus, address);
                 self.set_register::<u64>(rt, value);
             }
-            Instruction::Swc1(ft, base, offset) => {
+            Instruction::Swc1(ft, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());
@@ -575,7 +559,7 @@ impl Core {
                 }
                 self.write_virtual(bus, address, self.state.fpu.get_register::<u32>(ft));
             }
-            Instruction::Sd(rt, base, offset) => {
+            Instruction::Sd(rt, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
                     .wrapping_add(offset.sign_extend());

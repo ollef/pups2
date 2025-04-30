@@ -98,24 +98,7 @@ impl Register {
     }
 
     pub fn all() -> impl ExactSizeIterator<Item = Register> {
-        (0..Register::LENGTH).map(Register::from_usize)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum AnyRegister {
-    Core(Register),
-    Control(control::Register),
-    Fpu(fpu::Register),
-}
-
-impl AnyRegister {
-    pub fn non_zero(self) -> Option<Self> {
-        match self {
-            AnyRegister::Core(register) => register.non_zero().map(AnyRegister::Core),
-            AnyRegister::Control(register) => Some(AnyRegister::Control(register)),
-            AnyRegister::Fpu(register) => Some(AnyRegister::Fpu(register)),
-        }
+        (0..Register::LENGTH).map(<Register as Enum>::from_usize)
     }
 }
 

@@ -1,8 +1,8 @@
 pub mod control;
-pub mod decoder;
 pub mod execution;
 pub mod fpu;
 pub mod instruction;
+pub mod instruction_gen;
 pub mod interpreter;
 pub mod jit;
 pub mod mmu;
