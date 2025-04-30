@@ -128,30 +128,93 @@ impl Instruction {
         let imm26 = || data.bits(0..26);
         match data.bits(26..32) {
             0b000000 => match data.bits(0..6) {
-                0b000000 => Instruction::Sll(rd(), rt(), sa()),
+                0b000000 => match data.bits(21..26) {
+                    0b00000 => Instruction::Sll(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b000001 => Instruction::Unknown,
-                0b000010 => Instruction::Srl(rd(), rt(), sa()),
-                0b000011 => Instruction::Sra(rd(), rt(), sa()),
-                0b000100 => Instruction::Sllv(rd(), rt(), rs()),
+                0b000010 => match data.bits(21..26) {
+                    0b00000 => Instruction::Srl(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b000011 => match data.bits(21..26) {
+                    0b00000 => Instruction::Sra(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b000100 => match data.bits(6..11) {
+                    0b00000 => Instruction::Sllv(rd(), rt(), rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b000101 => Instruction::Unknown,
-                0b000110 => Instruction::Srlv(rd(), rt(), rs()),
-                0b000111 => Instruction::Srav(rd(), rt(), rs()),
-                0b001000 => Instruction::Jr(rs()),
-                0b001001 => Instruction::Jalr(rd(), rs()),
-                0b001010 => Instruction::Movz(rd(), rs(), rt()),
-                0b001011 => Instruction::Movn(rd(), rs(), rt()),
+                0b000110 => match data.bits(6..11) {
+                    0b00000 => Instruction::Srlv(rd(), rt(), rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b000111 => match data.bits(6..11) {
+                    0b00000 => Instruction::Srav(rd(), rt(), rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b001000 => match data.bits(6..21) {
+                    0b000000000000000 => Instruction::Jr(rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b001001 => match data.bits(6..11) {
+                    0b00000 => match data.bits(16..21) {
+                        0b00000 => Instruction::Jalr(rd(), rs()),
+                        _ => panic!("Unhandled instruction: {:#034b}", data),
+                    }
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b001010 => match data.bits(6..11) {
+                    0b00000 => Instruction::Movz(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b001011 => match data.bits(6..11) {
+                    0b00000 => Instruction::Movn(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b001100 => Instruction::Syscall,
                 0b001101 => Instruction::Break,
                 0b001110 => Instruction::Unknown,
-                0b001111 => Instruction::Sync,
-                0b010000 => Instruction::Mfhi(rd()),
-                0b010001 => Instruction::Mthi(rs()),
-                0b010010 => Instruction::Mflo(rd()),
-                0b010011 => Instruction::Mtlo(rs()),
-                0b010100 => Instruction::Dsllv(rd(), rt(), rs()),
+                0b001111 => match data.bits(11..26) {
+                    0b000000000000000 => Instruction::Sync,
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b010000 => match data.bits(6..11) {
+                    0b00000 => match data.bits(16..26) {
+                        0b0000000000 => Instruction::Mfhi(rd()),
+                        _ => panic!("Unhandled instruction: {:#034b}", data),
+                    }
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b010001 => match data.bits(6..21) {
+                    0b000000000000000 => Instruction::Mthi(rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b010010 => match data.bits(6..11) {
+                    0b00000 => match data.bits(16..26) {
+                        0b0000000000 => Instruction::Mflo(rd()),
+                        _ => panic!("Unhandled instruction: {:#034b}", data),
+                    }
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b010011 => match data.bits(6..21) {
+                    0b000000000000000 => Instruction::Mtlo(rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b010100 => match data.bits(6..11) {
+                    0b00000 => Instruction::Dsllv(rd(), rt(), rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b010101 => Instruction::Unknown,
-                0b010110 => Instruction::Dsrlv(rd(), rt(), rs()),
-                0b010111 => Instruction::Dsrav(rd(), rt(), rs()),
+                0b010110 => match data.bits(6..11) {
+                    0b00000 => Instruction::Dsrlv(rd(), rt(), rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b010111 => match data.bits(6..11) {
+                    0b00000 => Instruction::Dsrav(rd(), rt(), rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b011000 => match data.bits(6..11) {
                     0b00000 => Instruction::Mult(rd(), rs(), rt()),
                     _ => panic!("Unhandled instruction: {:#034b}", data),
@@ -172,22 +235,73 @@ impl Instruction {
                 0b011101 => Instruction::Unknown,
                 0b011110 => Instruction::Unknown,
                 0b011111 => Instruction::Unknown,
-                0b100000 => Instruction::Add(rd(), rs(), rt()),
-                0b100001 => Instruction::Addu(rd(), rs(), rt()),
-                0b100010 => Instruction::Sub(rd(), rs(), rt()),
-                0b100011 => Instruction::Subu(rd(), rs(), rt()),
-                0b100100 => Instruction::And(rd(), rs(), rt()),
-                0b100101 => Instruction::Or(rd(), rs(), rt()),
-                0b100110 => Instruction::Xor(rd(), rs(), rt()),
-                0b100111 => Instruction::Nor(rd(), rs(), rt()),
-                0b101000 => Instruction::Mfsa(rd()),
-                0b101001 => Instruction::Mtsa(rs()),
-                0b101010 => Instruction::Slt(rd(), rs(), rt()),
-                0b101011 => Instruction::Sltu(rd(), rs(), rt()),
-                0b101100 => Instruction::Dadd(rd(), rs(), rt()),
-                0b101101 => Instruction::Daddu(rd(), rs(), rt()),
-                0b101110 => Instruction::Dsub(rd(), rs(), rt()),
-                0b101111 => Instruction::Dsubu(rd(), rs(), rt()),
+                0b100000 => match data.bits(6..11) {
+                    0b00000 => Instruction::Add(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b100001 => match data.bits(6..11) {
+                    0b00000 => Instruction::Addu(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b100010 => match data.bits(6..11) {
+                    0b00000 => Instruction::Sub(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b100011 => match data.bits(6..11) {
+                    0b00000 => Instruction::Subu(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b100100 => match data.bits(6..11) {
+                    0b00000 => Instruction::And(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b100101 => match data.bits(6..11) {
+                    0b00000 => Instruction::Or(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b100110 => match data.bits(6..11) {
+                    0b00000 => Instruction::Xor(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b100111 => match data.bits(6..11) {
+                    0b00000 => Instruction::Nor(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b101000 => match data.bits(6..11) {
+                    0b00000 => match data.bits(16..26) {
+                        0b0000000000 => Instruction::Mfsa(rd()),
+                        _ => panic!("Unhandled instruction: {:#034b}", data),
+                    }
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b101001 => match data.bits(6..21) {
+                    0b000000000000000 => Instruction::Mtsa(rs()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b101010 => match data.bits(6..11) {
+                    0b00000 => Instruction::Slt(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b101011 => match data.bits(6..11) {
+                    0b00000 => Instruction::Sltu(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b101100 => match data.bits(6..11) {
+                    0b00000 => Instruction::Dadd(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b101101 => match data.bits(6..11) {
+                    0b00000 => Instruction::Daddu(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b101110 => match data.bits(6..11) {
+                    0b00000 => Instruction::Dsub(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b101111 => match data.bits(6..11) {
+                    0b00000 => Instruction::Dsubu(rd(), rs(), rt()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b110000 => Instruction::Tge(rs(), rt()),
                 0b110001 => Instruction::Tgeu(rs(), rt()),
                 0b110010 => Instruction::Tlt(rs(), rt()),
@@ -196,14 +310,32 @@ impl Instruction {
                 0b110101 => Instruction::Unknown,
                 0b110110 => Instruction::Tne(rs(), rt()),
                 0b110111 => Instruction::Unknown,
-                0b111000 => Instruction::Dsll(rd(), rt(), sa()),
+                0b111000 => match data.bits(21..26) {
+                    0b00000 => Instruction::Dsll(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b111001 => Instruction::Unknown,
-                0b111010 => Instruction::Dsrl(rd(), rt(), sa()),
-                0b111011 => Instruction::Dsra(rd(), rt(), sa()),
-                0b111100 => Instruction::Dsll32(rd(), rt(), sa()),
+                0b111010 => match data.bits(21..26) {
+                    0b00000 => Instruction::Dsrl(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b111011 => match data.bits(21..26) {
+                    0b00000 => Instruction::Dsra(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b111100 => match data.bits(21..26) {
+                    0b00000 => Instruction::Dsll32(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 0b111101 => Instruction::Unknown,
-                0b111110 => Instruction::Dsrl32(rd(), rt(), sa()),
-                0b111111 => Instruction::Dsra32(rd(), rt(), sa()),
+                0b111110 => match data.bits(21..26) {
+                    0b00000 => Instruction::Dsrl32(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
+                0b111111 => match data.bits(21..26) {
+                    0b00000 => Instruction::Dsra32(rd(), rt(), sa()),
+                    _ => panic!("Unhandled instruction: {:#034b}", data),
+                }
                 _ => unreachable!(),
             }
             0b000001 => match data.bits(16..21) {
