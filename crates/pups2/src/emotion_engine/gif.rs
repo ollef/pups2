@@ -1,3 +1,4 @@
+use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
 use crate::{bits::Bits, bytes::Bytes, fifo::Fifo};
@@ -15,8 +16,7 @@ pub struct Gif {
     path3_tag_value: u32,               // P3TAG
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-#[repr(u8)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, FromPrimitive)]
 pub enum Register {
     Primitive,
     Rgbaq,
@@ -38,8 +38,7 @@ pub enum Register {
 
 impl From<u8> for Register {
     fn from(value: u8) -> Self {
-        let value = value & 0b1111;
-        unsafe { std::mem::transmute(value) }
+        Register::from_u8(value & 0b1111).unwrap()
     }
 }
 
