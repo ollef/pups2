@@ -1183,6 +1183,14 @@ impl<'a> JitCompiler<'a> {
                     self.function_builder.ins().return_(&[]);
                     self.function_builder.switch_to_block(taken_block);
                 }
+                Instruction::Div1(rs, rt) => {
+                    unhandled();
+                    break;
+                }
+                Instruction::Divu1(rs, rt) => {
+                    unhandled();
+                    break;
+                }
                 Instruction::Sq(rt, offset, base) => {
                     // let mut address = self
                     //     .get_register::<u32>(base)
