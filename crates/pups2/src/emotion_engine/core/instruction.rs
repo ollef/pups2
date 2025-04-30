@@ -487,7 +487,7 @@ impl Instruction {
                 address.wrapping_add(4).wrapping_add(offset << 2)
             }),
             Instruction::J(target) | Instruction::Jal(target) => {
-                Some(((address + 4) & 0xF000_0000).wrapping_add(target << 2))
+                Some((address.wrapping_add(4) & 0xF000_0000).wrapping_add(target << 2))
             }
             _ => None,
         }
