@@ -71,7 +71,7 @@ impl Control {
             Register::EntryLo1 => self.registers[register] = value,
             Register::Context => todo!(),
             Register::PageMask => self.registers[register] = value,
-            Register::Wired => todo!(),
+            Register::Wired => self.registers[register] = value,
             Register::Undefined7 => todo!(),
             Register::BadVAddr => todo!(),
             Register::Count => self.registers[register] = value,
