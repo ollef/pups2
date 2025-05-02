@@ -15,8 +15,7 @@ pub struct Dmac {
     ring_buffer_size: u32,    // RBSR
     ring_buffer_offset: u32,  // RBOR
     stall_address: u32,       // STADR
-    hold_status: u32,         // D_ENABLER (read-only)
-    hold_control: u32,        // D_ENABLEW (write-only)
+    hold_state_enabled: bool, // D_ENABLER, D_ENABLEW
     channels: EnumMap<Channel, ChannelRegisters>,
     active_channels: EnumSet<u16, Channel>,
 }
@@ -119,8 +118,9 @@ impl Dmac {
                 self.stall_address = value;
                 return;
             }
+            // D_ENABLEW
             0x1000_F590 => {
-                self.hold_control = value;
+                self.hold_state_enabled = value.bit(16);
                 return;
             }
             _ => panic!("Invalid DMAC write address: 0x{:08x}", address),
@@ -163,7 +163,12 @@ impl Dmac {
             0x1000_E040 => return self.ring_buffer_size,
             0x1000_E050 => return self.ring_buffer_offset,
             0x1000_E060 => return self.stall_address,
-            0x1000_F520 => return self.hold_status,
+            // D_ENABLER
+            0x1000_F520 => {
+                let mut result = 0;
+                result.set_bit(16, self.hold_state_enabled);
+                return result;
+            }
             _ => panic!("Invalid DMAC read address: 0x{:08x}", address),
         };
         match address & 0xFF {
@@ -179,6 +184,9 @@ impl Dmac {
     }
 
     pub fn step(bus: &mut Bus) {
+        if bus.dmac.hold_state_enabled {
+            return;
+        }
         // TODO arbitration
         for channel in bus.dmac.active_channels {
             let registers = &bus.dmac.channels[channel];
