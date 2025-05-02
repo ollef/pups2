@@ -553,13 +553,13 @@ impl<'a> JitCompiler<'a> {
                     .ins()
                     .iadd_imm(program_counter, INSTRUCTION_SIZE as i64)
             });
-            let delay_slot = delayed_branch_target.is_some();
-            delayed_branch_target = None;
             let instruction = Instruction::decode(self.bus.read(address));
             // println!("Instruction: {:#010x} {}", address.0, instruction);
+            let delay_slot = delayed_branch_target.is_some();
             if delay_slot && instruction.is_branch() {
                 break;
             }
+            let mut next_delayed_branch_target = None;
             let unhandled = || {
                 // println!("Unhandled instruction at {:#010x} {}", address.0, instruction);
             };
@@ -609,11 +609,11 @@ impl<'a> JitCompiler<'a> {
                 }
                 Instruction::Jr(rs) => {
                     let target = self.get_register(rs, Size::S32);
-                    delayed_branch_target = Some(target);
+                    next_delayed_branch_target = Some(target);
                 }
                 Instruction::Jalr(rd, rs) => {
                     let target = self.get_register(rs, Size::S32);
-                    delayed_branch_target = Some(target);
+                    next_delayed_branch_target = Some(target);
 
                     let next_next_pc = self
                         .function_builder
@@ -900,7 +900,7 @@ impl<'a> JitCompiler<'a> {
                         .function_builder
                         .ins()
                         .iadd_imm(upper_next_pc, (target << 2) as i64);
-                    delayed_branch_target = Some(target);
+                    next_delayed_branch_target = Some(target);
                 }
                 Instruction::Jal(target) => {
                     let upper_next_pc = self
@@ -911,7 +911,7 @@ impl<'a> JitCompiler<'a> {
                         .function_builder
                         .ins()
                         .iadd_imm(upper_next_pc, (target << 2) as i64);
-                    delayed_branch_target = Some(target);
+                    next_delayed_branch_target = Some(target);
                     let next_next_pc = self
                         .function_builder
                         .ins()
@@ -943,7 +943,7 @@ impl<'a> JitCompiler<'a> {
                         .function_builder
                         .ins()
                         .select(conditional, taken, not_taken);
-                    delayed_branch_target = Some(target);
+                    next_delayed_branch_target = Some(target);
                 }
                 Instruction::Bne(rs, rt, offset) => {
                     let offset: u32 = offset.sign_extend();
@@ -966,7 +966,7 @@ impl<'a> JitCompiler<'a> {
                         .function_builder
                         .ins()
                         .select(conditional, taken, not_taken);
-                    delayed_branch_target = Some(target);
+                    next_delayed_branch_target = Some(target);
                 }
                 Instruction::Blez(rs, offset) => {
                     // if (self.get_register::<u64>(rs) as i64) <= 0 {
@@ -1128,7 +1128,7 @@ impl<'a> JitCompiler<'a> {
                         .function_builder
                         .ins()
                         .iadd_imm(next_program_counter, INSTRUCTION_SIZE as i64);
-                    delayed_branch_target = Some(taken);
+                    next_delayed_branch_target = Some(taken);
                     let not_taken_block = self.function_builder.create_block();
                     let taken_block = self.function_builder.create_block();
                     for register in Register::all() {
@@ -1163,7 +1163,7 @@ impl<'a> JitCompiler<'a> {
                         .function_builder
                         .ins()
                         .iadd_imm(next_program_counter, INSTRUCTION_SIZE as i64);
-                    delayed_branch_target = Some(taken);
+                    next_delayed_branch_target = Some(taken);
                     let not_taken_block = self.function_builder.create_block();
                     let taken_block = self.function_builder.create_block();
                     for register in Register::all() {
@@ -1311,6 +1311,7 @@ impl<'a> JitCompiler<'a> {
             }
             address += INSTRUCTION_SIZE as u32;
             program_counter = next_program_counter;
+            delayed_branch_target = next_delayed_branch_target;
             if delay_slot {
                 break;
             }
