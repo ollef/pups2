@@ -537,9 +537,7 @@ impl<'a> JitCompiler<'a> {
     }
 
     pub fn compile(mut self, mut address: PhysicalAddress) -> Option<PhysicalAddress> {
-        if self.state.delayed_branch_target.is_some() {
-            return None;
-        }
+        assert!(self.state.delayed_branch_target.is_none());
         let block = self.function_builder.create_block();
         self.function_builder
             .append_block_params_for_function_params(block);
