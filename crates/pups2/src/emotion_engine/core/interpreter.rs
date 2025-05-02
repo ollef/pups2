@@ -324,6 +324,13 @@ impl Core {
                         .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
                 }
             }
+            Instruction::Bgtz(rs, offset) => {
+                if (self.get_register::<u64>(rs) as i64) > 0 {
+                    let offset: u32 = offset.sign_extend();
+                    self.state
+                        .set_delayed_branch_target(next_program_counter.wrapping_add(offset << 2));
+                }
+            }
             Instruction::Addi(rt, rs, imm) => {
                 // TODO exception on overflow
                 let temp = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());

@@ -112,6 +112,7 @@ instructions:
   000100 ..... ..... ..... ..... ......: {format: 'beq {rs}, {rt}, {imm16:#x}', predicates: [is_branch]}
   000101 ..... ..... ..... ..... ......: {format: 'bne {rs}, {rt}, {imm16:#x}', predicates: [is_branch]}
   000110 ..... 00000 ..... ..... ......: {format: 'blez {rs}, {imm16:#x}', predicates: [is_branch]}
+  000111 ..... 00000 ..... ..... ......: {format: 'bgtz {rs}, {imm16:#x}', predicates: [is_branch]}
   001000 ..... ..... ..... ..... ......: '{rt} = addi {rs}, {imm16}'
   001001 ..... ..... ..... ..... ......: '{rt} = addiu {rs}, {imm16}'
   001010 ..... ..... ..... ..... ......: '{rt} = slti {rs}, {imm16}'

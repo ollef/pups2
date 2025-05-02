@@ -978,6 +978,16 @@ impl<'a> JitCompiler<'a> {
                     unhandled();
                     break;
                 }
+                Instruction::Bgtz(rs, offset) => {
+                    // if (self.get_register::<u64>(rs) as i64) > 0 {
+                    //     let offset: u32 = offset.sign_extend();
+                    //     self.set_delayed_branch_target(
+                    //         next_program_counter.wrapping_add(offset << 2),
+                    //     );
+                    // }
+                    unhandled();
+                    break;
+                }
                 Instruction::Addi(rt, rs, imm) => {
                     // TODO exception on overflow
                     let rs_value = self.get_register(rs, Size::S32);

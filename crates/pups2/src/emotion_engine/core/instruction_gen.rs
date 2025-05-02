@@ -68,6 +68,7 @@ pub enum Instruction {
     Beq(Register, Register, u16),
     Bne(Register, Register, u16),
     Blez(Register, u16),
+    Bgtz(Register, u16),
     Addi(Register, Register, u16),
     Addiu(Register, Register, u16),
     Slti(Register, Register, u16),
@@ -351,6 +352,10 @@ impl Instruction {
                 0b00000 => Instruction::Blez(rs(), imm16()),
                 _ => panic!("Unhandled instruction: {:#034b}", data),
             }
+            0b000111 => match data.bits(16..21) {
+                0b00000 => Instruction::Bgtz(rs(), imm16()),
+                _ => panic!("Unhandled instruction: {:#034b}", data),
+            }
             0b001000 => Instruction::Addi(rt(), rs(), imm16()),
             0b001001 => Instruction::Addiu(rt(), rs(), imm16()),
             0b001010 => Instruction::Slti(rt(), rs(), imm16()),
@@ -532,6 +537,7 @@ impl Display for Instruction {
             Instruction::Beq(rs, rt, imm16) => write!(f, "beq {rs}, {rt}, {imm16:#x}"),
             Instruction::Bne(rs, rt, imm16) => write!(f, "bne {rs}, {rt}, {imm16:#x}"),
             Instruction::Blez(rs, imm16) => write!(f, "blez {rs}, {imm16:#x}"),
+            Instruction::Bgtz(rs, imm16) => write!(f, "bgtz {rs}, {imm16:#x}"),
             Instruction::Addi(rt, rs, imm16) => write!(f, "{rt} = addi {rs}, {imm16}"),
             Instruction::Addiu(rt, rs, imm16) => write!(f, "{rt} = addiu {rs}, {imm16}"),
             Instruction::Slti(rt, rs, imm16) => write!(f, "{rt} = slti {rs}, {imm16}"),
@@ -582,7 +588,7 @@ impl Display for Instruction {
 
 impl Instruction {
     pub fn is_branch(self) -> bool {
-        matches!(self, Instruction::Jr(..) | Instruction::Jalr(..) | Instruction::Bltz(..) | Instruction::Bgez(..) | Instruction::J(..) | Instruction::Jal(..) | Instruction::Beq(..) | Instruction::Bne(..) | Instruction::Blez(..) | Instruction::Beql(..) | Instruction::Bnel(..))
+        matches!(self, Instruction::Jr(..) | Instruction::Jalr(..) | Instruction::Bltz(..) | Instruction::Bgez(..) | Instruction::J(..) | Instruction::Jal(..) | Instruction::Beq(..) | Instruction::Bne(..) | Instruction::Blez(..) | Instruction::Bgtz(..) | Instruction::Beql(..) | Instruction::Bnel(..))
     }
 
     pub fn is_branch_likely(self) -> bool {
@@ -653,6 +659,7 @@ impl Instruction {
             Instruction::Beq(_, _, _) => [None, None, None],
             Instruction::Bne(_, _, _) => [None, None, None],
             Instruction::Blez(_, _) => [None, None, None],
+            Instruction::Bgtz(_, _) => [None, None, None],
             Instruction::Addi(rt, _, _) => [Some(Occurrence::from(rt)), None, None],
             Instruction::Addiu(rt, _, _) => [Some(Occurrence::from(rt)), None, None],
             Instruction::Slti(rt, _, _) => [Some(Occurrence::from(rt)), None, None],
@@ -762,6 +769,7 @@ impl Instruction {
             Instruction::Beq(rs, rt, _) => [Some(Occurrence::from(rs)), Some(Occurrence::from(rt))],
             Instruction::Bne(rs, rt, _) => [Some(Occurrence::from(rs)), Some(Occurrence::from(rt))],
             Instruction::Blez(rs, _) => [Some(Occurrence::from(rs)), None],
+            Instruction::Bgtz(rs, _) => [Some(Occurrence::from(rs)), None],
             Instruction::Addi(_, rs, _) => [Some(Occurrence::from(rs)), None],
             Instruction::Addiu(_, rs, _) => [Some(Occurrence::from(rs)), None],
             Instruction::Slti(_, rs, _) => [Some(Occurrence::from(rs)), None],
