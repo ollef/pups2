@@ -119,7 +119,7 @@ impl Bus {
                         println!("Read from GIF: 0x{:08x}==0x{:08x}", address, result);
                         result
                     }
-                    0x1000_8000..0x1000_F000 => {
+                    0x1000_8000..0x1000_F000 | 0x1000_F520..0x1000_F600 => {
                         let result = self.dmac.read(address);
                         // println!("Read from DMAC: 0x{:08x}==0x{:08x}", address, result);
                         result
@@ -177,7 +177,7 @@ impl Bus {
                         println!("Write to GIF: 0x{:08x}:=0x{:08x}", address, value);
                         self.gif.write(address, value)
                     }
-                    0x1000_8000..0x1000_F000 => {
+                    0x1000_8000..0x1000_F000 | 0x1000_F520..0x1000_F600 => {
                         // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
                         self.dmac.write(address, value)
                     }
