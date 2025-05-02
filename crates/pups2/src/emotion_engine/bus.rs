@@ -1,5 +1,6 @@
 use std::{
     fmt::LowerHex,
+    io::Write,
     ops::{Add, AddAssign, Sub, SubAssign},
 };
 
@@ -19,6 +20,7 @@ pub struct Bus {
     pub gif: Gif,
     pub dmac: Dmac,
     pub gs: Gs,
+    pub stdout: Vec<u8>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -95,6 +97,7 @@ impl Bus {
             gif: Gif::new(),
             dmac: Dmac::default(),
             gs: Gs::new(),
+            stdout: Vec::new(),
         }
     }
 
@@ -181,9 +184,21 @@ impl Bus {
                         // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
                         self.dmac.write(address, value)
                     }
-                    0x1000_F100 | 0x1000_F120 | 0x1000_F140 | 0x1000_F150 | 0x1000_F180
-                    | 0x1000_F410 | 0x1000_F500 | 0x1F80_1470 | 0x1F80_1472 => {
+                    0x1000_F100 | 0x1000_F120 | 0x1000_F140 | 0x1000_F150 | 0x1000_F410
+                    | 0x1000_F500 | 0x1F80_1470 | 0x1F80_1472 => {
                         println!("Unhandled write: 0x{:08x}:=0x{:08x}", address, value);
+                    }
+                    // kputchar
+                    0x1000_F180 => {
+                        let byte = value.to_bytes().as_ref()[0];
+                        if byte == b'\n' {
+                            print!("STDOUT:");
+                            std::io::stdout().write_all(&self.stdout).unwrap();
+                            println!();
+                            self.stdout.clear();
+                        } else {
+                            self.stdout.push(byte);
+                        }
                     }
                     0x1200_0000..0x1201_0000 => {
                         println!("Write to GS: 0x{:08x}:=0x{:08x}", address, value);
