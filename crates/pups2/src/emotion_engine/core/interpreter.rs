@@ -479,6 +479,16 @@ impl Core {
             Instruction::Mthi1(rs) => self.set_upper(Register::Hi, self.get_register::<u64>(rs)),
             Instruction::Mflo1(rd) => self.set_register(rd, self.get_upper(Register::Lo)),
             Instruction::Mtlo1(rs) => self.set_upper(Register::Lo, self.get_register::<u64>(rs)),
+            Instruction::Mult1(rd, rs, rt) => {
+                let a: u64 = self.get_register::<u32>(rs).sign_extend();
+                let b: u64 = self.get_register::<u32>(rt).sign_extend();
+                let prod = a.wrapping_mul(b);
+                let lo: u64 = (prod as u32).sign_extend();
+                let hi: u64 = ((prod >> 32) as u32).sign_extend();
+                self.set_register(rd, lo);
+                self.set_upper(Register::Lo, lo);
+                self.set_upper(Register::Hi, hi);
+            }
             Instruction::Div1(rs, rt) => {
                 let dividend = self.get_register::<u32>(rs) as i32;
                 let divisor = self.get_register::<u32>(rt) as i32;

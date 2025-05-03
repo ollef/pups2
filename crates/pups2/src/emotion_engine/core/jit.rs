@@ -1225,6 +1225,10 @@ impl<'a> JitCompiler<'a> {
                     unhandled();
                     break;
                 }
+                Instruction::Mult1(rd, rs, rt) => {
+                    unhandled();
+                    break;
+                }
                 Instruction::Div1(rs, rt) => {
                     unhandled();
                     break;
