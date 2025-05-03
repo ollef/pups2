@@ -667,9 +667,27 @@ impl<'a> JitCompiler<'a> {
                     let rs_value = self.get_register(rs, Size::S64);
                     self.set_register(Register::Lo, rs_value, Size::S64);
                 }
-                Instruction::Dsllv(_, _, _) => todo!(),
-                Instruction::Dsrav(_, _, _) => todo!(),
-                Instruction::Dsrlv(_, _, _) => todo!(),
+                Instruction::Dsllv(rd, rt, rs) => {
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let rs_value = self.get_register(rs, Size::S8);
+                    let rs_value = self.function_builder.ins().band_imm(rs_value, 0b111111);
+                    let result = self.function_builder.ins().ishl(rt_value, rs_value);
+                    self.set_register(rd, result, Size::S64);
+                }
+                Instruction::Dsrav(rd, rt, rs) => {
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let rs_value = self.get_register(rs, Size::S8);
+                    let rs_value = self.function_builder.ins().band_imm(rs_value, 0b111111);
+                    let result = self.function_builder.ins().sshr(rt_value, rs_value);
+                    self.set_register(rd, result, Size::S64);
+                }
+                Instruction::Dsrlv(rd, rt, rs) => {
+                    let rt_value = self.get_register(rt, Size::S64);
+                    let rs_value = self.get_register(rs, Size::S8);
+                    let rs_value = self.function_builder.ins().band_imm(rs_value, 0b111111);
+                    let result = self.function_builder.ins().ushr(rt_value, rs_value);
+                    self.set_register(rd, result, Size::S64);
+                }
                 Instruction::Mult(rd, rs, rt) => {
                     let rs_value = self.get_register(rs, Size::S32);
                     let rs_value = self
