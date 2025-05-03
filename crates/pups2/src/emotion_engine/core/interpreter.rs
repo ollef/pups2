@@ -1,6 +1,9 @@
 use crate::{
     bits::{Bits, SignExtend},
-    emotion_engine::{bus::Bus, core::register::Register},
+    emotion_engine::{
+        bus::Bus,
+        core::{instruction::Occurrence, register::Register},
+    },
 };
 
 use super::{control, instruction_gen::Instruction, mmu::TlbEntry, Core, State};
@@ -16,10 +19,19 @@ impl State {
 
 impl Core {
     pub fn interpret_instruction(&mut self, instruction: Instruction, bus: &mut Bus) {
-        // for reg in instruction.uses() {
-        //     let value = self.get_register::<u64>(reg);
-        //     println!("{}={:#x}", reg, value);
-        // }
+        for reg in instruction.uses() {
+            match reg {
+                Occurrence::Core(reg) => {
+                    let value = self.get_register::<u64>(reg);
+                    println!("{}={:#x}", reg, value);
+                }
+                Occurrence::Control(_) => {}
+                Occurrence::Fpu(reg) => {
+                    let value = self.state.fpu.get_register::<u32>(reg);
+                    println!("{}={:#x}", reg, value);
+                }
+            }
+        }
         let mut next_program_counter = self
             .state
             .delayed_branch_target
@@ -602,15 +614,19 @@ impl Core {
                 self.write_virtual(bus, address, self.get_register::<u64>(rt));
             }
         }
-        // for reg in instruction.definitions() {
-        //     match reg {
-        //         AnyRegister::Core(reg) => {
-        //             let value = self.get_register::<u64>(reg);
-        //             println!("{}:={:#x}", reg, value);
-        //         }
-        //         AnyRegister::Fpu(_) => {}
-        //     }
-        // }
+        for reg in instruction.definitions() {
+            match reg {
+                Occurrence::Core(reg) => {
+                    let value = self.get_register::<u64>(reg);
+                    println!("{}={:#x}", reg, value);
+                }
+                Occurrence::Control(_) => {}
+                Occurrence::Fpu(reg) => {
+                    let value = self.state.fpu.get_register::<u32>(reg);
+                    println!("{}={:#x}", reg, value);
+                }
+            }
+        }
         self.state.program_counter = next_program_counter;
     }
 }
