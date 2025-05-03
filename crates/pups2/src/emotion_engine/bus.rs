@@ -6,7 +6,7 @@ use std::{
 
 use crate::{bits::Bits, bytes::Bytes};
 
-use super::{dmac::Dmac, gif::Gif, gs::Gs, timer::Timer};
+use super::{dmac::Dmac, gif::Gif, gs::Gs, rdram::Rdram, timer::Timer};
 
 pub const MAIN_MEMORY_SIZE: usize = 32 * 1024 * 1024;
 pub const BOOT_MEMORY_SIZE: usize = 4 * 1024 * 1024;
@@ -20,6 +20,7 @@ pub struct Bus {
     pub gif: Gif,
     pub dmac: Dmac,
     pub gs: Gs,
+    pub rdram: Rdram,
     pub stdout: Vec<u8>,
 }
 
@@ -97,6 +98,7 @@ impl Bus {
             gif: Gif::new(),
             dmac: Dmac::default(),
             gs: Gs::new(),
+            rdram: Rdram::default(),
             stdout: Vec::new(),
         }
     }
@@ -130,6 +132,11 @@ impl Bus {
                     0x1000_F130 => {
                         println!("Unhandled read at: 0x{:08x}", address);
                         T::default()
+                    }
+                    0x1000_F430 | 0x1000_F440 => {
+                        let result = self.rdram.read(address);
+                        // println!("Read from RDRAM: 0x{:08x}==0x{:08x}", address, result);
+                        result
                     }
                     0x1200_0000..0x1201_0000 => {
                         let result = self.gs.read_privileged(address);
@@ -199,6 +206,10 @@ impl Bus {
                         } else {
                             self.stdout.push(byte);
                         }
+                    }
+                    0x1000_F430 | 0x1000_F440 => {
+                        // println!("Write to RDRAM: 0x{:08x}:=0x{:08x}", address, value);
+                        self.rdram.write(address, value);
                     }
                     0x1200_0000..0x1201_0000 => {
                         println!("Write to GS: 0x{:08x}:=0x{:08x}", address, value);
