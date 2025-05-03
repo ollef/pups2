@@ -151,9 +151,21 @@ impl Core {
             Instruction::Mthi(rs) => self.set_register(Register::Hi, self.get_register::<u64>(rs)),
             Instruction::Mflo(rd) => self.set_register(rd, self.get_register::<u64>(Register::Lo)),
             Instruction::Mtlo(rs) => self.set_register(Register::Lo, self.get_register::<u64>(rs)),
-            Instruction::Dsllv(_, _, _) => todo!(),
-            Instruction::Dsrav(_, _, _) => todo!(),
-            Instruction::Dsrlv(_, _, _) => todo!(),
+            Instruction::Dsllv(rd, rt, rs) => {
+                let a = self.get_register::<u64>(rt);
+                let b = self.get_register::<u8>(rs).bits(0..=5);
+                self.set_register(rd, a << b);
+            }
+            Instruction::Dsrav(rd, rt, rs) => {
+                let a = self.get_register::<u64>(rt) as i64;
+                let b = self.get_register::<u8>(rs).bits(0..=5);
+                self.set_register(rd, (a >> b) as u64);
+            }
+            Instruction::Dsrlv(rd, rt, rs) => {
+                let a = self.get_register::<u64>(rt);
+                let b = self.get_register::<u64>(rs).bits(0..=5);
+                self.set_register(rd, a >> b);
+            }
             Instruction::Mult(rd, rs, rt) => {
                 let a: u64 = self.get_register::<u32>(rs).sign_extend();
                 let b: u64 = self.get_register::<u32>(rt).sign_extend();
