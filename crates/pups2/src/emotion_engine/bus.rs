@@ -129,7 +129,7 @@ impl Bus {
                         // println!("Read from DMAC: 0x{:08x}==0x{:08x}", address, result);
                         result
                     }
-                    0x1000_F130 => {
+                    0x1000_F130 | 0x1000_F400 | 0x1000_F410 => {
                         println!("Unhandled read at: 0x{:08x}", address);
                         T::default()
                     }
@@ -191,8 +191,9 @@ impl Bus {
                         // println!("Write to DMAC: 0x{:08x}:=0x{:08x}", address, value);
                         self.dmac.write(address, value)
                     }
-                    0x1000_F100 | 0x1000_F120 | 0x1000_F140 | 0x1000_F150 | 0x1000_F410
-                    | 0x1000_F500 | 0x1F80_1470 | 0x1F80_1472 => {
+                    0x1000_F100 | 0x1000_F120 | 0x1000_F140 | 0x1000_F150 | 0x1000_F400
+                    | 0x1000_F410 | 0x1000_F420 | 0x1000_F450 | 0x1000_F460 | 0x1000_F480
+                    | 0x1000_F490 | 0x1000_F500 | 0x1F80_1470 | 0x1F80_1472 => {
                         println!("Unhandled write: 0x{:08x}:=0x{:08x}", address, value);
                     }
                     // kputchar
