@@ -1209,6 +1209,12 @@ impl<'a> JitCompiler<'a> {
                     self.function_builder.ins().return_(&[]);
                     self.function_builder.switch_to_block(taken_block);
                 }
+                Instruction::Daddiu(rt, rs, imm) => {
+                    let rs_value = self.get_register(rs, Size::S64);
+                    let imm: u64 = imm.sign_extend();
+                    let value = self.function_builder.ins().iadd_imm(rs_value, imm as i64);
+                    self.set_register(rt, value, Size::S64);
+                }
                 Instruction::Mfhi1(rd) => {
                     unhandled();
                     break;

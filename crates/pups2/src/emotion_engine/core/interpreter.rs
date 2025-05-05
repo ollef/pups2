@@ -475,6 +475,10 @@ impl Core {
                     next_program_counter += 4;
                 }
             }
+            Instruction::Daddiu(rt, rs, imm) => {
+                let value = self.get_register::<u64>(rs).wrapping_add(imm.sign_extend());
+                self.set_register::<u64>(rt, value);
+            }
             Instruction::Mfhi1(rd) => self.set_register(rd, self.get_upper(Register::Hi)),
             Instruction::Mthi1(rs) => self.set_upper(Register::Hi, self.get_register::<u64>(rs)),
             Instruction::Mflo1(rd) => self.set_register(rd, self.get_upper(Register::Lo)),

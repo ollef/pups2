@@ -137,6 +137,7 @@ instructions:
   010001 10100 00000 ..... ..... 100000: '{fd} = cvt.s.w {fs}'
   010100 ..... ..... ..... ..... ......: {format: 'beql {rs}, {rt}, {imm16:#x}', predicates: [is_branch, is_branch_likely]}
   010101 ..... ..... ..... ..... ......: {format: 'bnel {rs}, {rt}, {imm16:#x}', predicates: [is_branch, is_branch_likely]}
+  011001 ..... ..... ..... ..... ......: '{rt} = daddiu {rs}, {imm16}'
   011100 00000 00000 ..... 00000 010000: {format: '{rd} = mfhi1', uses: [Register::Hi]}
   011100 ..... 00000 00000 00000 010001: {format: 'mthi1 {rs}', defs: [Register::Hi]}
   011100 00000 00000 ..... 00000 010010: {format: '{rd} = mflo1', uses: [Register::Lo]}

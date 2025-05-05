@@ -93,6 +93,7 @@ pub enum Instruction {
     Cvtsw(fpu::Register, fpu::Register),
     Beql(Register, Register, u16),
     Bnel(Register, Register, u16),
+    Daddiu(Register, Register, u16),
     Mfhi1(Register),
     Mthi1(Register),
     Mflo1(Register),
@@ -429,6 +430,7 @@ impl Instruction {
             }
             0b010100 => Instruction::Beql(rs(), rt(), imm16()),
             0b010101 => Instruction::Bnel(rs(), rt(), imm16()),
+            0b011001 => Instruction::Daddiu(rt(), rs(), imm16()),
             0b011100 => match data.bits(0..11) {
                 0b00000010000 => match data.bits(16..26) {
                     0b0000000000 => Instruction::Mfhi1(rd()),
@@ -564,6 +566,7 @@ impl Display for Instruction {
             Instruction::Cvtsw(fd, fs) => write!(f, "{fd} = cvt.s.w {fs}"),
             Instruction::Beql(rs, rt, imm16) => write!(f, "beql {rs}, {rt}, {imm16:#x}"),
             Instruction::Bnel(rs, rt, imm16) => write!(f, "bnel {rs}, {rt}, {imm16:#x}"),
+            Instruction::Daddiu(rt, rs, imm16) => write!(f, "{rt} = daddiu {rs}, {imm16}"),
             Instruction::Mfhi1(rd) => write!(f, "{rd} = mfhi1"),
             Instruction::Mthi1(rs) => write!(f, "mthi1 {rs}"),
             Instruction::Mflo1(rd) => write!(f, "{rd} = mflo1"),
@@ -687,6 +690,7 @@ impl Instruction {
             Instruction::Cvtsw(fd, _) => [Some(Occurrence::from(fd)), None, None],
             Instruction::Beql(_, _, _) => [None, None, None],
             Instruction::Bnel(_, _, _) => [None, None, None],
+            Instruction::Daddiu(rt, _, _) => [Some(Occurrence::from(rt)), None, None],
             Instruction::Mfhi1(rd) => [Some(Occurrence::from(rd)), None, None],
             Instruction::Mthi1(_) => [Some(Occurrence::from(Register::Hi)), None, None],
             Instruction::Mflo1(rd) => [Some(Occurrence::from(rd)), None, None],
@@ -798,6 +802,7 @@ impl Instruction {
             Instruction::Cvtsw(_, fs) => [Some(Occurrence::from(fs)), None],
             Instruction::Beql(rs, rt, _) => [Some(Occurrence::from(rs)), Some(Occurrence::from(rt))],
             Instruction::Bnel(rs, rt, _) => [Some(Occurrence::from(rs)), Some(Occurrence::from(rt))],
+            Instruction::Daddiu(_, rs, _) => [Some(Occurrence::from(rs)), None],
             Instruction::Mfhi1(_) => [Some(Occurrence::from(Register::Hi)), None],
             Instruction::Mthi1(rs) => [Some(Occurrence::from(rs)), None],
             Instruction::Mflo1(_) => [Some(Occurrence::from(Register::Lo)), None],
