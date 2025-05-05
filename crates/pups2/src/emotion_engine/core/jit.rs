@@ -1246,6 +1246,26 @@ impl<'a> JitCompiler<'a> {
                     unhandled();
                     break;
                 }
+                Instruction::Pand(rd, rs, rt) => {
+                    unhandled();
+                    break;
+                }
+                Instruction::Por(rd, rs, rt) => {
+                    unhandled();
+                    break;
+                }
+                Instruction::Pxor(rd, rs, rt) => {
+                    unhandled();
+                    break;
+                }
+                Instruction::Pnor(rd, rs, rt) => {
+                    unhandled();
+                    break;
+                }
+                Instruction::Lq(rt, offset, base) => {
+                    unhandled();
+                    break;
+                }
                 Instruction::Sq(rt, offset, base) => {
                     // let mut address = self
                     //     .get_register::<u32>(base)

@@ -515,6 +515,30 @@ impl Core {
                 self.set_upper(Register::Lo, quotient.sign_extend());
                 self.set_upper(Register::Hi, remainder.sign_extend());
             }
+            Instruction::Pand(rd, rs, rt) => {
+                let value = self.get_register::<u128>(rs) & self.get_register::<u128>(rt);
+                self.set_register(rd, value);
+            }
+            Instruction::Por(rd, rs, rt) => {
+                let value = self.get_register::<u128>(rs) | self.get_register::<u128>(rt);
+                self.set_register(rd, value);
+            }
+            Instruction::Pxor(rd, rs, rt) => {
+                let value = self.get_register::<u128>(rs) ^ self.get_register::<u128>(rt);
+                self.set_register(rd, value);
+            }
+            Instruction::Pnor(rd, rs, rt) => {
+                let value = !(self.get_register::<u128>(rs) | self.get_register::<u128>(rt));
+                self.set_register(rd, value);
+            }
+            Instruction::Lq(rt, offset, base) => {
+                let mut address = self
+                    .get_register::<u32>(base)
+                    .wrapping_add(offset.sign_extend());
+                address &= !0b1111;
+                let value = self.read_virtual(bus, address);
+                self.set_register::<u128>(rt, value);
+            }
             Instruction::Sq(rt, offset, base) => {
                 let mut address = self
                     .get_register::<u32>(base)
