@@ -581,31 +581,34 @@ impl<'a> JitCompiler<'a> {
                     self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Sra(rd, rt, shamt) => {
-                    // let value = (self.get_register::<u32>(rt) as i32) >> shamt;
-                    // self.set_register::<u64>(rd, value.sign_extend());
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let value = self.function_builder.ins().sshr_imm(rt_value, shamt as i64);
+                    let value = self.function_builder.ins().sextend(ir::types::I64, value);
+                    self.set_register(rd, value, Size::S64);
                 }
                 Instruction::Sllv(rd, rt, rs) => {
-                    // let value =
-                    //     self.get_register::<u32>(rt) << self.get_register::<u32>(rs).bits(0..5);
-                    // self.set_register::<u64>(rd, value.sign_extend());
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let rs_value = self.get_register(rs, Size::S8);
+                    let rs_value = self.function_builder.ins().band_imm(rs_value, 0b11111);
+                    let result = self.function_builder.ins().ishl(rt_value, rs_value);
+                    let result = self.function_builder.ins().sextend(ir::types::I64, result);
+                    self.set_register(rd, result, Size::S64);
                 }
                 Instruction::Srlv(rd, rt, rs) => {
-                    // let value =
-                    //     self.get_register::<u32>(rt) >> self.get_register::<u32>(rs).bits(0..5);
-                    // self.set_register::<u64>(rd, value.sign_extend());
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let rs_value = self.get_register(rs, Size::S8);
+                    let rs_value = self.function_builder.ins().band_imm(rs_value, 0b11111);
+                    let result = self.function_builder.ins().ushr(rt_value, rs_value);
+                    let result = self.function_builder.ins().sextend(ir::types::I64, result);
+                    self.set_register(rd, result, Size::S64);
                 }
                 Instruction::Srav(rd, rt, rs) => {
-                    // let value = (self.get_register::<u32>(rt) as i32)
-                    //     >> self.get_register::<u32>(rs).bits(0..5);
-                    // self.set_register::<u64>(rd, value.sign_extend());
-                    unhandled();
-                    break;
+                    let rt_value = self.get_register(rt, Size::S32);
+                    let rs_value = self.get_register(rs, Size::S8);
+                    let rs_value = self.function_builder.ins().band_imm(rs_value, 0b11111);
+                    let result = self.function_builder.ins().sshr(rt_value, rs_value);
+                    let result = self.function_builder.ins().sextend(ir::types::I64, result);
+                    self.set_register(rd, result, Size::S64);
                 }
                 Instruction::Jr(rs) => {
                     let target = self.get_register(rs, Size::S32);
