@@ -3,6 +3,8 @@ use enum_map::{enum_map, Enum, EnumMap};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
+use crate::bits::Bits;
+
 // Coprocessor 0
 #[derive(Debug)]
 pub struct Control {
@@ -64,24 +66,48 @@ impl Control {
 
     pub fn set_register(&mut self, register: Register, value: u32) {
         println!("Setting control register {:?} to {:#010x}", register, value);
+        let register_value = &mut self.registers[register];
         match register {
-            Register::Index => self.registers[register] = value,
+            Register::Index => {
+                *register_value = value;
+                register_value.set_bits(6..=30, 0u32);
+            }
             Register::Random => todo!(),
-            Register::EntryLo0 => self.registers[register] = value,
-            Register::EntryLo1 => self.registers[register] = value,
+            Register::EntryLo0 => {
+                *register_value = value;
+                register_value.set_bits(26..=30, 0u32);
+            }
+            Register::EntryLo1 => {
+                *register_value = value;
+                register_value.set_bits(26..=31, 0u32);
+            }
             Register::Context => todo!(),
-            Register::PageMask => self.registers[register] = value,
-            Register::Wired => self.registers[register] = value,
+            Register::PageMask => register_value.set_bits(13..=24, value.bits(13..=24)),
+            Register::Wired => register_value.set_bits(0..=5, value.bits(0..=5)),
             Register::Undefined7 => todo!(),
             Register::BadVAddr => todo!(),
-            Register::Count => self.registers[register] = value,
-            Register::EntryHi => self.registers[register] = value,
-            Register::Compare => self.registers[register] = value,
-            Register::Status => self.registers[register] = value,
+            Register::Count => *register_value = value,
+            Register::EntryHi => {
+                *register_value = value;
+                register_value.set_bits(8..=12, 0u32);
+            }
+            Register::Compare => *register_value = value,
+            Register::Status => {
+                *register_value = value;
+                register_value.set_bits(5..10, 0u32);
+                register_value.set_bits(19..22, 0u32);
+                register_value.set_bits(24..28, 0u32);
+            }
             Register::Cause => todo!(),
             Register::Epc => todo!(),
             Register::PrId => todo!(),
-            Register::Config => self.registers[register] = value,
+            Register::Config => {
+                *register_value = value;
+                register_value.set_bits(3..=5, 0u32);
+                register_value.set_bits(14..=15, 0u32);
+                register_value.set_bits(19..=27, 0u32);
+                register_value.set_bit(31, false);
+            }
             Register::Undefined17 => todo!(),
             Register::Undefined18 => todo!(),
             Register::Undefined19 => todo!(),
