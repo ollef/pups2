@@ -634,7 +634,7 @@ impl Core {
                 CacheOperation::IXSTG => todo!(),
                 CacheOperation::IXSDT => todo!(),
                 CacheOperation::BXSBT => todo!(),
-                CacheOperation::IXIN => todo!(),
+                CacheOperation::IXIN => {}
                 CacheOperation::BHINBT => todo!(),
                 CacheOperation::IHIN => todo!(),
                 CacheOperation::BFH => todo!(),
