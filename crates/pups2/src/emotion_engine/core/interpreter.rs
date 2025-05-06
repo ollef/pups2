@@ -644,7 +644,7 @@ impl Core {
                 CacheOperation::DXSTG => todo!(),
                 CacheOperation::DXSDT => todo!(),
                 CacheOperation::DXWBIN => todo!(),
-                CacheOperation::DXIN => todo!(),
+                CacheOperation::DXIN => {}
                 CacheOperation::DHWBIN => todo!(),
                 CacheOperation::DHIN => todo!(),
                 CacheOperation::DHWOIN => todo!(),
