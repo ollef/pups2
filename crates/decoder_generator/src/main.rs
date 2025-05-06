@@ -312,7 +312,10 @@ fn definitions_and_uses<'a>(
         let use_format = InstructionFormat(&encoding.payload[eq_index.unwrap_or_default()..]);
         for use_ in use_format.operands() {
             let type_ = operands[use_]["type"].as_str().unwrap();
-            if matches!(type_, "u8" | "u16" | "u32" | "i8" | "i16" | "i32") {
+            let skip_occurrences = operands[use_]["skip_occurrences"]
+                .as_bool()
+                .unwrap_or(false);
+            if skip_occurrences {
                 continue;
             }
             uses.entry(mnemonic.to_string())

@@ -1,7 +1,7 @@
 // Generated file. Do not edit!
 use super::control;
 use super::fpu;
-use super::instruction::Occurrence;
+use super::instruction::{CacheOperation, Occurrence};
 use super::register::Register;
 use crate::bits::Bits;
 use std::fmt::{Display, Formatter};
@@ -116,6 +116,7 @@ pub enum Instruction {
     Sb(Register, u16, Register),
     Sh(Register, u16, Register),
     Sw(Register, u16, Register),
+    Cache(CacheOperation, u16, Register),
     Lwc1(fpu::Register, u16, Register),
     Ld(Register, u16, Register),
     Swc1(fpu::Register, u16, Register),
@@ -134,6 +135,7 @@ impl Instruction {
         let sa = || data.bits(6..11) as u8;
         let imm16 = || data.bits(0..16) as u16;
         let imm26 = || data.bits(0..26);
+        let cache_op = || CacheOperation::from(data.bits(16..21));
         match data.bits(26..32) {
             0b000000 => match data.bits(0..6) {
                 0b000000 => match data.bits(21..26) {
@@ -479,6 +481,7 @@ impl Instruction {
             0b101000 => Instruction::Sb(rt(), imm16(), rs()),
             0b101001 => Instruction::Sh(rt(), imm16(), rs()),
             0b101011 => Instruction::Sw(rt(), imm16(), rs()),
+            0b101111 => Instruction::Cache(cache_op(), imm16(), rs()),
             0b110001 => Instruction::Lwc1(ft(), imm16(), rs()),
             0b110111 => Instruction::Ld(rt(), imm16(), rs()),
             0b111001 => Instruction::Swc1(ft(), imm16(), rs()),
@@ -599,6 +602,7 @@ impl Display for Instruction {
             Instruction::Sb(rt, imm16, rs) => write!(f, "sb {rt}, {imm16:#x}({rs})"),
             Instruction::Sh(rt, imm16, rs) => write!(f, "sh {rt}, {imm16:#x}({rs})"),
             Instruction::Sw(rt, imm16, rs) => write!(f, "sw {rt}, {imm16:#x}({rs})"),
+            Instruction::Cache(cache_op, imm16, rs) => write!(f, "cache {cache_op}, {imm16:#x}({rs})"),
             Instruction::Lwc1(ft, imm16, rs) => write!(f, "{ft} = lwc1 {imm16:#x}({rs})"),
             Instruction::Ld(rt, imm16, rs) => write!(f, "{rt} = ld {imm16:#x}({rs})"),
             Instruction::Swc1(ft, imm16, rs) => write!(f, "swc1 {ft}, {imm16:#x}({rs})"),
@@ -728,6 +732,7 @@ impl Instruction {
             Instruction::Sb(_, _, _) => [None, None, None],
             Instruction::Sh(_, _, _) => [None, None, None],
             Instruction::Sw(_, _, _) => [None, None, None],
+            Instruction::Cache(_, _, _) => [None, None, None],
             Instruction::Lwc1(ft, _, _) => [Some(Occurrence::from(ft)), None, None],
             Instruction::Ld(rt, _, _) => [Some(Occurrence::from(rt)), None, None],
             Instruction::Swc1(_, _, _) => [None, None, None],
@@ -845,6 +850,7 @@ impl Instruction {
             Instruction::Sb(rt, _, rs) => [Some(Occurrence::from(rt)), Some(Occurrence::from(rs))],
             Instruction::Sh(rt, _, rs) => [Some(Occurrence::from(rt)), Some(Occurrence::from(rs))],
             Instruction::Sw(rt, _, rs) => [Some(Occurrence::from(rt)), Some(Occurrence::from(rs))],
+            Instruction::Cache(_, _, rs) => [Some(Occurrence::from(rs)), None],
             Instruction::Lwc1(_, _, rs) => [Some(Occurrence::from(rs)), None],
             Instruction::Ld(_, _, rs) => [Some(Occurrence::from(rs)), None],
             Instruction::Swc1(ft, _, rs) => [Some(Occurrence::from(ft)), Some(Occurrence::from(rs))],

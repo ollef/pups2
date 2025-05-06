@@ -1,3 +1,8 @@
+use std::fmt::Display;
+
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
+
 use crate::bits::SignExtend;
 
 use super::{control, fpu, instruction_gen::Instruction, register::Register};
@@ -79,5 +84,41 @@ impl Instruction {
             .into_iter()
             .take_while(|occ| occ.is_some())
             .filter_map(|occ| occ.and_then(|occ| occ.non_zero()))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, FromPrimitive)]
+pub enum CacheOperation {
+    IXLTG = 0b00000,
+    IXLDT = 0b00001,
+    BXLBT = 0b00010,
+    IXSTG = 0b00100,
+    IXSDT = 0b00101,
+    BXSBT = 0b00110,
+    IXIN = 0b00111,
+    BHINBT = 0b01010,
+    IHIN = 0b01011,
+    BFH = 0b01100,
+    IFL = 0b01110,
+    DXLTG = 0b10000,
+    DXLDT = 0b10001,
+    DXSTG = 0b10010,
+    DXSDT = 0b10011,
+    DXWBIN = 0b10100,
+    DXIN = 0b10110,
+    DHWBIN = 0b11000,
+    DHIN = 0b11010,
+    DHWOIN = 0b11100,
+}
+
+impl From<u32> for CacheOperation {
+    fn from(value: u32) -> Self {
+        CacheOperation::from_u32(value & 0b11111).unwrap()
+    }
+}
+
+impl Display for CacheOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
     }
 }

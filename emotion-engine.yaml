@@ -2,7 +2,7 @@ imports: |-
   // Generated file. Do not edit!
   use super::control;
   use super::fpu;
-  use super::instruction::Occurrence;
+  use super::instruction::{CacheOperation, Occurrence};
   use super::register::Register;
   use crate::bits::Bits;
   use std::fmt::{Display, Formatter};
@@ -33,12 +33,19 @@ operands:
   sa:
     type: u8
     decode: '{}.bits(6..11) as u8'
+    skip_occurrences: true
   imm16:
     type: u16
     decode: '{}.bits(0..16) as u16'
+    skip_occurrences: true
   imm26:
     type: u32
     decode: '{}.bits(0..26)'
+    skip_occurrences: true
+  cache_op:
+    type: CacheOperation
+    decode: CacheOperation::from({}.bits(16..21))
+    skip_occurrences: true
 
 instructions:
   000000 00000 ..... ..... ..... 000000: '{rd} = sll {rt}, {sa}'
@@ -160,6 +167,7 @@ instructions:
   101000 ..... ..... ..... ..... ......: 'sb {rt}, {imm16:#x}({rs})'
   101001 ..... ..... ..... ..... ......: 'sh {rt}, {imm16:#x}({rs})'
   101011 ..... ..... ..... ..... ......: 'sw {rt}, {imm16:#x}({rs})'
+  101111 ..... ..... ..... ..... ......: 'cache {cache_op}, {imm16:#x}({rs})'
   110001 ..... ..... ..... ..... ......: '{ft} = lwc1 {imm16:#x}({rs})'
   110111 ..... ..... ..... ..... ......: '{rt} = ld {imm16:#x}({rs})'
   111001 ..... ..... ..... ..... ......: 'swc1 {ft}, {imm16:#x}({rs})'

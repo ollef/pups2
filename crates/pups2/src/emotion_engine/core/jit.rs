@@ -1336,6 +1336,10 @@ impl<'a> JitCompiler<'a> {
                     let base_value = self.get_register(base, Size::S32);
                     self.store(rt_value, base_value, offset, Size::S32, mode);
                 }
+                Instruction::Cache(op, offset, base) => {
+                    unhandled();
+                    break;
+                }
                 Instruction::Lwc1(ft, offset, base) => {
                     // let address = self
                     //     .get_register::<u32>(base)

@@ -6,7 +6,9 @@ use crate::{
     },
 };
 
-use super::{control, instruction_gen::Instruction, mmu::TlbEntry, Core, State};
+use super::{
+    control, instruction::CacheOperation, instruction_gen::Instruction, mmu::TlbEntry, Core, State,
+};
 
 impl State {
     pub extern "C" fn set_delayed_branch_target(&mut self, target: u32) {
@@ -625,6 +627,28 @@ impl Core {
                 }
                 self.write_virtual(bus, address, self.get_register::<u32>(rt));
             }
+            Instruction::Cache(op, offset, base) => match op {
+                CacheOperation::IXLTG => todo!(),
+                CacheOperation::IXLDT => todo!(),
+                CacheOperation::BXLBT => todo!(),
+                CacheOperation::IXSTG => todo!(),
+                CacheOperation::IXSDT => todo!(),
+                CacheOperation::BXSBT => todo!(),
+                CacheOperation::IXIN => todo!(),
+                CacheOperation::BHINBT => todo!(),
+                CacheOperation::IHIN => todo!(),
+                CacheOperation::BFH => todo!(),
+                CacheOperation::IFL => todo!(),
+                CacheOperation::DXLTG => todo!(),
+                CacheOperation::DXLDT => todo!(),
+                CacheOperation::DXSTG => todo!(),
+                CacheOperation::DXSDT => todo!(),
+                CacheOperation::DXWBIN => todo!(),
+                CacheOperation::DXIN => todo!(),
+                CacheOperation::DHWBIN => todo!(),
+                CacheOperation::DHIN => todo!(),
+                CacheOperation::DHWOIN => todo!(),
+            },
             Instruction::Lwc1(ft, offset, base) => {
                 let address = self
                     .get_register::<u32>(base)
