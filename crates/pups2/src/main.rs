@@ -119,8 +119,8 @@ fn execute(bios: &Option<String>, file: &str) -> std::io::Result<()> {
                         Dmac::step(&mut bus);
                         Gif::step(&mut bus);
                         bus.gs.step();
+                        bus.timer.step();
                     }
-                    bus.timer.step();
                 }
                 scheduler.tick(cycles);
             }
