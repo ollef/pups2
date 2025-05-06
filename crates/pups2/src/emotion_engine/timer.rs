@@ -146,7 +146,7 @@ impl Timer {
                 mode.set_equal_flag(false);
                 mode.set_overflow_flag(false);
                 self.timers[timer].mode = mode;
-                println!("Timer {} mode: 0x{:04b}", timer, value);
+                println!("Timer {} mode: 0b{:04b}", timer, value);
             }
             0x20 => todo!(),
             0x30 if timer == 0 || timer == 1 => todo!(),
